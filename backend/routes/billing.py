@@ -29,13 +29,63 @@ STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
 
 # Server-side packages — JAMAIS confiance au frontend pour le prix
 PACKAGES = {
-    "pro_monthly": {"amount": 15.00, "currency": "eur", "label": "Pro · €15/mois", "duration_days": 30},
+    "creator_monthly": {
+        "amount": 15.00,
+        "currency": "eur",
+        "tier": "creator",
+        "label": "Creator",
+        "tagline": "Pour les créateurs, étudiants et entrepreneurs",
+        "tokens_limit_month": 2_000_000,
+        "tokens_limit_day": 200_000,
+        "memory_window": 100,
+        "rate_per_min": 30,
+        "features": [
+            "Conversations longues",
+            "Mémoire étendue · 100 échanges",
+            "Upload de fichiers",
+            "Historique complet",
+            "Génération avancée",
+        ],
+    },
+    "infinite_monthly": {
+        "amount": 39.00,
+        "currency": "eur",
+        "tier": "infinite",
+        "label": "Infinite",
+        "tagline": "Le cerveau augmenté · usage prioritaire",
+        "tokens_limit_month": 10_000_000,
+        "tokens_limit_day": 1_000_000,
+        "memory_window": 500,
+        "rate_per_min": 90,
+        "features": [
+            "Mémoire persistante illimitée",
+            "Agents IA & automatisations",
+            "Vitesse prioritaire",
+            "Multi-modèles (à venir)",
+            "Accès aux fonctionnalités expérimentales",
+        ],
+    },
+}
+
+FREE_TIER = {
+    "tier": "free",
+    "label": "Free",
+    "tokens_limit_month": 100_000,
+    "tokens_limit_day": 15_000,
+    "memory_window": 10,
+    "rate_per_min": 10,
+    "features": [
+        "Découverte de Laurent.ia",
+        "Mémoire courte · 10 échanges",
+        "Quota quotidien de messages",
+        "Accès standard",
+    ],
 }
 
 
 class CheckoutRequest(BaseModel):
     origin_url: str
-    package_id: str = "pro_monthly"
+    package_id: str = "creator_monthly"
 
 
 def _checkout_client(host_url: str) -> StripeCheckout:
@@ -108,21 +158,25 @@ async def get_status(session_id: str, request: Request):
         }},
     )
 
-    # Si payé ET pas encore crédité → activer Pro (idempotent)
+    # Si payé ET pas encore crédité → activer le tier acheté (idempotent)
     if status.payment_status == "paid" and not tx.get("credit_applied"):
         await db.payment_transactions.update_one(
             {"session_id": session_id, "credit_applied": {"$ne": True}},
             {"$set": {"credit_applied": True}},
         )
-        # double-check pour idempotence
         tx2 = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
         if tx2 and tx2.get("credit_applied"):
+            pkg = PACKAGES.get(tx.get("package_id", "creator_monthly"), PACKAGES["creator_monthly"])
             await db.laurentia_instances.update_one(
                 {"frek_id": tx["frek_id"]},
                 {"$set": {
-                    "version": "pro",
-                    "tokens_limit_month": 1_000_000,  # quasi illimité
-                    "pro_activated_at": datetime.now(timezone.utc).isoformat(),
+                    "version": pkg["tier"],
+                    "tier": pkg["tier"],
+                    "tokens_limit_month": pkg["tokens_limit_month"],
+                    "tokens_limit_day": pkg["tokens_limit_day"],
+                    "memory_window": pkg["memory_window"],
+                    "rate_per_min": pkg["rate_per_min"],
+                    "tier_activated_at": datetime.now(timezone.utc).isoformat(),
                 }},
             )
 
@@ -155,19 +209,33 @@ async def stripe_webhook(request: Request):
                 "webhook_received_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        # Activation Pro idempotente
+        # Activation tier idempotente
         tx = await db.payment_transactions.find_one({"session_id": evt.session_id}, {"_id": 0})
         if tx and evt.payment_status == "paid" and not tx.get("credit_applied"):
             await db.payment_transactions.update_one(
                 {"session_id": evt.session_id, "credit_applied": {"$ne": True}},
                 {"$set": {"credit_applied": True}},
             )
+            pkg = PACKAGES.get(tx.get("package_id", "creator_monthly"), PACKAGES["creator_monthly"])
             await db.laurentia_instances.update_one(
                 {"frek_id": tx["frek_id"]},
                 {"$set": {
-                    "version": "pro",
-                    "tokens_limit_month": 1_000_000,
-                    "pro_activated_at": datetime.now(timezone.utc).isoformat(),
+                    "version": pkg["tier"],
+                    "tier": pkg["tier"],
+                    "tokens_limit_month": pkg["tokens_limit_month"],
+                    "tokens_limit_day": pkg["tokens_limit_day"],
+                    "memory_window": pkg["memory_window"],
+                    "rate_per_min": pkg["rate_per_min"],
+                    "tier_activated_at": datetime.now(timezone.utc).isoformat(),
                 }},
             )
     return {"ok": True}
+
+
+@router.get("/packages")
+async def list_packages():
+    """Renvoie la liste des plans achetables (pricing modal frontend)."""
+    return {
+        "free": {**FREE_TIER, "amount": 0.00, "package_id": None},
+        "available": [{"package_id": pid, **pkg} for pid, pkg in PACKAGES.items()],
+    }

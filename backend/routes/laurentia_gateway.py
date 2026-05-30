@@ -22,6 +22,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from services import cvl_brain, cvl_brain_knowledge, kiltikonet_bridge, labelos_bridge
 from services.cvl_brain_agents import log_call, log_write
 from services.security import tenant_id_for
+from services.rate_limit import check_and_consume
 
 
 router = APIRouter(prefix="/api/laurentia", tags=["laurentia"])
@@ -67,10 +68,14 @@ async def _ensure_instance(db: AsyncIOMotorDatabase, frek_id: str) -> dict:
         "frek_id": frek_id,
         "tenant_path": f"/users/{frek_id}",
         "version": "free",
+        "tier": "free",
         "created_at": now,
         "last_active": now,
         "tokens_used_month": 0,
-        "tokens_limit_month": 10000,
+        "tokens_limit_month": 100_000,
+        "tokens_limit_day": 15_000,
+        "memory_window": 10,
+        "rate_per_min": 10,
         "jcc_balance": 0,
         "stripe_customer_id": None,
         "status": "active",
@@ -183,6 +188,11 @@ async def query(payload: QueryRequest, request: Request):
 
     # 2. instance (lazy create)
     instance = await _ensure_instance(db, payload.frek_id)
+
+    # 2b. Rate limit per minute selon tier
+    rate_per_min = int(instance.get("rate_per_min", 10))
+    if not check_and_consume(payload.frek_id, rate_per_min):
+        raise HTTPException(429, "Trop de requêtes. Patiente quelques secondes.")
 
     # 3. quota
     used = int(instance.get("tokens_used_month", 0))

@@ -208,6 +208,9 @@ async def me(request: Request):
     user = await get_current_user(request)
     if not user:
         raise HTTPException(401, "Non authentifié")
+    # Enrichit avec l'état du tier depuis l'instance
+    db = request.app.state.db
+    inst = await db.laurentia_instances.find_one({"frek_id": user["frek_id"]}, {"_id": 0}) or {}
     return {
         "user_id": user["user_id"],
         "email": user["email"],
@@ -216,6 +219,9 @@ async def me(request: Request):
         "frek_id": user["frek_id"],
         "role": user.get("role"),
         "ecosystem_member": bool(user.get("ecosystem_member", False)),
+        "tier": inst.get("tier") or inst.get("version") or "free",
+        "tokens_used_month": int(inst.get("tokens_used_month", 0)),
+        "tokens_limit_month": int(inst.get("tokens_limit_month", 100_000)),
     }
 
 

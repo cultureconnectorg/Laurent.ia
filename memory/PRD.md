@@ -27,6 +27,15 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.7 — 3 tiers Free/Creator/Infinite + quotas intelligents + PricingModal (30/05/2026)
+- ✅ **Modèle 3-tiers** : `Free` (gratuit, 10 échanges mémoire, 100k tokens/mois) · `Creator €15/mois` (100 échanges, 2M tokens, upload fichiers) · `Infinite €39/mois` (500 échanges, 10M tokens, agents IA, vitesse prioritaire, multi-modèles à venir). Source de vérité serveur : `PACKAGES` dict dans `routes/billing.py`
+- ✅ **Rate limiting per-min par tier** via `services/rate_limit.py` (sliding window in-memory, Redis-ready) ; le gateway `/api/laurentia/query` lève 429 si dépassement
+- ✅ **PricingModal** : 3 cards (Free / Creator / Infinite) avec badge "RECOMMANDÉ" gold sur Infinite. CTA contextuel (Ton plan actuel / Activer Creator / Activer Infinite). Endpoint `GET /api/billing/packages` côté serveur
+- ✅ **Menu drawer dynamique** : bouton "Améliorer mon plan" → ouvre le modal ; texte change selon tier (Creator → "Passer à Infinite") ; masqué si déjà Infinite
+- ✅ **`/api/auth/me` enrichi** : retourne `tier`, `tokens_used_month`, `tokens_limit_month` depuis l'instance — le frontend connaît le tier réel après reload
+- ✅ **Activation Pro tier-aware** : status polling + webhook propagent les bons quotas/mémoire/rate-limit selon le `package_id` acheté (`creator` ou `infinite`)
+- 🟡 Les instances existantes gardent leurs anciens quotas (10k tokens) — réindexation à prévoir avec un migration script léger
+
 ### v0.6 — Stripe Pro · Migration ANON→FREK · Écosystème conditionnel (30/05/2026)
 - ✅ **Stripe Checkout Pro €15/mois** via `emergentintegrations.payments.stripe` : `POST /api/billing/create-checkout` (auth-gated) → URL Stripe + session_id ; polling `GET /api/billing/status/{sid}` (frontend retombe sur la home avec `?upgrade=success&session_id=...` et active Pro de manière idempotente) ; webhook `POST /api/webhook/stripe` également idempotent (`credit_applied` flag dans `payment_transactions`)
 - ✅ **Bouton "Activer Pro"** visible dans le menu drawer (style gold, sous-titre "€15/mois · Conversations illimitées"), uniquement pour les utilisateurs authentifiés non-Pro

@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import PricingModal from "@/components/laurentia/PricingModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -25,6 +26,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
   const [frekInput, setFrekInput] = useState("");
   const [frekSubmitting, setFrekSubmitting] = useState(false);
   const [frekError, setFrekError] = useState(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const frekRef = useRef(null);
 
   // Charge l'historique UNIQUEMENT si authentifié
@@ -256,28 +258,10 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
 
           {/* Footer actions */}
           <div className="border-t border-white/[0.06] px-3 py-3 space-y-1">
-            {isAuthenticated && user?.version !== "pro" && (
+            {isAuthenticated && user?.tier !== "infinite" && (
               <button
                 type="button"
-                onClick={async () => {
-                  try {
-                    const r = await fetch(`${API}/billing/create-checkout`, {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ origin_url: window.location.origin, package_id: "pro_monthly" }),
-                    });
-                    if (!r.ok) {
-                      const d = await r.json().catch(() => ({}));
-                      toast(d.detail || "Erreur démarrage paiement");
-                      return;
-                    }
-                    const d = await r.json();
-                    window.location.href = d.url;
-                  } catch (e) {
-                    toast(e.message || "Erreur réseau");
-                  }
-                }}
+                onClick={() => { setPricingOpen(true); }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
                   bg-gradient-to-br from-[#E7C566]/15 to-[#E7C566]/5 border border-[#E7C566]/30
                   hover:from-[#E7C566]/25 hover:to-[#E7C566]/10 transition-colors text-[#E7C566]"
@@ -285,8 +269,12 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
               >
                 <Sparkles className="w-4 h-4" strokeWidth={1.6} fill="#E7C566" />
                 <div className="flex-1">
-                  <div className="font-sans text-sm font-medium">Activer Pro</div>
-                  <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-70">€15/mois · Conversations illimitées</div>
+                  <div className="font-sans text-sm font-medium">
+                    {user?.tier === "creator" ? "Passer à Infinite" : "Améliorer mon plan"}
+                  </div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-70">
+                    {user?.tier === "creator" ? "€39/mois · cerveau augmenté" : "Creator €15 · Infinite €39"}
+                  </div>
                 </div>
               </button>
             )}
@@ -315,6 +303,8 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
           </div>
         </div>
       </SheetContent>
+
+      <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} currentTier={user?.tier || "free"} />
     </Sheet>
   );
 };
