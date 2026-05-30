@@ -1,0 +1,240 @@
+/**
+ * useLaurentIA — Hook React qui pilote la session vocale.
+ * Gère: input (texte ou voix), envoi à /api/laurentia/query, parsing SSE token-by-token,
+ * state machine (idle / listening / thinking / speaking).
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const initialMeta = {
+  first_name: "Hôte",
+  version: "free",
+  tokens_remaining: 10000,
+  quota_warning: false,
+  session_id: null,
+};
+
+export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direct" } = {}) {
+  const [state, setState] = useState("idle"); // idle | listening | thinking | speaking
+  const [transcript, setTranscript] = useState("");
+  const [response, setResponse] = useState("");
+  const [history, setHistory] = useState([]); // [{role, text}]
+  const [meta, setMeta] = useState(initialMeta);
+  const [error, setError] = useState(null);
+
+  const recognitionRef = useRef(null);
+  const abortRef = useRef(null);
+
+  // ------------- Init instance -------------
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await fetch(`${API}/laurentia/instances/${encodeURIComponent(frekId)}`);
+        const data = await r.json();
+        if (!mounted) return;
+        setMeta((m) => ({
+          ...m,
+          first_name: data.first_name || "Hôte",
+          version: data.instance?.version || "free",
+          tokens_remaining: Math.max(
+            0,
+            (data.instance?.tokens_limit_month || 10000) - (data.instance?.tokens_used_month || 0)
+          ),
+        }));
+      } catch (e) {
+        // silencieux — premier load
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [frekId]);
+
+  // ------------- Web Speech Recognition -------------
+  const startListening = useCallback(() => {
+    setError(null);
+    setTranscript("");
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      // pas de reconnaissance vocale → fallback: state listening sans STT
+      setState("listening");
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "fr-FR";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      setTranscript((finalText + interim).trim());
+    };
+    rec.onerror = (e) => {
+      setError(e.error || "Erreur reconnaissance vocale");
+      setState("idle");
+    };
+    rec.onend = () => {
+      if (finalText.trim()) {
+        sendQuery(finalText.trim());
+      } else {
+        setState("idle");
+      }
+    };
+    recognitionRef.current = rec;
+    setState("listening");
+    try {
+      rec.start();
+    } catch (_) {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+    } else {
+      setState("idle");
+    }
+  }, []);
+
+  // ------------- Speech Synthesis -------------
+  const speak = useCallback((text) => {
+    if (!("speechSynthesis" in window)) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "fr-FR";
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (_) {}
+  }, []);
+
+  // ------------- Send Query (SSE) -------------
+  const sendQuery = useCallback(
+    async (text) => {
+      if (!text || !text.trim()) return;
+      setError(null);
+      setState("thinking");
+      setResponse("");
+      setHistory((h) => [...h, { role: "user", text }]);
+
+      try {
+        const ctrl = new AbortController();
+        abortRef.current = ctrl;
+        const r = await fetch(`${API}/laurentia/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          body: JSON.stringify({
+            frek_id: frekId,
+            input: text,
+            context: { app: appContext, session_id: meta.session_id },
+          }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok || !r.body) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let full = "";
+
+        // Switch to speaking state on first token
+        let switchedToSpeaking = false;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          // SSE: events separated by \n\n
+          let idx;
+          while ((idx = buffer.indexOf("\n\n")) !== -1) {
+            const raw = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            const evt = parseSSE(raw);
+            if (!evt) continue;
+            if (evt.event === "meta") {
+              setMeta((m) => ({
+                ...m,
+                first_name: evt.data.first_name || m.first_name,
+                version: evt.data.version || m.version,
+                tokens_remaining: evt.data.tokens_remaining ?? m.tokens_remaining,
+                quota_warning: !!evt.data.quota_warning,
+                session_id: evt.data.session_id || m.session_id,
+              }));
+            } else if (evt.event === "token") {
+              full += evt.data.text || "";
+              setResponse(full);
+              if (!switchedToSpeaking) {
+                switchedToSpeaking = true;
+                setState("speaking");
+              }
+            } else if (evt.event === "done") {
+              setHistory((h) => [...h, { role: "laurentia", text: full }]);
+              setMeta((m) => ({
+                ...m,
+                tokens_remaining: Math.max(0, m.tokens_remaining - (evt.data.tokens_used || 0)),
+              }));
+              setState("idle");
+              speak(full);
+            } else if (evt.event === "error") {
+              setError(evt.data.message || "Erreur");
+              setState("idle");
+            }
+          }
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          setError(e.message || "Erreur réseau");
+        }
+        setState("idle");
+      } finally {
+        abortRef.current = null;
+      }
+    },
+    [frekId, appContext, meta.session_id, speak]
+  );
+
+  const cancel = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort();
+    window.speechSynthesis?.cancel();
+    setState("idle");
+  }, []);
+
+  return {
+    state,
+    transcript,
+    response,
+    history,
+    meta,
+    error,
+    startListening,
+    stopListening,
+    sendQuery,
+    cancel,
+  };
+}
+
+function parseSSE(raw) {
+  const lines = raw.split("\n");
+  let event = "message";
+  let dataStr = "";
+  for (const line of lines) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+  }
+  if (!dataStr) return null;
+  try {
+    return { event, data: JSON.parse(dataStr) };
+  } catch (_) {
+    return { event, data: { text: dataStr } };
+  }
+}

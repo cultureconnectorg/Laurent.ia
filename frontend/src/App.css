@@ -1,34 +1,48 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Laurent.ia — global page chrome */
+html, body, #root, .App {
+  height: 100%;
+  background-color: #0A0A0A;
+  color: #F3EFE7;
+  overflow: hidden;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+::selection {
+  background-color: rgba(217, 119, 54, 0.35);
+  color: #F3EFE7;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Conversation fading mask */
+.conversation-fade {
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0));
+          mask-image: linear-gradient(to top, rgba(0,0,0,1) 65%, rgba(0,0,0,0));
 }
 
-.App-link {
-    color: #61dafb;
+/* Subtle entry animation for new tokens */
+@keyframes tokenIn {
+  from { opacity: 0; filter: blur(6px); transform: translateY(2px); }
+  to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+.token-in {
+  animation: tokenIn 240ms ease-out both;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Grain overlay (subtle) */
+.grain-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("https://static.prod-images.emergentagent.com/jobs/8c6b8aed-7c9d-4df8-bbdc-f9c683fc4e52/images/8bfb998ff7a2f0223d6fc292e64b5a5b4819bc00ec622b98e51befa5074cc799.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  z-index: 0;
 }
+
+/* Hide emergent badge on Laurent.ia main page for cinematic feel */
+#emergent-badge {
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+#emergent-badge:hover { opacity: 1; }

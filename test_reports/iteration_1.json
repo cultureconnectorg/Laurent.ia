@@ -1,0 +1,36 @@
+{
+  "summary": "Backend + frontend tested for Laurent.ia MVP Core Gateway. 9/9 pytest backend tests pass (health, instances init/get, memory shape, SSE streaming, multi-tenant SHA-256 isolation, Mongo persistence + privacy assertion that frek_id is never logged in clear). Frontend loads single-page, all required data-testids present, FreKID badge shows 'Sayd', StatusBar shows 'v 0.1 · Souverain' + tokens + JCC, mic toggles state to 'LAURENT.IA ÉCOUTE…'. End-to-end text-fallback path validated: real Claude Sonnet 4.5 SSE-streamed response rendered in conversation-response zone, tokens_remaining decreased from 9577 to 9542 after the call. Fixed 1 critical backend bug (ObjectId leak on lazy-create).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LaurentIA main page", "issues": ["ConversationResponse text overlaps visually with StateIndicator ('TAP POUR PARLER') at the bottom of the viewport when a response is displayed. Both are absolutely positioned near the bottom-center — consider repositioning the response higher OR hiding the StateIndicator label when a response is visible."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_laurentia_backend.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "OPTIONAL/cosmetic: Reposition ConversationResponse so it does not overlap the StateIndicator label when streaming a response (z-index/positioning tweak in LaurentIA.jsx / ConversationZone.jsx).",
+    "No functional fixes required — MVP is working."
+  ],
+  "critical_code_review_comments": [
+    "Fixed in this run: _ensure_instance() in routes/laurentia_gateway.py returned the freshly-inserted doc with ObjectId _id attached (caused 500 on lazy-create path, e.g. GET /api/laurentia/instances/DEMO-ARTIST). Patched by popping _id after insert.",
+    "feedback endpoint stores 'user_rating' keyed by '_id_str' which only exists if interaction was previously logged — verify insertion path uses same key (it does in /query). OK.",
+    "cvl_brain.chat_stream uses non-native streaming (chunked send_message) — acceptable per problem statement (MOCKED native streaming). Privacy & multi-tenant model is correct: SHA-256 tenant_id is the only identifier persisted on laurentia_interactions; frek_id never appears in that collection (verified by test_query_persists_and_anonymizes).",
+    "Consider centralizing 'exclude _id' projection in a small helper to avoid future ObjectId regressions."
+  ],
+  "updated_files": [
+    "/app/backend/routes/laurentia_gateway.py (pop _id after insert in _ensure_instance)",
+    "/app/backend/tests/test_laurentia_backend.py (new pytest suite — 9 tests)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Demo FREK-IDs only: DEMO-SAYD (Sayd, founder) and DEMO-ARTIST (Mira, artist). No real auth.",
+  "seed_data_creation": "Tests rely on the kiltikonet_bridge mock profiles. No DB seed required; instances and memory are lazily created by the API on first hit.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend testing entrypoint: pytest /app/backend/tests/test_laurentia_backend.py. SSE consumption helper is _consume_sse() in same file. Frontend end-to-end via text-fallback requires injecting an addInitScript to undefine window.webkitSpeechRecognition before navigation (the prod browser has STT and shows the mic button instead). Tokens are real Claude tokens — each test run consumes a small amount of EMERGENT_LLM_KEY budget. Multi-tenant tenant_id formula: sha256(frek_id + LAURENTIA_SECRET_SALT) hex.",
+  "rca_of_the_issue": "Root cause for the 500 on GET /api/laurentia/instances/DEMO-ARTIST: motor's insert_one mutates the provided dict to add an _id ObjectId. _ensure_instance() returned that same dict, which FastAPI's jsonable_encoder cannot serialize (TypeError: 'ObjectId' object is not iterable). Reproduction: any FREK-ID not yet present in DB triggers lazy-create → 500. Mitigation applied: doc.pop('_id', None) immediately after insert_one. Verified by re-running the full pytest suite (9/9 pass)."
+}
