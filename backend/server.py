@@ -102,6 +102,23 @@ app.include_router(echo_public_router)
 app.include_router(rgpd_purge_router)
 
 
+# Exception handler — Kiltikonet panne amont → HTTP 503 (strict v1.2-LIVE).
+# LabelOS reste en fallback silencieux (stub) côté service ; pas de handler ici.
+from fastapi.responses import JSONResponse  # noqa: E402
+from services.kiltikonet_bridge import KiltikonetUnavailable  # noqa: E402
+
+
+@app.exception_handler(KiltikonetUnavailable)
+async def kiltikonet_unavailable_handler(_request, exc):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Service d'identité indisponible (Kiltikonet). Réessaie dans quelques instants.",
+            "code": "kiltikonet_unavailable",
+        },
+    )
+
+
 # CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
 _cors_env = os.environ.get('CORS_ORIGINS', '*').strip()
 if _cors_env == '*':

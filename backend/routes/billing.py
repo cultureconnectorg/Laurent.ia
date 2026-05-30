@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 webhook_router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 # Server-side packages — JAMAIS confiance au frontend pour le prix
 PACKAGES = {
@@ -89,7 +90,13 @@ class CheckoutRequest(BaseModel):
 
 
 def _checkout_client(host_url: str) -> StripeCheckout:
-    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url.rstrip('/')}/api/webhook/stripe")
+    # En LIVE, STRIPE_WEBHOOK_SECRET déclenche la vérification stripe.Webhook.construct_event
+    # avec signature stricte. En absence, on accepte un parsing JSON brut (dev only).
+    return StripeCheckout(
+        api_key=STRIPE_API_KEY,
+        webhook_secret=STRIPE_WEBHOOK_SECRET or None,
+        webhook_url=f"{host_url.rstrip('/')}/api/webhook/stripe",
+    )
 
 
 @router.post("/create-checkout")
@@ -231,7 +238,30 @@ async def stripe_webhook(request: Request):
                 }},
             )
 
-    # 2. Désactivation sur customer.subscription.deleted
+    # 2. Activation native via customer.subscription.created
+    #    (utilisé lorsque Stripe Subscription est activé en mode LIVE)
+    if evt.event_type == "customer.subscription.created":
+        metadata = getattr(evt, "metadata", None) or {}
+        meta_dict = metadata if isinstance(metadata, dict) else {}
+        frek_id = meta_dict.get("frek_id")
+        package_id = meta_dict.get("package_id", "creator_monthly")
+        if frek_id:
+            pkg = PACKAGES.get(package_id, PACKAGES["creator_monthly"])
+            await db.laurentia_instances.update_one(
+                {"frek_id": frek_id},
+                {"$set": {
+                    "version": pkg["tier"],
+                    "tier": pkg["tier"],
+                    "tokens_limit_month": pkg["tokens_limit_month"],
+                    "tokens_limit_day": pkg["tokens_limit_day"],
+                    "memory_window": pkg["memory_window"],
+                    "rate_per_min": pkg["rate_per_min"],
+                    "tier_activated_at": datetime.now(timezone.utc).isoformat(),
+                    "stripe_subscription_event_id": evt.event_id,
+                }},
+            )
+
+    # 3. Désactivation sur customer.subscription.deleted
     #    (l'event natif Stripe contient metadata.frek_id passé au checkout)
     if evt.event_type == "customer.subscription.deleted":
         metadata = getattr(evt, "metadata", None) or {}

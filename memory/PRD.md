@@ -28,6 +28,14 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Phase 9 : Verrous Techniques Go-LIVE (Feb 2026)
+- ✅ **Kiltikonet bridge STRICT** : `services/kiltikonet_bridge.py` — exception `KiltikonetUnavailable` levée sur 5xx/timeout/network quand bridge configuré. DEMO-* whitelist + mode dev unconfigured préservés. Handler global FastAPI → HTTP 503 `{"code":"kiltikonet_unavailable"}`. Identité = strict, pas de silent guest fallback.
+- ✅ **LabelOS bridge SILENT FALLBACK** : `services/labelos_bridge.py` — stub `{}` neutre si LabelOS down ou non configuré. Enrichissement contexte artiste = optionnel, ne bloque jamais un chat.
+- ✅ **Stripe webhook LIVE-ready** : `routes/billing.py` — `STRIPE_WEBHOOK_SECRET` env passé à `StripeCheckout(webhook_secret=...)` → vérification `stripe.Webhook.construct_event` stricte automatique. Handler `customer.subscription.created` ajouté (activation tier via metadata.frek_id + package_id). `customer.subscription.deleted` conservé (downgrade free).
+- ✅ **Variables d'env Go-LIVE prêtes** : `KILTIKONET_API_URL`, `KILTIKONET_API_KEY`, `LABELOS_API_URL`, `LABELOS_API_KEY`, `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET` — clés LIVE à injecter par opérateur.
+- ✅ **64/64 pytest verts** — aucune régression. Additif uniquement.
+
+
 ### v1.2-PRODUCTION — Phase 8 : Manifeste Open-Core BSL 1.1 (30/05/2026)
 - ✅ **`/app/LICENSE.md`** : BSL 1.1 — Change Date 31/05/2029, Change License Apache 2.0, Usage Non Commercial (perso/académique/communautaire) autorisé, Usage Commercial via Creator (15 €/mois) / Infinite (39 €/mois) / Enterprise. 9 articles : octroi, restrictions, secret défense crypto, conversion, loi française.
 - ✅ **`/app/README.md`** : Manifeste public — vision souveraine, arborescence open-core/sovereign-brain, badges, démarrage rapide, capacités par tier, souveraineté.

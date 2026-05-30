@@ -1,11 +1,14 @@
 """
-kiltikonet_bridge.py — Interconnexion vers kiltikonet.fr (PRODUCTION).
+kiltikonet_bridge.py — Interconnexion vers kiltikonet.fr (PRODUCTION v1.2-LIVE).
 
 Mode :
-  - Si KILTIKONET_API_URL est défini → appels httpx réels via X-API-Key.
-  - Sinon (dev/test) → fallback whitelist DEMO-* (mock historique).
-  - Si l'appel réel échoue (5xx, timeout, network) → fallback sur le mock pour
-    ne JAMAIS bloquer une session utilisateur. La résilience prime.
+  - DEMO-* whitelist  → toujours autorisé (démo/pytest offline).
+  - Bridge non configuré (KILTIKONET_API_URL vide) → guest fallback (dev only).
+  - Bridge configuré + 200                          → données amont.
+  - Bridge configuré + 401/403/404                  → identité refusée (valid=False).
+  - Bridge configuré + 5xx/timeout/network          → KiltikonetUnavailable
+    (PROPAGÉ → HTTP 503 côté gateway). Pas de silent guest fallback en LIVE :
+    Kiltikonet = validation identité FREK-ID, sa panne doit échouer fort.
 """
 from __future__ import annotations
 
@@ -20,7 +23,12 @@ KILTIKONET_API_URL = os.environ.get("KILTIKONET_API_URL", "").rstrip("/")
 KILTIKONET_API_KEY = os.environ.get("KILTIKONET_API_KEY", "")
 _TIMEOUT = float(os.environ.get("KILTIKONET_TIMEOUT_SECONDS", "5.0"))
 
-# Fallback DEMO-* — conservé pour tests pytest et démo offline.
+
+class KiltikonetUnavailable(RuntimeError):
+    """Levée quand le bridge est configuré mais que l'amont est injoignable."""
+
+
+# Whitelist DEMO-* — conservée pour pytest, démo offline et continuité.
 _MOCK_PROFILES = {
     "DEMO-SAYD": {
         "valid": True, "frek_id": "DEMO-SAYD", "first_name": "Sayd", "role": "founder",
@@ -54,7 +62,13 @@ def _bridge_configured() -> bool:
 async def validate_frek_id(frek_id: str) -> dict:
     """
     Valide un FREK-ID via Kiltikonet.
-    Fallback mock si bridge non configuré OU si le serveur amont est down.
+
+    Comportement STRICT en mode LIVE :
+      - DEMO-* whitelist → valid
+      - bridge non configuré (dev) → valid guest
+      - 200 amont → données réelles
+      - 401/403/404 amont → {"valid": False, ...}
+      - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
     """
     if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
         p = _MOCK_PROFILES[frek_id]
@@ -70,22 +84,32 @@ async def validate_frek_id(frek_id: str) -> dict:
                 f"{KILTIKONET_API_URL}/api/users/validate/{frek_id}",
                 headers={"X-API-Key": KILTIKONET_API_KEY},
             )
-        if r.status_code == 200:
-            data = r.json()
-            logger.info("kiltikonet validate OK frek=%s", frek_id)
-            return data
-        if r.status_code in (401, 403):
-            logger.warning("kiltikonet auth refused (status=%s) — check API_KEY", r.status_code)
-        logger.warning("kiltikonet validate non-200 status=%s frek=%s", r.status_code, frek_id)
-    except Exception as e:
-        logger.warning("kiltikonet validate failed (fallback mock): %s", e)
+    except (httpx.RequestError, httpx.TimeoutException) as e:
+        logger.error("kiltikonet validate unreachable frek=%s err=%s", frek_id, e)
+        raise KiltikonetUnavailable(f"Kiltikonet unreachable: {e}") from e
 
-    # Résilience : si Kiltikonet est down, on accepte en guest sans bloquer.
-    return {"valid": True, "frek_id": frek_id, "role": "guest"}
+    if r.status_code == 200:
+        logger.info("kiltikonet validate OK frek=%s", frek_id)
+        return r.json()
+    if r.status_code in (401, 403, 404):
+        logger.info("kiltikonet validate refused frek=%s status=%s", frek_id, r.status_code)
+        return {"valid": False, "frek_id": frek_id}
+    # 5xx ou tout autre code inattendu → panne amont
+    logger.error("kiltikonet validate upstream error frek=%s status=%s", frek_id, r.status_code)
+    raise KiltikonetUnavailable(f"Kiltikonet upstream status={r.status_code}")
 
 
 async def get_frek_profile(frek_id: str) -> dict:
-    """Profil culturel 7D + badges + wallet. Fallback mock si bridge down."""
+    """
+    Profil culturel 7D + badges + wallet.
+
+    Comportement :
+      - DEMO-* → mock local
+      - bridge non configuré → profil par défaut
+      - 200 amont → merge avec defaults
+      - 404 amont → profil par défaut (utilisateur sans profil enrichi)
+      - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
+    """
     if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
         return _MOCK_PROFILES[frek_id]
 
@@ -98,14 +122,17 @@ async def get_frek_profile(frek_id: str) -> dict:
                 f"{KILTIKONET_API_URL}/api/users/{frek_id}/profile",
                 headers={"X-API-Key": KILTIKONET_API_KEY},
             )
-        if r.status_code == 200:
-            data = r.json()
-            # Merge avec defaults pour tolérer un schéma kiltikonet incomplet
-            base = _default_profile(frek_id)
-            base.update({k: v for k, v in data.items() if v is not None})
-            return base
-        logger.warning("kiltikonet profile non-200 status=%s frek=%s", r.status_code, frek_id)
-    except Exception as e:
-        logger.warning("kiltikonet profile failed (fallback mock): %s", e)
+    except (httpx.RequestError, httpx.TimeoutException) as e:
+        logger.error("kiltikonet profile unreachable frek=%s err=%s", frek_id, e)
+        raise KiltikonetUnavailable(f"Kiltikonet unreachable: {e}") from e
 
-    return _default_profile(frek_id)
+    if r.status_code == 200:
+        data = r.json()
+        base = _default_profile(frek_id)
+        base.update({k: v for k, v in data.items() if v is not None})
+        return base
+    if r.status_code == 404:
+        # Utilisateur validé mais sans profil enrichi → defaults
+        return _default_profile(frek_id)
+    logger.error("kiltikonet profile upstream error frek=%s status=%s", frek_id, r.status_code)
+    raise KiltikonetUnavailable(f"Kiltikonet upstream status={r.status_code}")
