@@ -27,6 +27,29 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté
 
+### v1.2 — Phase 3 : Persistance Fantôme + Signature Constellation + UX Souveraine (30/05/2026)
+**Batch A — Souveraineté Sensorielle :**
+- ✅ **TTS toggle** dans Header (data-testid `header-voice-toggle`) avec persistance localStorage, et bouton **Stop voix** transitoire pendant lecture (`header-stop-speaking`).
+- ✅ **Voix française premium** : sélection automatique (Antilles/Caribbean → Apple Thomas/Audrey/Amélie → Google FR → MS premium → fallback masculin). Pitch=0.92, rate=0.95 (ton noble protecteur).
+- ✅ **PhaseIndicator** style emergent.sh : 4 phases — connecting (#5BA0FF) → analyzing (#6BA8FF) → synthesizing (#9BC4FF) → rendering (#E7C566 or pour <json>/<artifact>). Icônes lucide animées, label monospace.
+- ✅ **Chip no-code** dans SuggestionChips (gradient or) → prompt `<artifact>` (calculatrice tontine HTML/CSS/JS).
+
+**Batch 1 — Effacement & Persistance :**
+- ✅ **WhiteLabelKiller** : MutationObserver + CSS `display:none` sur `[class*=emergent]`, `a[href*=emergent.sh]`, etc. + balayage périodique 2s + détection textuelle "Made with Emergent". Le badge est purgé sous 100ms après injection.
+- ✅ **Persistance Fantôme** : `GET /api/laurentia/resolve` retourne `frek_id` + instance + last_session_id à partir du header `X-Device-Fingerprint` seul. Chaque `/query` lie `device_id` → `laurentia_instances.device_ids` via `$addToSet`. Frontend appelle `/resolve` au paint et `loadSession()` automatiquement.
+
+**Batch 2 — Signature de la Constellation :**
+- ✅ **Page de Signature finale** WeasyPrint (Free tier uniquement) : médaillon or, titre Cormorant Garamond *« Certifié par l'Infrastructure Laurent.ia »*, sous-titre « Connaissance Souveraine de la Diaspora · CVLN Group », QR code → `{LAURENTIA_PUBLIC_URL}/echo/{session_id}`, ribbon italique *« La parole reste. Le sceau valide. La constellation veille. »*, timestamp scellé.
+- ✅ **QR code natif** via `qrcode[pil]` → data URI PNG inline (pas de fetch externe au build).
+- ✅ **Compteur exports Free 2/mois** : collection `laurentia_pdf_exports` indexée par `(device_id, month)`. 3ème tentative → **HTTP 402** avec detail noble + headers `X-Laurentia-Paywall='creator'`, `X-Laurentia-Free-Used`, `X-Laurentia-Free-Limit`.
+- ✅ **Creator/Infinite** : signature finale absente, compteur non incrémenté, exports illimités.
+- ✅ **Endpoint diagnostic** : `GET /api/export/pdf/quota` → état du quota Free pour le device courant.
+- ✅ **Orb sealing animation** : nouvel état `state="sealing"` (couleurs or `#C9A24B` + bleu) sur OrbeLaurentIA. Overlay plein écran `data-testid="sealing-overlay"` durant la génération PDF : *« Gravure souveraine en cours… / Apposition du sceau de la constellation »*.
+- ✅ **Paywall UX** : ChatBubble intercepte HTTP 402 → `onPaywall()` ouvre PricingModal + toast contextuel.
+- ✅ **Tests Phase 3** : `tests/test_phase3_ghost_signature.py` (12 tests) → QR PNG valide, signature HTML, resolve null/avec-FP/lié, quota initial, incrémentation 1→2→402, Creator no-signature, PDF Free ≥2 pages avec sceau.
+
+**Total tests : 41/41 GREEN.**
+
 ### v1.1 — Phase 2 : Policière Invisible + Conversion Gold (30/05/2026)
 - ✅ **Device Fingerprinting frontend** (`frontend/src/services/fingerprint.js`) : Canvas 2D + WebGL (VENDOR/RENDERER) + hardware (CPU, RAM, screen, TZ, lang, platform), cache localStorage `laurentia_device_fp` (~284 chars). Helper `withFingerprintHeaders()` propage le header `X-Device-Fingerprint` sur tous les fetch `/api/laurentia/*` et `/api/export/*`.
 - ✅ **HMAC-SHA256 backend** (`services/fingerprint.py`) : `device_id = HMAC(LAURENTIA_SECRET_SALT, fingerprint)` → 64 hex. Sel rotaté en valeur production-grade (48 bytes secrets.token_urlsafe).
