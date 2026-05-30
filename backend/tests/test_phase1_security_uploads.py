@@ -68,6 +68,7 @@ def test_parse_text_file():
     assert pf.kind == "txt"
     assert "ligne 1" in pf.text
     assert pf.chars > 0
+    assert pf.pages == 2
     assert pf.truncated is False
 
 

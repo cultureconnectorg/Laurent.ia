@@ -50,6 +50,7 @@ export default function LaurentIA() {
     cancel,
     resetSession,
     loadSession,
+    exportPdf,
   } = useLaurentIA({ frekId, appContext: "direct" });
 
   const [composerValue, setComposerValue] = useState("");
@@ -199,7 +200,13 @@ export default function LaurentIA() {
               data-testid="conversation-thread"
             >
               {history.map((m, i) => (
-                <ChatBubble key={`h-${i}`} role={m.role === "laurentia" ? "assistant" : m.role} text={m.text} />
+                <ChatBubble
+                  key={`h-${i}`}
+                  role={m.role === "laurentia" ? "assistant" : m.role}
+                  text={m.text}
+                  files={m.files}
+                  onExportPdf={exportPdf}
+                />
               ))}
 
               {transcript && state === "listening" && (

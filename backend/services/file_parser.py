@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import io
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Iterable
 
 import pypdf
@@ -39,6 +39,7 @@ class ParsedFile:
     kind: str            # "pdf" | "docx" | "txt" | "md"
     bytes_size: int
     chars: int
+    pages: int           # pdf: nb pages, docx: nb paragraphes non vides, txt/md: nb lignes
     truncated: bool
     text: str
 
@@ -48,6 +49,7 @@ class ParsedFile:
             "kind": self.kind,
             "bytes_size": self.bytes_size,
             "chars": self.chars,
+            "pages": self.pages,
             "truncated": self.truncated,
         }
 
@@ -69,41 +71,46 @@ def _guess_kind(filename: str, content_type: str | None) -> str:
     raise FileParseError(f"Format non supporté : {filename}")
 
 
-def _extract_pdf(data: bytes) -> str:
+def _extract_pdf(data: bytes) -> tuple[str, int]:
     try:
         reader = pypdf.PdfReader(io.BytesIO(data))
     except Exception as e:
         raise FileParseError(f"PDF illisible : {e}") from e
     parts: list[str] = []
+    pages = 0
     for page in reader.pages:
+        pages += 1
         try:
             t = page.extract_text() or ""
         except Exception:
             t = ""
         if t:
             parts.append(t)
-    return "\n\n".join(parts).strip()
+    return "\n\n".join(parts).strip(), pages
 
 
-def _extract_docx(data: bytes) -> str:
+def _extract_docx(data: bytes) -> tuple[str, int]:
     try:
         doc = DocxDocument(io.BytesIO(data))
     except Exception as e:
         raise FileParseError(f"DOCX illisible : {e}") from e
     parts: list[str] = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
+    paragraphs = len(parts)
     for table in doc.tables:
         for row in table.rows:
             cells = [c.text.strip() for c in row.cells if c.text and c.text.strip()]
             if cells:
                 parts.append(" | ".join(cells))
-    return "\n".join(parts).strip()
+    return "\n".join(parts).strip(), paragraphs
 
 
-def _extract_text(data: bytes) -> str:
+def _extract_text(data: bytes) -> tuple[str, int]:
     try:
-        return data.decode("utf-8", errors="replace").strip()
+        txt = data.decode("utf-8", errors="replace").strip()
     except Exception as e:
         raise FileParseError(f"Texte illisible : {e}") from e
+    lines = len([ln for ln in txt.splitlines() if ln.strip()])
+    return txt, max(1, lines)
 
 
 def parse_file(filename: str, content_type: str | None, data: bytes) -> ParsedFile:
@@ -118,11 +125,11 @@ def parse_file(filename: str, content_type: str | None, data: bytes) -> ParsedFi
 
     kind = _guess_kind(filename, content_type)
     if kind == "pdf":
-        text = _extract_pdf(data)
+        text, pages = _extract_pdf(data)
     elif kind == "docx":
-        text = _extract_docx(data)
+        text, pages = _extract_docx(data)
     else:  # txt / md
-        text = _extract_text(data)
+        text, pages = _extract_text(data)
 
     truncated = False
     if len(text) > MAX_CHARS_PER_FILE:
@@ -134,6 +141,7 @@ def parse_file(filename: str, content_type: str | None, data: bytes) -> ParsedFi
         kind=kind,
         bytes_size=size,
         chars=len(text),
+        pages=pages,
         truncated=truncated,
         text=text,
     )

@@ -82,6 +82,7 @@ from routes.brain import router as brain_router  # noqa: E402
 from routes.omega import router as omega_router  # noqa: E402
 from routes.auth import router as auth_router  # noqa: E402
 from routes.billing import router as billing_router, webhook_router as billing_webhook  # noqa: E402
+from routes.pdf_export import router as pdf_export_router  # noqa: E402
 
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
@@ -90,6 +91,7 @@ app.include_router(omega_router)
 app.include_router(auth_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook)
+app.include_router(pdf_export_router)
 
 
 # CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
@@ -118,7 +120,9 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def on_startup():
     from services.cvl_brain_agents import ensure_registry
+    from services.rate_limit_mongo import ensure_indexes as ensure_ratelimit_indexes
     await ensure_registry(db)
+    await ensure_ratelimit_indexes(db)
     logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
 
 

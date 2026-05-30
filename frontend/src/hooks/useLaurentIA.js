@@ -4,6 +4,7 @@
  * state machine (idle / listening / thinking / speaking).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { withFingerprintHeaders } from "@/services/fingerprint";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -187,14 +188,17 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
           fetchOpts = {
             method: "POST",
             body: fd,
-            headers: { Accept: "text/event-stream" },
+            headers: withFingerprintHeaders({ Accept: "text/event-stream" }),
             signal: ctrl.signal,
             credentials: "include",
           };
         } else {
           fetchOpts = {
             method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+            headers: withFingerprintHeaders({
+              "Content-Type": "application/json",
+              Accept: "text/event-stream",
+            }),
             body: JSON.stringify({
               frek_id: frekId,
               input: text,
@@ -243,6 +247,22 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
                 quota_warning: !!evt.data.quota_warning,
                 session_id: evt.data.session_id || m.session_id,
               }));
+              // Si meta.files contient des stats serveur (pages, chars), enrichit
+              // la dernière bulle utilisateur pour faire briller la puce en or.
+              const serverFiles = evt.data.files;
+              if (Array.isArray(serverFiles) && serverFiles.length > 0) {
+                setHistory((h) => {
+                  if (!h.length) return h;
+                  const last = h[h.length - 1];
+                  if (last.role !== "user" || !last.files) return h;
+                  const enriched = last.files.map((f, i) => ({
+                    ...f,
+                    ...(serverFiles[i] || {}),
+                    digested: true,
+                  }));
+                  return [...h.slice(0, -1), { ...last, files: enriched }];
+                });
+              }
             } else if (evt.event === "token") {
               full += evt.data.text || "";
               setResponse(full);
@@ -282,6 +302,37 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     setState("idle");
   }, []);
 
+  const exportPdf = useCallback(
+    async ({ title, subtitle, content_md, footer_note }) => {
+      const r = await fetch(`${API}/export/pdf`, {
+        method: "POST",
+        headers: withFingerprintHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
+        body: JSON.stringify({
+          title: title || "Note Laurent.ia",
+          subtitle: subtitle || null,
+          content_md,
+          footer_note: footer_note || "Document généré par Laurent.ia · CVLN Group",
+        }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `Export PDF impossible (HTTP ${r.status})`);
+      }
+      const blob = await r.blob();
+      const slug = (title || "rapport").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `laurentia-${slug}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    },
+    []
+  );
+
   return {
     state,
     transcript,
@@ -295,6 +346,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     cancel,
     resetSession,
     loadSession,
+    exportPdf,
   };
 }
 

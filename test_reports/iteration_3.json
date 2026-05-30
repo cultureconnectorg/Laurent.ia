@@ -1,0 +1,40 @@
+{
+  "summary": "Phase 2 (Batch A + Batch B) end-to-end VALIDATED. Backend: 31/31 pytest GREEN (test_phase1_security_uploads.py 17/17 + test_phase2_policiere_export.py 14/14). HTTP smokes: /api/health=200, /api/export/pdf=200 (magic %PDF-, 11086 bytes), /api/export/pdf oversize=422, /api/laurentia/query=200 (SSE meta). Mongo confirmé : collection laurentia_rate_limits, indexes [ttl_expires_at, key_ts], instance DEMO-SAYD tier='free' rate_per_min=10. Frontend: localStorage 'laurentia_device_fp' stocké après 1er query (284 chars), header X-Device-Fingerprint propagé sur POST /api/laurentia/query ET POST /api/export/pdf, Composer free-tier affiche cadenas (lucide-lock), bouton 'Exporter PDF' (data-testid=assistant-export-pdf-button) avec icône Coins gold apparaît après streaming done, click → download laurentia-port-au-prince-fait-rapide.pdf (16513 bytes), button state final 'PDF TÉLÉCHARGÉ'. Aucun blocker.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Initial load", "issues": ["Console error 401 on GET /api/laurentia/instances/ANON-OAPU2RYSFW (anon frek lookup before user identity resolved) — cosmetic, does not affect flow."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase1_security_uploads.py",
+    "/app/backend/tests/test_phase2_policiere_export.py",
+    "/app/test_reports/pytest/phase2_results.xml"
+  ],
+  "action_items": [
+    "(optional) Improve the anon-init flow to avoid the 401 console noise on first paint — e.g., skip /instances/{frek_id} call if frek_id starts with ANON- and not yet seeded."
+  ],
+  "critical_code_review_comments": [
+    "services/fingerprint.py: HMAC-SHA256 deterministic, 64 hex, None on <8 chars — spec respected. LAURENTIA_SECRET_SALT loaded from env with safe fallback + warning.",
+    "services/rate_limit_mongo.py: sliding-window via count_documents on (key, ts>=now-window), with TTL index expireAfterSeconds=0 on expires_at field — clean and idempotent (ensure_indexes called at startup).",
+    "LIMITS match spec: free 10/60s 60/3600s, creator 60/60s 1200/3600s, infinite 240/60s illimité horaire.",
+    "LucioleQuotaError.noble_message bilingue noble + mention 'Creator 🪙' — confirme branding.",
+    "routes/pdf_export.py: bleach strip + markdown + WeasyPrint, payload max 50_000 chars (Pydantic Field max_length → 422 auto), Cormorant Garamond + Urbanist via Google Fonts @import. PDF généré 11–17 Ko pour 1 page — conforme.",
+    "frontend/services/fingerprint.js: stocke fingerprint dans localStorage 'laurentia_device_fp' au premier appel, withFingerprintHeaders() utilisé partout dans useLaurentIA.js (3 fetch + multipart).",
+    "ChatBubble.jsx FileChip: classes border/bg/shadow gold gradient lorsque digested=true, neutre sinon — code conforme. Bouton Export PDF affiché si !isUser && !streaming && text.length>80 (canExport).",
+    "Aucun ObjectId Mongo n'est exposé dans les réponses /api/laurentia/* ni /api/export/*."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (31/31 pytest + 4/4 HTTP smokes)", "frontend": "100% (6/6 acceptance scenarios validated en live)"},
+  "test_credentials": "DEMO-SAYD frek_id (whitelist kiltikonet_bridge). Tier 'free' confirmé en base Mongo (rate_per_min=10). Aucune bascule creator nécessaire pour ces tests.",
+  "seed_data_creation": "Aucune. Tests Phase 2 pré-injectent les hits rate-limit directement dans laurentia_rate_limits (cleanup after).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Frontend force DEMO-SAYD via localStorage.setItem('laurentia_anon_frek','DEMO-SAYD') + reload. Composer: data-testid='composer-input' (textarea), 'composer-submit' (send), 'composer-attach-button' (lock/paperclip selon tier). Assistant bubble: data-testid='assistant-bubble', 'assistant-export-pdf-button' (apparaît post-streaming si text>80 chars). Le bouton download utilise un blob URL → page.expect_download() fonctionne. Le fingerprint est string brut côté front (~284 chars Canvas+WebGL+hardware), le HMAC est fait côté backend. Note observation : la liste files digested=true (chip gold) n'a pas pu être testée en runtime live car le tier 'free' bloque l'upload (cadenas). Pour la valider, basculer DEMO-SAYD vers 'creator' via mongosh updateOne, uploader un PDF, attendre SSE meta. Le code FileChip a été review et la logique est correcte.",
+  "rca of the issue": "N/A — aucun bug détecté en Phase 2."
+}

@@ -32,7 +32,11 @@ from services.file_parser import (
     FILE_MAX_BYTES,
     TOTAL_MAX_BYTES,
 )
-from services.rate_limit import check_and_consume
+from services.fingerprint import device_id_from_fingerprint, resolve_limit_key
+from services.rate_limit_mongo import (
+    LucioleQuotaError,
+    check_and_consume as rl_check_and_consume,
+)
 from services.security import tenant_id_for
 
 
@@ -204,6 +208,7 @@ async def _run_query(
     session_id_in: str | None,
     files_context: str = "",
     files_summary: list[dict] | None = None,
+    device_fp: str | None = None,
 ):
     """
     Cœur d'exécution — partagé entre route JSON et route multipart.
@@ -218,11 +223,20 @@ async def _run_query(
 
     # 2. instance (lazy create)
     instance = await _ensure_instance(db, frek_id)
+    tier = _resolve_tier(instance)
 
-    # 2b. Rate limit per minute selon tier
-    rate_per_min = int(instance.get("rate_per_min", 10))
-    if not check_and_consume(frek_id, rate_per_min):
-        raise HTTPException(429, "Trop de requêtes. Patiente quelques secondes.")
+    # 2b. Rate limit Mongo sliding-window (par device_id, fallback frek_id hash)
+    device_id = device_id_from_fingerprint(device_fp)
+    limit_key = resolve_limit_key(frek_id, device_id)
+    decision = await rl_check_and_consume(db, key=limit_key, tier=tier)
+    if not decision.allowed:
+        # Message noble selon raison
+        err = LucioleQuotaError(decision.reason, decision.retry_in_seconds)
+        raise HTTPException(
+            status_code=429,
+            detail=err.noble_message(),
+            headers={"Retry-After": str(decision.retry_in_seconds)},
+        )
 
     # 2c. Daily quota
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -231,12 +245,12 @@ async def _run_query(
     )
     day_tokens = int((day_used or {}).get("tokens_used", 0))
     day_limit = int(instance.get("tokens_limit_day", 15_000))
-    over_daily = day_tokens >= day_limit and _resolve_tier(instance) == "free"
+    over_daily = day_tokens >= day_limit and tier == "free"
 
     # 3. quota mensuel
     used = int(instance.get("tokens_used_month", 0))
     limit = int(instance.get("tokens_limit_month", 10000))
-    over_quota = (used >= limit and _resolve_tier(instance) == "free") or over_daily
+    over_quota = (used >= limit and tier == "free") or over_daily
 
     # 4. mémoire & contexte
     profile = await kiltikonet_bridge.get_frek_profile(frek_id)
@@ -424,6 +438,7 @@ async def query(request: Request):
     """
     db = _get_db(request)
     content_type = (request.headers.get("content-type") or "").lower()
+    device_fp = request.headers.get("x-device-fingerprint") or request.headers.get("X-Device-Fingerprint")
 
     if content_type.startswith("multipart/"):
         form = await request.form()
@@ -476,6 +491,7 @@ async def query(request: Request):
             session_id_in=payload.context.session_id,
             files_context=files_context,
             files_summary=files_summary,
+            device_fp=device_fp,
         )
 
     # JSON path (legacy)
@@ -490,4 +506,5 @@ async def query(request: Request):
         user_input=payload.input,
         context_app=payload.context.app,
         session_id_in=payload.context.session_id,
+        device_fp=device_fp,
     )
