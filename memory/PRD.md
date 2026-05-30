@@ -27,6 +27,14 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.3 — Auth Emergent Google + Menu drawer + Historique (30/05/2026)
+- ✅ **Emergent Managed Google Auth** intégré : `/api/auth/session`, `/api/auth/me`, `/api/auth/logout` (cookie httpOnly 7j, samesite=None, secure)
+- ✅ **Dérivation FREK-ID** stable depuis email : `FREK-G-{sha256(email)[:10]}` — création auto de l'instance Laurent.ia
+- ✅ **MenuDrawer (☰)** : profil utilisateur (avatar/nom/FREK-ID), bouton « Connexion avec Google », « Nouvelle conversation », **liste des sessions historiques** (titre + nb messages), suppression RGPD, paramètres, logout
+- ✅ **Reprise de session** : click sur une entrée d'historique → recharge le thread complet via `GET /api/laurentia/sessions/{sid}`
+- ✅ **CORS fix** : `allow_origin_regex='.*'` + `allow_credentials=True` pour supporter les cookies cross-origin
+- ✅ Auth optionnelle : tout le flow continue de fonctionner en mode démo FREK-ID
+
 ### v0.2 — Pivot UI chat-first (30/05/2026)
 - ✅ Refonte complète de l'interface vers un layout **chat-first** inspiré des screenshots Kiltikonet/CVL Brain + Claude + ChatGPT
 - ✅ Nouvelle palette : navy `#0A0F1F` + orbe radar bleu électrique + accent gold subtil pour wordmark/KT pill

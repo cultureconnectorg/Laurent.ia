@@ -26,6 +26,41 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   const recognitionRef = useRef(null);
   const abortRef = useRef(null);
 
+  // ------------- Reset / Load session -------------
+  const resetSession = useCallback(() => {
+    setHistory([]);
+    setResponse("");
+    setTranscript("");
+    setError(null);
+    setState("idle");
+    setMeta((m) => ({ ...m, session_id: null }));
+    window.speechSynthesis?.cancel();
+    if (abortRef.current) abortRef.current.abort();
+  }, []);
+
+  const loadSession = useCallback(
+    async (sessionId) => {
+      if (!sessionId) return;
+      try {
+        const url = `${API}/laurentia/sessions/${encodeURIComponent(sessionId)}?frek_id=${encodeURIComponent(frekId)}`;
+        const r = await fetch(url, { credentials: "include" });
+        if (!r.ok) return;
+        const data = await r.json();
+        const msgs = (data.messages || []).map((m) => ({
+          role: m.role === "user" ? "user" : "laurentia",
+          text: m.text,
+        }));
+        setHistory(msgs);
+        setResponse("");
+        setTranscript("");
+        setError(null);
+        setState("idle");
+        setMeta((m) => ({ ...m, session_id: sessionId }));
+      } catch (_) {}
+    },
+    [frekId]
+  );
+
   // ------------- Init instance -------------
   useEffect(() => {
     let mounted = true;
@@ -220,6 +255,8 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     stopListening,
     sendQuery,
     cancel,
+    resetSession,
+    loadSession,
   };
 }
 

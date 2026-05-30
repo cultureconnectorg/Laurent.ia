@@ -77,22 +77,36 @@ app.include_router(api_router)
 
 # Routes Laurent.ia (additif)
 from routes.laurentia_gateway import router as laurentia_router  # noqa: E402
+from routes.laurentia_sessions import router as laurentia_sessions_router  # noqa: E402
 from routes.brain import router as brain_router  # noqa: E402
 from routes.omega import router as omega_router  # noqa: E402
+from routes.auth import router as auth_router  # noqa: E402
 
 app.include_router(laurentia_router)
+app.include_router(laurentia_sessions_router)
 app.include_router(brain_router)
 app.include_router(omega_router)
+app.include_router(auth_router)
 
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
+_cors_env = os.environ.get('CORS_ORIGINS', '*').strip()
+if _cors_env == '*':
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origin_regex=".*",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origins=_cors_env.split(','),
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

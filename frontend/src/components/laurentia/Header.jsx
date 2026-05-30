@@ -6,7 +6,7 @@ import { Menu, Inbox, Zap } from "lucide-react";
  * Layout (de gauche à droite) :
  *   ☰  Laurent.ia (wordmark italique doré subtil)    📥   ⚡ 10 KT   (Avatar prénom)
  */
-export const Header = ({ firstName = "Hôte", kt = 10, version = "free", onMenuClick }) => {
+export const Header = ({ firstName = "Hôte", kt = 10, version = "free", picture = null, onMenuClick }) => {
   const initials = (firstName || "H").slice(0, 2).toUpperCase();
 
   return (
@@ -62,9 +62,13 @@ export const Header = ({ firstName = "Hôte", kt = 10, version = "free", onMenuC
           className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10"
           data-testid="frekid-badge"
         >
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] flex items-center justify-center ring-1 ring-[#E7C566]/30">
-            <span className="font-mono text-[10px] font-semibold text-white">{initials}</span>
-          </div>
+          {picture ? (
+            <img src={picture} alt={firstName} className="w-6 h-6 rounded-full ring-1 ring-[#E7C566]/30 object-cover" />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] flex items-center justify-center ring-1 ring-[#E7C566]/30">
+              <span className="font-mono text-[10px] font-semibold text-white">{initials}</span>
+            </div>
+          )}
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60 hidden sm:inline">
             {version === "pro" ? "Pro" : "FREK-ID"}
           </span>
