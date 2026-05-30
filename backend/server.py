@@ -83,6 +83,11 @@ from routes.omega import router as omega_router  # noqa: E402
 from routes.auth import router as auth_router  # noqa: E402
 from routes.billing import router as billing_router, webhook_router as billing_webhook  # noqa: E402
 from routes.pdf_export import router as pdf_export_router  # noqa: E402
+from routes.echo import (  # noqa: E402
+    private_router as echo_private_router,
+    public_router as echo_public_router,
+)
+from routes.rgpd_purge import router as rgpd_purge_router, schedule_periodic_purge  # noqa: E402
 
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
@@ -92,6 +97,9 @@ app.include_router(auth_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook)
 app.include_router(pdf_export_router)
+app.include_router(echo_private_router)
+app.include_router(echo_public_router)
+app.include_router(rgpd_purge_router)
 
 
 # CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
@@ -123,6 +131,7 @@ async def on_startup():
     from services.rate_limit_mongo import ensure_indexes as ensure_ratelimit_indexes
     await ensure_registry(db)
     await ensure_ratelimit_indexes(db)
+    schedule_periodic_purge(app, db)
     logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
 
 

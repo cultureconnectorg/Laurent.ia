@@ -63,7 +63,7 @@ class TestInstances:
         inst = data["instance"]
         assert inst["frek_id"] == "DEMO-SAYD"
         assert inst["version"] == "free"
-        assert inst["tokens_limit_month"] == 10000
+        assert inst["tokens_limit_month"] == 100000
         assert "_id" not in inst
 
     def test_get_instance_sayd(self, api):

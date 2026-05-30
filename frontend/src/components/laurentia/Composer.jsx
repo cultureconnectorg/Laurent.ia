@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUp, Mic, Square, Loader2, Paperclip, X, FileText, Lock } from "lucide-react";
+import { ArrowUp, Square, Loader2, Paperclip, X, FileText, Lock, AudioLines } from "lucide-react";
 
 /**
- * Composer — barre d'entrée style Claude / ChatGPT.
- *  - Textarea auto-grow
- *  - Bouton micro (toggle voice mode)
- *  - Bouton trombone (pièces jointes — Creator/Infinite seulement)
- *  - Bouton envoyer
- *  - "Laurent.ia v0.1" sous l'input
+ * Composer v1.2-PRODUCTION — fente noire translucide, sans contour.
+ *  - Focus: scale 1.01 + halo bleu nuit profond derrière
+ *  - Flèche envoi : grise → mutation Or vif dès le 1er caractère tapé
+ *  - Trombone d'élite (sans contour) ouvre l'upload (gated tier)
+ *  - Onde sonore animée pendant la dictée vocale (state="listening")
+ *  - Bouton "Stop voix" lecture TTS géré dans Header (pas ici)
  *
  * Props:
  *   state: "idle" | "listening" | "thinking" | "speaking"
  *   value, onChange, onSubmit(text, files), onStartVoice, onStopVoice, onCancel
- *   tier: "free" | "creator" | "infinite"  — gate upload
- *   onUpgradeClick?: () => void          — appelé si tier free tente upload
+ *   tier: "free" | "creator" | "infinite"
+ *   onUpgradeClick?: () => void
  */
 const UPLOAD_TIERS = new Set(["creator", "infinite"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -27,6 +27,42 @@ function formatBytes(n) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} Ko`;
   return `${(n / 1024 / 1024).toFixed(1)} Mo`;
 }
+
+/** Onde sonore animée — remplace le micro statique de v1.1 */
+const SoundWave = ({ active }) => {
+  const bars = [3, 7, 5, 9, 4, 8, 6];
+  return (
+    <button
+      type="button"
+      aria-label={active ? "Dictée en cours — clique pour arrêter" : "Démarrer la dictée vocale"}
+      className="flex items-end gap-[3px] h-6 px-2"
+      data-testid="composer-sound-wave"
+      data-active={active ? "true" : "false"}
+    >
+      {bars.map((h, i) => (
+        <motion.span
+          key={i}
+          className="w-[2.5px] rounded-full"
+          style={{
+            background: active
+              ? `linear-gradient(180deg, #E7C566 0%, #17a2b8 100%)`
+              : "rgba(255,255,255,0.22)",
+          }}
+          animate={
+            active
+              ? { height: [`${h * 2}px`, `${h * 3.5}px`, `${h * 2}px`] }
+              : { height: `${h * 2}px` }
+          }
+          transition={
+            active
+              ? { duration: 0.6 + i * 0.05, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 }
+              : { duration: 0.2 }
+          }
+        />
+      ))}
+    </button>
+  );
+};
 
 export const Composer = ({
   value = "",
@@ -44,10 +80,11 @@ export const Composer = ({
   const fileInputRef = useRef(null);
   const [files, setFiles] = useState([]);
   const [attachError, setAttachError] = useState(null);
+  const [focused, setFocused] = useState(false);
 
   const canUpload = UPLOAD_TIERS.has(tier);
+  const hasContent = value && value.trim().length > 0;
 
-  // auto-grow
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -55,7 +92,6 @@ export const Composer = ({
     el.style.height = Math.min(el.scrollHeight, 168) + "px";
   }, [value]);
 
-  // expose ref for parent (e.g. focus after chip pick)
   useEffect(() => {
     if (externalValueRef) externalValueRef.current = textareaRef.current;
   }, [externalValueRef]);
@@ -67,7 +103,7 @@ export const Composer = ({
 
   const handleSubmit = (e) => {
     e?.preventDefault?.();
-    if (!value.trim() || isBusy) return;
+    if (!hasContent || isBusy) return;
     onSubmit?.(value.trim(), files);
     setFiles([]);
     setAttachError(null);
@@ -80,7 +116,7 @@ export const Composer = ({
     }
   };
 
-  const handleVoiceClick = () => {
+  const handleSoundWaveClick = () => {
     if (isBusy) return onCancel?.();
     if (isListening) return onStopVoice?.();
     return onStartVoice?.();
@@ -96,7 +132,7 @@ export const Composer = ({
 
   const handleFilesPicked = (e) => {
     const picked = Array.from(e.target.files || []);
-    e.target.value = ""; // reset so same file can be re-picked
+    e.target.value = "";
     if (!picked.length) return;
     setAttachError(null);
 
@@ -127,8 +163,7 @@ export const Composer = ({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-3" data-testid="composer">
-      {/* Liste des pièces jointes */}
+    <div className="w-full max-w-3xl mx-auto px-4 pb-3" data-testid="composer">
       {files.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2" data-testid="composer-attachments">
           {files.map((f, i) => (
@@ -138,9 +173,7 @@ export const Composer = ({
               data-testid={`composer-attachment-${i}`}
             >
               <FileText className="w-3.5 h-3.5 text-[#E7C566]" strokeWidth={1.6} />
-              <span className="text-[12px] text-[#F1F4FA] max-w-[180px] truncate" title={f.name}>
-                {f.name}
-              </span>
+              <span className="text-[12px] text-[#F1F4FA] max-w-[180px] truncate" title={f.name}>{f.name}</span>
               <span className="font-mono text-[10px] text-white/40 mr-1">{formatBytes(f.size)}</span>
               <button
                 type="button"
@@ -168,14 +201,26 @@ export const Composer = ({
         </div>
       )}
 
+      {/* Halo bleu nuit profond derrière la barre, accentué au focus */}
       <motion.form
         onSubmit={handleSubmit}
         initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45 }}
-        className={`composer-ring relative flex items-end gap-2 rounded-3xl border bg-white/[0.03] backdrop-blur-xl px-3 py-2.5 ${
-          isListening ? "border-[#6BA8FF]/50 shadow-[0_0_30px_rgba(107,168,255,0.22)]" : "border-white/[0.07]"
-        }`}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: focused ? 1.01 : 1,
+        }}
+        transition={{ duration: 0.35 }}
+        className="relative flex items-end gap-2 rounded-3xl px-3 py-2.5"
+        style={{
+          background: "rgba(10, 15, 31, 0.6)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
+          boxShadow: focused
+            ? "0 0 0 1px rgba(23, 162, 184, 0.25), 0 18px 48px -16px rgba(23, 162, 184, 0.45), inset 0 1px 0 rgba(255,255,255,0.03)"
+            : "0 0 0 1px rgba(255,255,255,0.04), 0 8px 30px -16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.025)",
+          transition: "box-shadow 320ms ease",
+        }}
       >
         <input
           ref={fileInputRef}
@@ -187,24 +232,20 @@ export const Composer = ({
           data-testid="composer-file-input"
         />
 
+        {/* Trombone d'élite — sans contour, juste icône qui réagit */}
         <button
           type="button"
           onClick={handleAttachClick}
           aria-label={canUpload ? "Joindre un fichier" : "Activer un plan pour joindre un fichier"}
           title={canUpload ? "PDF, DOCX, TXT, MD · 10 Mo / fichier" : "Upload réservé aux plans Creator / Infinite"}
-          className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 self-end pb-0.5 ${
-            canUpload
-              ? "bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-[#E7C566] hover:bg-[#E7C566]/[0.06] hover:border-[#E7C566]/30"
-              : "bg-white/[0.02] border border-white/[0.06] text-white/30 hover:text-white/50"
-          }`}
-          data-testid="composer-attach-button"
           disabled={isBusy}
+          className={`w-9 h-9 flex items-center justify-center self-end pb-0.5 transition-all duration-200
+            ${canUpload
+              ? "text-[#E7C566]/80 hover:text-[#E7C566] hover:scale-110"
+              : "text-white/30 hover:text-white/55"}`}
+          data-testid="composer-attach-button"
         >
-          {canUpload ? (
-            <Paperclip className="w-4 h-4" strokeWidth={1.7} />
-          ) : (
-            <Lock className="w-3.5 h-3.5" strokeWidth={1.8} />
-          )}
+          {canUpload ? <Paperclip className="w-[18px] h-[18px]" strokeWidth={1.7} /> : <Lock className="w-4 h-4" strokeWidth={1.7} />}
         </button>
 
         <textarea
@@ -212,6 +253,8 @@ export const Composer = ({
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={
             isListening ? "Laurent.ia écoute…" :
             isBusy ? "Laurent.ia réfléchit…" :
@@ -220,48 +263,55 @@ export const Composer = ({
           }
           rows={1}
           disabled={isBusy}
-          className="flex-1 resize-none bg-transparent outline-none font-sans text-[15px] text-[#F1F4FA]
+          className="flex-1 resize-none bg-transparent outline-none border-0 font-sans text-[15px] text-[#F1F4FA]
             placeholder:text-white/35 leading-relaxed py-1.5 px-2 max-h-[168px] thin-scroll"
           data-testid="composer-input"
-          style={{ scrollbarWidth: "thin" }}
+          style={{ scrollbarWidth: "thin", fontFamily: '"Urbanist", sans-serif' }}
         />
 
         <div className="flex items-center gap-1.5 self-end pb-0.5">
-          <button
-            type="button"
-            onClick={handleVoiceClick}
-            aria-label={isListening ? "Arrêter l'écoute" : "Activer la voix"}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200
-              ${isListening
-                ? "bg-[#2D6FE0] text-white shadow-[0_0_18px_rgba(45,111,224,0.55)]"
-                : "bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.07]"
-              }`}
-            data-testid="mic-toggle-button"
+          {/* Onde sonore : remplace le micro statique */}
+          <div
+            onClick={handleSoundWaveClick}
+            className={`flex items-center justify-center cursor-pointer rounded-full
+              ${isListening ? "bg-[#17a2b8]/[0.10] shadow-[0_0_18px_rgba(23,162,184,0.40)]" : "hover:bg-white/[0.04]"}
+              transition-all duration-200`}
+            data-testid="composer-mic-wave"
           >
-            {isBusy ? <Square className="w-4 h-4" strokeWidth={1.6} /> :
-             isListening ? <Mic className="w-4 h-4" strokeWidth={1.8} /> :
-             <Mic className="w-4 h-4" strokeWidth={1.6} />}
-          </button>
+            <SoundWave active={isListening} />
+          </div>
 
-          <button
+          {/* Bouton submit : MUTATION OR LIQUIDE dès la première lettre tapée */}
+          <motion.button
             type="submit"
-            disabled={!value.trim() || isBusy}
+            disabled={!hasContent || isBusy}
             aria-label="Envoyer"
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200
-              ${value.trim() && !isBusy
-                ? "bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] text-white shadow-[0_4px_18px_rgba(45,111,224,0.4)] hover:shadow-[0_4px_22px_rgba(45,111,224,0.55)]"
-                : "bg-white/[0.04] text-white/30 border border-white/[0.05]"
+            animate={hasContent && !isBusy ? {
+              boxShadow: [
+                "0 4px 18px rgba(201,162,75,0.35)",
+                "0 4px 24px rgba(231,197,102,0.55)",
+                "0 4px 18px rgba(201,162,75,0.35)",
+              ],
+            } : { boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300
+              ${hasContent && !isBusy
+                ? "bg-gradient-to-br from-[#C9A24B] to-[#E7C566] text-[#0A0F1F]"
+                : "bg-white/[0.04] text-white/30"
               }`}
             data-testid="composer-submit"
+            data-armed={hasContent && !isBusy ? "true" : "false"}
           >
-            {isBusy ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} /> : <ArrowUp className="w-4 h-4" strokeWidth={2.2} />}
-          </button>
+            {isBusy ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} />
+              : isListening ? <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
+              : <ArrowUp className="w-4 h-4" strokeWidth={2.4} />}
+          </motion.button>
         </div>
       </motion.form>
 
-      <div className="mt-2 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.22em] text-white/30">
-        <span data-testid="composer-version">Laurent.ia · v0.1</span>
-        <span className="hidden sm:inline">Entrée = envoyer · Shift+Entrée = saut de ligne</span>
+      <div className="mt-2 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.28em] text-white/30">
+        <span data-testid="composer-version">Laurent.ia · v1.2 · CVLN Group</span>
+        <span className="hidden sm:inline">Entrée = envoyer</span>
       </div>
     </div>
   );

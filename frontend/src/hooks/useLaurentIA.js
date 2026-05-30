@@ -67,9 +67,15 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   // ------------- Init instance -------------
   useEffect(() => {
     let mounted = true;
+    // Skip silencieux pour ANON-* — la persistance fantôme s'en charge via /resolve
+    // (évite le 401 cosmétique au premier paint d'un utilisateur anonyme).
+    if (!frekId || frekId.startsWith("ANON-")) {
+      return;
+    }
     (async () => {
       try {
         const r = await fetch(`${API}/laurentia/instances/${encodeURIComponent(frekId)}`);
+        if (!r.ok) return;
         const data = await r.json();
         if (!mounted) return;
         setMeta((m) => ({

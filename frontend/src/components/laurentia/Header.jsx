@@ -117,14 +117,26 @@ export const Header = ({
         )}
 
         <div
-          className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10"
+          className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 relative"
           data-testid="frekid-badge"
         >
           {picture ? (
-            <img src={picture} alt={firstName} className="w-6 h-6 rounded-full ring-1 ring-white/20 object-cover" />
+            <img src={picture} alt={firstName} className="w-7 h-7 rounded-full ring-1 ring-[#C9A24B]/40 object-cover" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] flex items-center justify-center ring-1 ring-white/20">
-              <span className="font-mono text-[10px] font-semibold text-white">{initials}</span>
+            <div
+              className="relative w-7 h-7 rounded-full flex items-center justify-center ring-1 ring-[#C9A24B]/55"
+              style={{
+                background: "radial-gradient(circle at 32% 28%, #F4E0AA 0%, #C9A24B 55%, #0A0F1F 100%)",
+                boxShadow: "0 0 12px rgba(201,162,75,0.42), inset 0 0 6px rgba(0,0,0,0.35)",
+              }}
+              data-testid="frekid-avatar-seal"
+            >
+              <span
+                className="font-serif italic text-[11px] font-bold text-[#0A0F1F]"
+                style={{ fontFamily: '"Cormorant Garamond", serif', textShadow: "0 1px 0 rgba(255,255,255,0.2)" }}
+              >
+                {initials}
+              </span>
             </div>
           )}
           {version === "pro" && (

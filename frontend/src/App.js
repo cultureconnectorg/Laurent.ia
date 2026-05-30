@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LaurentIA from "@/pages/LaurentIA";
 import AuthCallback from "@/pages/AuthCallback";
+import EchoPage from "@/pages/EchoPage";
 
 function AppRouter() {
   const location = useLocation();
@@ -17,6 +18,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<LaurentIA />} />
       <Route path="/laurentia" element={<LaurentIA />} />
+      <Route path="/echo/:sessionId" element={<EchoPage />} />
     </Routes>
   );
 }
