@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from routes.auth import get_current_user
 from services.security import tenant_id_for
+from services.crypto import decrypt_text
 
 
 router = APIRouter(prefix="/api/laurentia/sessions", tags=["laurentia-sessions"])
@@ -22,6 +23,13 @@ router = APIRouter(prefix="/api/laurentia/sessions", tags=["laurentia-sessions"]
 def _title_from_input(text: str, max_len: int = 56) -> str:
     t = (text or "").strip().split("\n")[0]
     return t if len(t) <= max_len else t[: max_len - 1] + "…"
+
+
+def _safe_title(field):
+    """Le champ peut être un blob chiffré ou texte legacy."""
+    if isinstance(field, dict):
+        return _title_from_input(decrypt_text(field))
+    return _title_from_input(field or "")
 
 
 @router.get("/list")
@@ -59,7 +67,7 @@ async def list_sessions(request: Request):
         "sessions": [
             {
                 "session_id": r["_id"],
-                "title": _title_from_input(r["first_input"]),
+                "title": _safe_title(r["first_input"]),
                 "first_ts": r["first_ts"],
                 "last_ts": r["last_ts"],
                 "message_count": r["count"],
@@ -86,8 +94,8 @@ async def get_session(session_id: str, request: Request):
 
     messages = []
     for r in rows:
-        messages.append({"role": "user", "text": r["input_text"], "ts": r["timestamp"]})
-        messages.append({"role": "assistant", "text": r["output_text"], "ts": r["timestamp"]})
+        messages.append({"role": "user", "text": decrypt_text(r["input_text"]), "ts": r["timestamp"]})
+        messages.append({"role": "assistant", "text": decrypt_text(r["output_text"]), "ts": r["timestamp"]})
     return {"session_id": session_id, "messages": messages}
 
 

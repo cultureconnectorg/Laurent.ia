@@ -9,6 +9,7 @@ import ChatBubble from "@/components/laurentia/ChatBubble";
 import Composer from "@/components/laurentia/Composer";
 import OrbeLaurentIA from "@/components/laurentia/OrbeLaurentIA";
 import MenuDrawer from "@/components/laurentia/MenuDrawer";
+import { PricingModal } from "@/components/laurentia/PricingModal";
 import { ECOSYSTEM_CHIPS } from "@/components/laurentia/ecosystemChips";
 import { toast } from "sonner";
 
@@ -53,6 +54,7 @@ export default function LaurentIA() {
 
   const [composerValue, setComposerValue] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
 
@@ -114,9 +116,18 @@ export default function LaurentIA() {
     }
   }, [loadSession]);
 
-  const handleSubmit = (text) => {
+  const handleSubmit = (text, files) => {
     setComposerValue("");
-    sendQuery(text);
+    sendQuery(text, files || []);
+  };
+
+  const handleAttachUpgrade = () => {
+    if (!isAuthenticated) {
+      toast("Connecte-toi pour activer Creator (€15/mois) et joindre des fichiers.");
+      setMenuOpen(true);
+      return;
+    }
+    setPricingOpen(true);
   };
 
   const handlePickChip = (prompt) => {
@@ -252,8 +263,16 @@ export default function LaurentIA() {
           onStopVoice={stopListening}
           onCancel={cancel}
           externalValueRef={composerRef}
+          tier={meta.tier || meta.version || "free"}
+          onUpgradeClick={handleAttachUpgrade}
         />
       </div>
+
+      <PricingModal
+        open={pricingOpen}
+        onOpenChange={setPricingOpen}
+        currentTier={meta.tier || meta.version || "free"}
+      />
     </div>
   );
 }

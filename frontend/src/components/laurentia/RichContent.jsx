@@ -1,9 +1,17 @@
 /**
- * RichBlocks — détecte et rend les blocs <json>...</json> et <artifact>...</artifact>
+ * RichContent — détecte et rend les blocs <json>...</json> et <artifact>...</artifact>
  * dans le texte produit par Laurent.ia.
  *
  * - <json> → graphique Recharts (bar/line/area/pie)
  * - <artifact> → iframe sandboxée avec srcDoc=code HTML
+ *
+ * Buffer de sécurisation (streaming) :
+ *   - Tant qu'une balise ouvrante (<json> ou <artifact>) n'a pas son fermant
+ *     correspondant dans le texte courant, on N'AFFICHE PAS le contenu Markdown
+ *     situé après l'ouverture — un placeholder "skeleton" est rendu à la place.
+ *   - Cela garantit que ReactMarkdown ne reçoit jamais une chaîne JSON brute ni
+ *     du HTML/JS, et que <artifact> ne s'auto-injecte pas dans une iframe à
+ *     moitié écrite (qui chargerait du code inexécutable).
  */
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -12,29 +20,94 @@ import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from "recharts";
-import { Maximize2, Code2 } from "lucide-react";
+import { Maximize2, Code2, Loader2 } from "lucide-react";
 
 const COLORS = ["#6BA8FF", "#E7C566", "#5BA0FF", "#A8D4FF", "#2D6FE0", "#D97736"];
 
-const CHART_RE = /<json>([\s\S]*?)<\/json>/g;
-const ARTIFACT_RE = /<artifact>([\s\S]*?)<\/artifact>/g;
+const CHART_OPEN = "<json>";
+const CHART_CLOSE = "</json>";
+const ARTIFACT_OPEN = "<artifact>";
+const ARTIFACT_CLOSE = "</artifact>";
 
+/**
+ * Parse linéaire et tolérant au streaming.
+ * Retourne une liste de segments :
+ *   {type: "md", body}
+ *   {type: "json", body}
+ *   {type: "artifact", body}
+ *   {type: "pending", kind: "json"|"artifact"}  ← balise ouverte sans fermant
+ */
 function parseSegments(text) {
   const segments = [];
-  let lastIdx = 0;
-  // Combine both patterns: walk in order
-  const matches = [];
-  for (const m of text.matchAll(CHART_RE)) matches.push({ type: "json", idx: m.index, end: m.index + m[0].length, body: m[1] });
-  for (const m of text.matchAll(ARTIFACT_RE)) matches.push({ type: "artifact", idx: m.index, end: m.index + m[0].length, body: m[1] });
-  matches.sort((a, b) => a.idx - b.idx);
-  for (const m of matches) {
-    if (m.idx > lastIdx) segments.push({ type: "md", body: text.slice(lastIdx, m.idx) });
-    segments.push(m);
-    lastIdx = m.end;
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    // Trouve la prochaine balise ouvrante
+    const jOpen = text.indexOf(CHART_OPEN, i);
+    const aOpen = text.indexOf(ARTIFACT_OPEN, i);
+
+    let nextOpen = -1;
+    let kind = null;
+    let openTag = "";
+    let closeTag = "";
+
+    if (jOpen !== -1 && (aOpen === -1 || jOpen < aOpen)) {
+      nextOpen = jOpen;
+      kind = "json";
+      openTag = CHART_OPEN;
+      closeTag = CHART_CLOSE;
+    } else if (aOpen !== -1) {
+      nextOpen = aOpen;
+      kind = "artifact";
+      openTag = ARTIFACT_OPEN;
+      closeTag = ARTIFACT_CLOSE;
+    }
+
+    if (nextOpen === -1) {
+      // Plus de balise — reste = markdown
+      if (i < len) segments.push({ type: "md", body: text.slice(i) });
+      break;
+    }
+
+    // Markdown avant la balise
+    if (nextOpen > i) {
+      segments.push({ type: "md", body: text.slice(i, nextOpen) });
+    }
+
+    const bodyStart = nextOpen + openTag.length;
+    const close = text.indexOf(closeTag, bodyStart);
+
+    if (close === -1) {
+      // Balise ouverte non encore fermée → placeholder skeleton, on STOP le parsing.
+      // Le contenu tronqué après l'ouverture n'est pas affiché.
+      segments.push({ type: "pending", kind });
+      break;
+    }
+
+    const body = text.slice(bodyStart, close);
+    segments.push({ type: kind, body });
+    i = close + closeTag.length;
   }
-  if (lastIdx < text.length) segments.push({ type: "md", body: text.slice(lastIdx) });
+
   return segments;
 }
+
+const PendingBlock = ({ kind }) => {
+  const isJson = kind === "json";
+  const label = isJson ? "Graphique en préparation…" : "Artifact en préparation…";
+  return (
+    <div
+      className={`my-3 rounded-xl border ${isJson ? "border-[#6BA8FF]/20" : "border-[#E7C566]/20"} bg-white/[0.02] p-4 flex items-center gap-3`}
+      data-testid={`pending-${kind}-block`}
+    >
+      <Loader2 className={`w-4 h-4 animate-spin ${isJson ? "text-[#6BA8FF]" : "text-[#E7C566]"}`} strokeWidth={1.8} />
+      <span className={`font-mono text-[10px] uppercase tracking-[0.22em] ${isJson ? "text-[#6BA8FF]" : "text-[#E7C566]"}`}>
+        {label}
+      </span>
+    </div>
+  );
+};
 
 const ChartBlock = ({ spec }) => {
   let data, type, title, xKey, series;
@@ -164,6 +237,7 @@ export const RichContent = ({ text = "" }) => {
         }
         if (seg.type === "json") return <ChartBlock key={i} spec={seg.body} />;
         if (seg.type === "artifact") return <ArtifactBlock key={i} html={seg.body} />;
+        if (seg.type === "pending") return <PendingBlock key={i} kind={seg.kind} />;
         return null;
       })}
     </div>

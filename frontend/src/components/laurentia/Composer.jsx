@@ -1,18 +1,33 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUp, Mic, Square, Loader2 } from "lucide-react";
+import { ArrowUp, Mic, Square, Loader2, Paperclip, X, FileText, Lock } from "lucide-react";
 
 /**
  * Composer — barre d'entrée style Claude / ChatGPT.
  *  - Textarea auto-grow
  *  - Bouton micro (toggle voice mode)
+ *  - Bouton trombone (pièces jointes — Creator/Infinite seulement)
  *  - Bouton envoyer
- *  - "Laurent.ia v0.1" sous l'input (style "BRAIN V2.4")
+ *  - "Laurent.ia v0.1" sous l'input
  *
  * Props:
  *   state: "idle" | "listening" | "thinking" | "speaking"
- *   value, onChange, onSubmit, onStartVoice, onStopVoice, onCancel
+ *   value, onChange, onSubmit(text, files), onStartVoice, onStopVoice, onCancel
+ *   tier: "free" | "creator" | "infinite"  — gate upload
+ *   onUpgradeClick?: () => void          — appelé si tier free tente upload
  */
+const UPLOAD_TIERS = new Set(["creator", "infinite"]);
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
+const MAX_FILES = 4;
+const ACCEPT = ".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} o`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} Ko`;
+  return `${(n / 1024 / 1024).toFixed(1)} Mo`;
+}
+
 export const Composer = ({
   value = "",
   onChange,
@@ -22,9 +37,15 @@ export const Composer = ({
   onStopVoice,
   onCancel,
   externalValueRef,
+  tier = "free",
+  onUpgradeClick,
 }) => {
   const textareaRef = useRef(null);
-  const [focused, setFocused] = useState(false);
+  const fileInputRef = useRef(null);
+  const [files, setFiles] = useState([]);
+  const [attachError, setAttachError] = useState(null);
+
+  const canUpload = UPLOAD_TIERS.has(tier);
 
   // auto-grow
   useEffect(() => {
@@ -42,10 +63,14 @@ export const Composer = ({
   const isBusy = state === "thinking" || state === "speaking";
   const isListening = state === "listening";
 
+  const totalBytes = useMemo(() => files.reduce((s, f) => s + f.size, 0), [files]);
+
   const handleSubmit = (e) => {
     e?.preventDefault?.();
     if (!value.trim() || isBusy) return;
-    onSubmit?.(value.trim());
+    onSubmit?.(value.trim(), files);
+    setFiles([]);
+    setAttachError(null);
   };
 
   const handleKeyDown = (e) => {
@@ -61,8 +86,88 @@ export const Composer = ({
     return onStartVoice?.();
   };
 
+  const handleAttachClick = () => {
+    if (!canUpload) {
+      onUpgradeClick?.();
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesPicked = (e) => {
+    const picked = Array.from(e.target.files || []);
+    e.target.value = ""; // reset so same file can be re-picked
+    if (!picked.length) return;
+    setAttachError(null);
+
+    const next = [...files];
+    for (const f of picked) {
+      if (next.length >= MAX_FILES) {
+        setAttachError(`Maximum ${MAX_FILES} fichiers par message.`);
+        break;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        setAttachError(`"${f.name}" dépasse 10 Mo.`);
+        continue;
+      }
+      if (next.some((x) => x.name === f.name && x.size === f.size)) continue;
+      next.push(f);
+    }
+    const total = next.reduce((s, f) => s + f.size, 0);
+    if (total > MAX_TOTAL_BYTES) {
+      setAttachError(`Volume total > 25 Mo. Retire un fichier.`);
+      return;
+    }
+    setFiles(next);
+  };
+
+  const removeFile = (idx) => {
+    setFiles((arr) => arr.filter((_, i) => i !== idx));
+    setAttachError(null);
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto px-4 pb-3" data-testid="composer">
+      {/* Liste des pièces jointes */}
+      {files.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2" data-testid="composer-attachments">
+          {files.map((f, i) => (
+            <div
+              key={`${f.name}-${i}`}
+              className="flex items-center gap-2 rounded-xl border border-[#E7C566]/25 bg-[#E7C566]/[0.04] pl-2 pr-1 py-1"
+              data-testid={`composer-attachment-${i}`}
+            >
+              <FileText className="w-3.5 h-3.5 text-[#E7C566]" strokeWidth={1.6} />
+              <span className="text-[12px] text-[#F1F4FA] max-w-[180px] truncate" title={f.name}>
+                {f.name}
+              </span>
+              <span className="font-mono text-[10px] text-white/40 mr-1">{formatBytes(f.size)}</span>
+              <button
+                type="button"
+                onClick={() => removeFile(i)}
+                className="w-5 h-5 flex items-center justify-center rounded-md text-white/50 hover:text-white hover:bg-white/[0.06]"
+                aria-label={`Retirer ${f.name}`}
+                data-testid={`composer-attachment-remove-${i}`}
+              >
+                <X className="w-3 h-3" strokeWidth={2} />
+              </button>
+            </div>
+          ))}
+          <span className="self-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/35">
+            {formatBytes(totalBytes)} / 25 Mo
+          </span>
+        </div>
+      )}
+
+      {attachError && (
+        <div
+          className="mb-2 px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/5 text-[12px] text-red-300"
+          data-testid="composer-attachment-error"
+        >
+          {attachError}
+        </div>
+      )}
+
       <motion.form
         onSubmit={handleSubmit}
         initial={{ opacity: 0, y: 12 }}
@@ -72,16 +177,45 @@ export const Composer = ({
           isListening ? "border-[#6BA8FF]/50 shadow-[0_0_30px_rgba(107,168,255,0.22)]" : "border-white/[0.07]"
         }`}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ACCEPT}
+          onChange={handleFilesPicked}
+          className="hidden"
+          data-testid="composer-file-input"
+        />
+
+        <button
+          type="button"
+          onClick={handleAttachClick}
+          aria-label={canUpload ? "Joindre un fichier" : "Activer un plan pour joindre un fichier"}
+          title={canUpload ? "PDF, DOCX, TXT, MD · 10 Mo / fichier" : "Upload réservé aux plans Creator / Infinite"}
+          className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 self-end pb-0.5 ${
+            canUpload
+              ? "bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-[#E7C566] hover:bg-[#E7C566]/[0.06] hover:border-[#E7C566]/30"
+              : "bg-white/[0.02] border border-white/[0.06] text-white/30 hover:text-white/50"
+          }`}
+          data-testid="composer-attach-button"
+          disabled={isBusy}
+        >
+          {canUpload ? (
+            <Paperclip className="w-4 h-4" strokeWidth={1.7} />
+          ) : (
+            <Lock className="w-3.5 h-3.5" strokeWidth={1.8} />
+          )}
+        </button>
+
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
           placeholder={
             isListening ? "Laurent.ia écoute…" :
             isBusy ? "Laurent.ia réfléchit…" :
+            files.length ? "Décris ce que tu veux faire avec ces fichiers…" :
             "Posez votre question…"
           }
           rows={1}

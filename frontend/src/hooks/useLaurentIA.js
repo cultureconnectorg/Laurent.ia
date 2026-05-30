@@ -10,6 +10,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const initialMeta = {
   first_name: "Hôte",
   version: "free",
+  tier: "free",
   tokens_remaining: 10000,
   quota_warning: false,
   session_id: null,
@@ -73,6 +74,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
           ...m,
           first_name: data.first_name || "Hôte",
           version: data.instance?.version || "free",
+          tier: data.instance?.tier || data.instance?.version || "free",
           tokens_remaining: Math.max(
             0,
             (data.instance?.tokens_limit_month || 10000) - (data.instance?.tokens_used_month || 0)
@@ -155,28 +157,62 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
 
   // ------------- Send Query (SSE) -------------
   const sendQuery = useCallback(
-    async (text) => {
+    async (text, files = []) => {
       if (!text || !text.trim()) return;
       setError(null);
       setState("thinking");
       setResponse("");
-      setHistory((h) => [...h, { role: "user", text }]);
+      const hasFiles = Array.isArray(files) && files.length > 0;
+      const userBubble = hasFiles
+        ? { role: "user", text, files: files.map((f) => ({ name: f.name, size: f.size })) }
+        : { role: "user", text };
+      setHistory((h) => [...h, userBubble]);
 
       try {
         const ctrl = new AbortController();
         abortRef.current = ctrl;
-        const r = await fetch(`${API}/laurentia/query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-          body: JSON.stringify({
-            frek_id: frekId,
-            input: text,
-            context: { app: appContext, session_id: meta.session_id },
-          }),
-          signal: ctrl.signal,
-        });
+
+        let fetchOpts;
+        if (hasFiles) {
+          const fd = new FormData();
+          fd.append(
+            "payload",
+            JSON.stringify({
+              frek_id: frekId,
+              input: text,
+              context: { app: appContext, session_id: meta.session_id },
+            })
+          );
+          files.forEach((f) => fd.append("files", f, f.name));
+          fetchOpts = {
+            method: "POST",
+            body: fd,
+            headers: { Accept: "text/event-stream" },
+            signal: ctrl.signal,
+            credentials: "include",
+          };
+        } else {
+          fetchOpts = {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+            body: JSON.stringify({
+              frek_id: frekId,
+              input: text,
+              context: { app: appContext, session_id: meta.session_id },
+            }),
+            signal: ctrl.signal,
+            credentials: "include",
+          };
+        }
+
+        const r = await fetch(`${API}/laurentia/query`, fetchOpts);
         if (!r.ok || !r.body) {
-          throw new Error(`HTTP ${r.status}`);
+          let detail = `HTTP ${r.status}`;
+          try {
+            const j = await r.json();
+            if (j?.detail) detail = j.detail;
+          } catch (_) {}
+          throw new Error(detail);
         }
         const reader = r.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -202,6 +238,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
                 ...m,
                 first_name: evt.data.first_name || m.first_name,
                 version: evt.data.version || m.version,
+                tier: evt.data.tier || evt.data.version || m.tier,
                 tokens_remaining: evt.data.tokens_remaining ?? m.tokens_remaining,
                 quota_warning: !!evt.data.quota_warning,
                 session_id: evt.data.session_id || m.session_id,
