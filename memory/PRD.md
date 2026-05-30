@@ -25,7 +25,19 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 - Doctrine COEURVOLAN injectée dans le system prompt
 - L'UI ne dévoile JAMAIS : CVLN, CVL Brain, agents, phases internes
 
-## 5. Implémenté (v0.1 — 30/05/2026)
+## 5. Implémenté
+
+### v1.1 — Phase 2 : Policière Invisible + Conversion Gold (30/05/2026)
+- ✅ **Device Fingerprinting frontend** (`frontend/src/services/fingerprint.js`) : Canvas 2D + WebGL (VENDOR/RENDERER) + hardware (CPU, RAM, screen, TZ, lang, platform), cache localStorage `laurentia_device_fp` (~284 chars). Helper `withFingerprintHeaders()` propage le header `X-Device-Fingerprint` sur tous les fetch `/api/laurentia/*` et `/api/export/*`.
+- ✅ **HMAC-SHA256 backend** (`services/fingerprint.py`) : `device_id = HMAC(LAURENTIA_SECRET_SALT, fingerprint)` → 64 hex. Sel rotaté en valeur production-grade (48 bytes secrets.token_urlsafe).
+- ✅ **Rate-limiter sliding-window MongoDB** (`services/rate_limit_mongo.py`) : collection `laurentia_rate_limits` avec TTL index `expires_at` (expireAfterSeconds=0) + index `(key, ts)`. Quotas par tier : Free 10/min 60/h, Creator 60/min 1200/h, Infinite 240/min illimité-h. `ensure_indexes()` au startup.
+- ✅ **Message noble HTTP 429** : « Votre Énergie Luciole est temporairement épuisée… Passez au tier Creator 🪙 pour libérer votre puissance. »
+- ✅ **`ParsedFile.pages`** : nb pages PDF (pypdf), paragraphes DOCX (python-docx), lignes TXT/MD. Exposé dans event SSE `meta.files[]`.
+- ✅ **Chip Gold dans ChatBubble** : avant retour serveur → chip neutre ; après `meta` SSE → gradient `#C9A24B → #E7C566`, icône Check, label « X pages digérées / paragraphes digérés ». data-testid `user-bubble-file-chip` + attr `data-digested`.
+- ✅ **Bouton « Exporter PDF 🪙 »** sur ChatBubble assistant (text > 80 chars, post-streaming) : data-testid `assistant-export-pdf-button`, icône Coins, états idle/loading/done/error avec couleurs gold.
+- ✅ **POST /api/export/pdf** (`routes/pdf_export.py`) : WeasyPrint + bleach + markdown lib. Charte CVLN : fond blanc, Cormorant Garamond (titres), Urbanist (UI), accents `#C9A24B`, bleu nuit `#0A0F1F`. Pied de page + numérotation auto. Payload max 50 000 chars (Pydantic). PDF ~11-17 Ko, magic %PDF-1.7.
+- ✅ **Sanitization** : `<script>` strippés via bleach (tags/attrs whitelist).
+- ✅ **Tests Phase 2** : `tests/test_phase2_policiere_export.py` (14 tests) → HMAC déterministe, TTL index, sliding-window, 429 noble, pages count, PDF rendu valide, sanitization.
 
 ### v1.0 — Phase 1 : Blindage SecOps & Data (30/05/2026)
 - ✅ **Chiffrement AES-256-GCM au repos** (cryptography lib) : `services/crypto.py` (encrypt_text/decrypt_text) avec nonce 96 bits aléatoire par chiffrement, format `{v:1,n,c}` stockable BSON. `LAURENTIA_ENCRYPTION_KEY` figé en .env (production-grade). Rétro-compat : str legacy renvoyé tel quel par decrypt.
