@@ -27,7 +27,13 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
-### v0.8 — frekcore prod + markdown + paramètres + partage + service worker + multilingue (30/05/2026)
+### v0.9 — Doctrine Laurent.ia v0.8 + multi-formats (JSON charts + Artifacts) (30/05/2026)
+- ✅ **System prompt souverain v0.8** appliqué : Diaspora, Daemon Luciole (silencieux), Crédits Computation, multi-agents Stitch, couplage NFC. Secret Défense strict (politique J+90 publique, jamais d'allusion fine-tuning/pipeline). Refus jailbreak.
+- ✅ **Bloc `<json>` → Recharts** : bar/line/area/pie auto-rendus depuis `RichContent.jsx`. Schéma `{type, title, data, xKey, series}`. Thème Laurent.ia (palette bleue + accents gold). Tooltip noir, légende blanche.
+- ✅ **Bloc `<artifact>` → iframe sandboxée** : `srcDoc` + `sandbox="allow-scripts"` + bouton aperçu/code + bouton expand. Pour génération de mini-sites/apps autoportés.
+- ✅ **Validation live** : prompt remittances Caraïbe → Laurent.ia génère natif un `<json type=bar>` avec Haïti/Jamaïque/République Dominicaine + analyse Markdown structurée avec termes-clés en gold (37% du PIB, +6% annuelle, etc.) — rendu impeccable
+- 🟡 **Pipeline /echo (LinkedIn/X/WhatsApp/Stories)** : prompt en place mais endpoint dédié pas encore créé (l'utilisateur peut déjà demander un format dans le chat)
+- 🟡 **PDF/DOCX export** : prompt prévoit l'interception serveur mais endpoint pas implémenté
 - ✅ **frekcore production branché** : `FREKCORE_API_URL=https://frekcore.com` + `FREKCORE_API_KEY=cvl-brain` (client ID FREK). Bridge avec `follow_redirects=True`, headers `X-API-Key` + `X-Client-ID`. Routage intelligent : `DEMO-*` → whitelist locale (toujours), autres → frekcore réel
 - ✅ **Migration instances** : 6 instances existantes mises à jour avec `tier=free` + nouveaux quotas (`tokens_limit_month=100k`, `tokens_limit_day=15k`, `memory_window=10`, `rate_per_min=10`)
 - ✅ **Memory window enforcement** : le gateway charge uniquement les N derniers échanges (`memory_window` du tier) et les injecte dans le system prompt — économies tokens + isolation tier

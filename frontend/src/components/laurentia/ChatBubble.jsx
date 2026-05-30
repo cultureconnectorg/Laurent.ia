@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import RichContent from "./RichContent";
 
 /**
  * ChatBubble — bulle de chat (utilisateur ou assistant).
@@ -38,10 +37,8 @@ export const ChatBubble = ({ role = "assistant", text = "", streaming = false })
           {isUser ? (
             <div className="whitespace-pre-wrap">{text}</div>
           ) : (
-            <div className="laurent-md">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {text || ""}
-              </ReactMarkdown>
+            <div>
+              <RichContent text={text || ""} />
               {streaming && (
                 <span className="inline-block w-[7px] h-[16px] align-[-2px] ml-1 bg-[#6BA8FF]/85 animate-pulse rounded-[1px]" />
               )}
