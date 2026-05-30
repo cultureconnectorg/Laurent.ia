@@ -27,6 +27,15 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté
 
+
+### v1.2-PRODUCTION — Phase 7 : Hardware Branché (30/05/2026)
+- ✅ **Micro hardware** : `navigator.mediaDevices.getUserMedia({audio:true})` AVANT SpeechRecognition → prompt OS permission micro. Libération `MediaStreamTrack` à stop/onend.
+- ✅ **Trombone fonctionnel inconditionnel** : ouvre TOUJOURS file picker natif (peu importe tier). Badge Lock signal du paywall à venir. data-can-upload=true|false.
+- ✅ **Auto-paywall Stripe** : 402/403/429 backend → setPaywallEvent → PricingModal ouvert auto + toast contextuel (luciole/upload_tier/pdf_quota).
+- ✅ **Persistance Fantôme refresh-proof** : `/api/laurentia/resolve` + withFingerprintHeaders → loadSession au paint. Anonyme retrouve historique sans login.
+- ✅ **Mobile 390x844** : 6 chips visibles sans scroll (grid-cols-2, padding compact). HeroPanel orbe 140 mobile vs 260 desktop, subtitle hidden sm:block.
+- ✅ **PricingModal** : 3 plans (Gratuit/Creator €15/Infinite €39) → Stripe Checkout via `POST /api/billing/create-checkout`.
+
 ### v1.2-PRODUCTION — Phase 5 : Ancrage Culturel & Échos (30/05/2026)
 **Batch C — Pipeline d'Échos :**
 - ✅ **POST /api/laurentia/echo** : génère 3 reformulations (Pro LinkedIn/X, Instant WhatsApp, Visuel Stories 9:16) via Claude — JSON strict + persistance `laurentia_echoes`.
