@@ -193,13 +193,15 @@ async def get_status(session_id: str, request: Request):
 async def stripe_webhook(request: Request):
     body = await request.body()
     sig = request.headers.get("Stripe-Signature")
-    stripe = _checkout_client(str(request.base_url))
+    stripe_client = _checkout_client(str(request.base_url))
     try:
-        evt = await stripe.handle_webhook(body, sig)
+        evt = await stripe_client.handle_webhook(body, sig)
     except Exception as e:
         raise HTTPException(400, f"Webhook invalide: {e}")
 
     db = request.app.state.db
+
+    # 1. Activation idempotente via checkout.session.completed / payment_intent.succeeded
     if evt.event_type in ("checkout.session.completed", "payment_intent.succeeded"):
         await db.payment_transactions.update_one(
             {"session_id": evt.session_id},
@@ -209,7 +211,6 @@ async def stripe_webhook(request: Request):
                 "webhook_received_at": datetime.now(timezone.utc).isoformat(),
             }},
         )
-        # Activation tier idempotente
         tx = await db.payment_transactions.find_one({"session_id": evt.session_id}, {"_id": 0})
         if tx and evt.payment_status == "paid" and not tx.get("credit_applied"):
             await db.payment_transactions.update_one(
@@ -229,6 +230,26 @@ async def stripe_webhook(request: Request):
                     "tier_activated_at": datetime.now(timezone.utc).isoformat(),
                 }},
             )
+
+    # 2. Désactivation sur customer.subscription.deleted
+    #    (l'event natif Stripe contient metadata.frek_id passé au checkout)
+    if evt.event_type == "customer.subscription.deleted":
+        metadata = getattr(evt, "metadata", None) or {}
+        frek_id = metadata.get("frek_id") if isinstance(metadata, dict) else None
+        if frek_id:
+            await db.laurentia_instances.update_one(
+                {"frek_id": frek_id},
+                {"$set": {
+                    "version": "free",
+                    "tier": "free",
+                    "tokens_limit_month": 100_000,
+                    "tokens_limit_day": 15_000,
+                    "memory_window": 10,
+                    "rate_per_min": 10,
+                    "tier_downgraded_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+
     return {"ok": True}
 
 
