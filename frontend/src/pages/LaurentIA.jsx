@@ -7,7 +7,6 @@ import HeroPanel from "@/components/laurentia/HeroPanel";
 import SuggestionChips from "@/components/laurentia/SuggestionChips";
 import ChatBubble from "@/components/laurentia/ChatBubble";
 import Composer from "@/components/laurentia/Composer";
-import BottomTabBar from "@/components/laurentia/BottomTabBar";
 import OrbeLaurentIA from "@/components/laurentia/OrbeLaurentIA";
 import MenuDrawer from "@/components/laurentia/MenuDrawer";
 
@@ -96,7 +95,7 @@ export default function LaurentIA() {
     >
       <Header
         firstName={displayFirstName}
-        kt={10}
+        kt={null}
         version={meta.version}
         picture={user?.picture}
         onMenuClick={() => setMenuOpen(true)}
@@ -207,8 +206,6 @@ export default function LaurentIA() {
           externalValueRef={composerRef}
         />
       </div>
-
-      <BottomTabBar active="brain" />
     </div>
   );
 }

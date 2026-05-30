@@ -27,6 +27,14 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.4 — Pivot commercial : écosystème invisible (30/05/2026)
+- ✅ **SuggestionChips** : remplacement des 6 chips écosystème (Kiltikonet, Jeton CC, CC2026, Mon FREK-ID, Espace Pro, Culture) par 6 prompts génériques universels (Aide-moi à écrire, Synthétise une idée, Brainstorm créatif, Analyse un texte, Plan d'action, Explique-moi) — Laurent.ia parle à tout utilisateur, pas qu'à un membre CVLN
+- ✅ **Header** : label "FREK-ID" supprimé du pill avatar, pill KT masqué par défaut (`kt={null}` → render conditionnel `kt > 0`)
+- ✅ **HeroPanel** : sous-titre "Man la pou ou" remplacé par "Posez votre question. Je vous écoute." (neutre, pas de pré-cadrage culturel)
+- ✅ **BottomTabBar** : supprimée. Le menu ☰ et le composer suffisent (style Claude/ChatGPT)
+- ✅ **Vérification automatique** : aucune mention de FREK-ID, Kiltikonet, CC2026, Jeton CC, Espace Pro, Culture, créole dans le DOM
+- 🟡 La cohésion écosystème (KT pill, mentions Kiltikonet, etc.) sera **conditionnelle** : visible uniquement si l'utilisateur authentifié possède un compte CVLN connecté (jcc_balance > 0 ou flag `ecosystem_connected`). À implémenter en P1.
+
 ### v0.3 — Auth Emergent Google + Menu drawer + Historique (30/05/2026)
 - ✅ **Emergent Managed Google Auth** intégré : `/api/auth/session`, `/api/auth/me`, `/api/auth/logout` (cookie httpOnly 7j, samesite=None, secure)
 - ✅ **Dérivation FREK-ID** stable depuis email : `FREK-G-{sha256(email)[:10]}` — création auto de l'instance Laurent.ia

@@ -1,17 +1,22 @@
 import { motion } from "framer-motion";
-import { Fingerprint, Sparkles, Music, Building2, Briefcase, Coins } from "lucide-react";
+import { PenLine, FileText, Lightbulb, Search, Target, GraduationCap } from "lucide-react";
 
 /**
- * SuggestionChips — quick-action pills (style Kiltikonet home).
- * 6 entrées par défaut. Click → injecte le prompt associé dans le composer.
+ * SuggestionChips — propositions intelligentes affichées en hero.
+ *
+ * Par défaut : 6 prompts universels (productivité/créativité) — pas de référence
+ * à l'écosystème interne (FREK / CC / Kiltikonet etc.).
+ *
+ * Le parent peut injecter des `chips` personnalisés issus de l'historique
+ * utilisateur pour rendre les suggestions plus pertinentes au fil du temps.
  */
 const DEFAULT_CHIPS = [
-  { id: "kiltikonet", label: "Kiltikonet",  icon: Sparkles,    prompt: "Présente-moi Kiltikonet et ce que ça veut dire pour moi." },
-  { id: "jcc",        label: "Jeton CC",    icon: Coins,       prompt: "Comment fonctionnent les Jetons CC et à quoi je peux les utiliser ?" },
-  { id: "cc2026",     label: "CC2026",      icon: Building2,   prompt: "Donne-moi le programme essentiel du festival CC2026." },
-  { id: "frek",       label: "Mon FREK-ID", icon: Fingerprint, prompt: "Explique-moi mon profil culturel FREK-ID en 7 dimensions." },
-  { id: "pro",        label: "Espace Pro",  icon: Briefcase,   prompt: "Qu'est-ce que l'Espace Pro m'apporte ?" },
-  { id: "culture",    label: "Culture",     icon: Music,       prompt: "Parle-moi de la musique afro-caribéenne d'aujourd'hui." },
+  { id: "write",      label: "Aide-moi à écrire",     icon: PenLine,        prompt: "Aide-moi à écrire un texte clair et impactant. Pose-moi d'abord les bonnes questions pour cadrer." },
+  { id: "summarize",  label: "Synthétise une idée",   icon: FileText,       prompt: "Je veux synthétiser une idée complexe en quelques points clairs. Démarrons." },
+  { id: "brainstorm", label: "Brainstorm créatif",    icon: Lightbulb,      prompt: "Je veux brainstormer une idée. Pose-moi 3 questions pour démarrer." },
+  { id: "analyze",    label: "Analyse un texte",      icon: Search,         prompt: "J'ai un texte à analyser. Je vais te le coller — explique-moi ce que tu vois." },
+  { id: "plan",       label: "Plan d'action",         icon: Target,         prompt: "Aide-moi à construire un plan d'action sur un sujet précis." },
+  { id: "explain",    label: "Explique-moi",          icon: GraduationCap,  prompt: "Explique-moi un concept comme si j'avais 12 ans." },
 ];
 
 export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = false }) => {
@@ -19,7 +24,7 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
     <div className="w-full max-w-2xl mx-auto px-4" data-testid="suggestion-chips">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {chips.map((chip, i) => {
-          const Icon = chip.icon;
+          const Icon = chip.icon || Lightbulb;
           return (
             <motion.button
               key={chip.id}

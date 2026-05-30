@@ -5,7 +5,7 @@ import OrbeLaurentIA from "./OrbeLaurentIA";
  * HeroPanel — affiché quand la conversation est vide.
  * Reproduit l'écran d'accueil CVL Brain : orbe + INTELLIGENCE + brand + sous-titre.
  */
-export const HeroPanel = ({ state = "idle", subtitle = "Posez vos questions. Man la pou ou." }) => {
+export const HeroPanel = ({ state = "idle", subtitle = "Posez votre question. Je vous écoute." }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}

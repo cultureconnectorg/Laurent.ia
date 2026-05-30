@@ -6,8 +6,9 @@ import { Menu, Inbox, Zap } from "lucide-react";
  * Layout (de gauche à droite) :
  *   ☰  Laurent.ia (wordmark italique doré subtil)    📥   ⚡ 10 KT   (Avatar prénom)
  */
-export const Header = ({ firstName = "Hôte", kt = 10, version = "free", picture = null, onMenuClick }) => {
+export const Header = ({ firstName = "Hôte", kt = null, version = "free", picture = null, onMenuClick }) => {
   const initials = (firstName || "H").slice(0, 2).toUpperCase();
+  const showKt = kt !== null && kt !== undefined && Number(kt) > 0;
 
   return (
     <motion.header
@@ -49,29 +50,31 @@ export const Header = ({ firstName = "Hôte", kt = 10, version = "free", picture
           <Inbox className="w-4 h-4" strokeWidth={1.5} />
         </button>
 
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10"
-          data-testid="header-kt-pill"
-        >
-          <Zap className="w-3.5 h-3.5 text-[#E7C566]" fill="#E7C566" strokeWidth={1.5} />
-          <span className="font-mono text-xs font-medium text-[#F1F4FA]">{kt}</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45 ml-0.5">KT</span>
-        </div>
+        {showKt && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10"
+            data-testid="header-kt-pill"
+          >
+            <Zap className="w-3.5 h-3.5 text-[#E7C566]" fill="#E7C566" strokeWidth={1.5} />
+            <span className="font-mono text-xs font-medium text-[#F1F4FA]">{kt}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45 ml-0.5">KT</span>
+          </div>
+        )}
 
         <div
           className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10"
           data-testid="frekid-badge"
         >
           {picture ? (
-            <img src={picture} alt={firstName} className="w-6 h-6 rounded-full ring-1 ring-[#E7C566]/30 object-cover" />
+            <img src={picture} alt={firstName} className="w-6 h-6 rounded-full ring-1 ring-white/20 object-cover" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] flex items-center justify-center ring-1 ring-[#E7C566]/30">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] flex items-center justify-center ring-1 ring-white/20">
               <span className="font-mono text-[10px] font-semibold text-white">{initials}</span>
             </div>
           )}
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60 hidden sm:inline">
-            {version === "pro" ? "Pro" : "FREK-ID"}
-          </span>
+          {version === "pro" && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#E7C566] hidden sm:inline">Pro</span>
+          )}
         </div>
       </div>
     </motion.header>
