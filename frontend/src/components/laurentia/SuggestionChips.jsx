@@ -72,8 +72,8 @@ const DEFAULT_CHIPS = [
 
 export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = false }) => {
   return (
-    <div className="w-full max-w-3xl mx-auto px-4" data-testid="suggestion-chips">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="w-full max-w-3xl mx-auto px-3 sm:px-4" data-testid="suggestion-chips">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {chips.map((chip, i) => {
           const Icon = chip.icon || Lightbulb;
           const isNoCode = chip.id === "no-code";
@@ -85,33 +85,33 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
               disabled={disabled}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 + i * 0.05, duration: 0.4 }}
+              transition={{ delay: 0.12 + i * 0.04, duration: 0.32 }}
               whileTap={!disabled ? { scale: 0.98 } : {}}
-              className={`group relative flex items-center gap-3 px-4 py-3 rounded-2xl
+              className={`group relative flex items-center gap-2 sm:gap-3 px-2.5 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl
                 bg-[rgba(10,15,31,0.55)] backdrop-blur-[12px] border border-white/[0.05]
                 hover:bg-[rgba(10,15,31,0.7)] hover:border-white/[0.10]
                 text-left transition-all duration-200
                 disabled:opacity-40 disabled:cursor-not-allowed`}
               style={{
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02), 0 8px 24px -16px rgba(0,0,0,0.6)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02), 0 6px 20px -14px rgba(0,0,0,0.6)",
               }}
               data-testid={`chip-${chip.id}`}
             >
               <span
-                className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
+                className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center
                   ${isNoCode
                     ? "bg-gradient-to-br from-[#C9A24B]/30 to-[#E7C566]/10 ring-1 ring-[#C9A24B]/40"
                     : "bg-white/[0.03] ring-1 ring-white/[0.05]"}
                   transition-transform duration-200 group-hover:scale-105`}
               >
                 <Icon
-                  className={`w-4 h-4 ${isNoCode ? "text-[#E7C566]" : "text-[#17a2b8]"}`}
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isNoCode ? "text-[#E7C566]" : "text-[#17a2b8]"}`}
                   strokeWidth={1.7}
                 />
               </span>
               <div className="flex flex-col items-start min-w-0 flex-1">
                 <span
-                  className="text-[14px] sm:text-[13.5px] leading-tight text-[#EDF1F7] font-medium truncate w-full"
+                  className="text-[11.5px] sm:text-[13.5px] leading-tight text-[#EDF1F7] font-medium line-clamp-2 sm:truncate sm:w-full"
                   style={{ fontFamily: '"Urbanist", sans-serif', letterSpacing: "0.005em" }}
                   data-testid={`chip-${chip.id}-label`}
                 >
@@ -119,7 +119,7 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
                 </span>
                 {chip.subtitle && (
                   <span
-                    className={`mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] truncate w-full ${
+                    className={`mt-0.5 font-mono text-[8.5px] sm:text-[10px] uppercase tracking-[0.16em] sm:tracking-[0.18em] truncate w-full ${
                       isNoCode ? "text-[#C9A24B]/65" : "text-[#17a2b8]/55"
                     }`}
                     style={{ fontFamily: '"Urbanist", sans-serif', fontWeight: 500 }}
@@ -131,7 +131,7 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
               </div>
               {isNoCode && (
                 <span
-                  className="absolute top-1.5 right-2 font-mono text-[8px] uppercase tracking-[0.22em] text-[#C9A24B]"
+                  className="absolute top-1 right-1.5 sm:top-1.5 sm:right-2 font-mono text-[7px] sm:text-[8px] uppercase tracking-[0.22em] text-[#C9A24B]"
                   aria-hidden="true"
                 >
                   ◇

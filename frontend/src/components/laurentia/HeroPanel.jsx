@@ -13,20 +13,25 @@ export const HeroPanel = ({ state = "idle", subtitle = "Posez votre question. Je
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.55, ease: "easeOut" }}
-      className="flex flex-col items-center justify-center text-center px-6 py-6"
+      className="flex flex-col items-center justify-center text-center px-6 py-3 sm:py-6"
       data-testid="hero-panel"
     >
-      <OrbeLaurentIA state={state} size={280} />
+      <div className="block sm:hidden">
+        <OrbeLaurentIA state={state} size={140} />
+      </div>
+      <div className="hidden sm:block">
+        <OrbeLaurentIA state={state} size={260} />
+      </div>
 
       <div
-        className="mt-7 font-mono text-[11px] uppercase text-[#17a2b8]"
-        style={{ letterSpacing: "0.42em", fontFamily: '"Urbanist", sans-serif' }}
+        className="mt-3 sm:mt-6 font-mono text-[10px] sm:text-[11px] uppercase text-[#17a2b8]"
+        style={{ letterSpacing: "0.32em", fontFamily: '"Urbanist", sans-serif' }}
         data-testid="hero-eyebrow"
       >
         Intelligence souveraine
       </div>
       <h1
-        className="mt-3 italic text-5xl sm:text-6xl tracking-tight"
+        className="mt-1 sm:mt-3 italic text-3xl sm:text-5xl lg:text-6xl tracking-tight"
         style={{
           fontFamily: '"Cormorant Garamond", Georgia, serif',
           fontWeight: 500,
@@ -40,7 +45,7 @@ export const HeroPanel = ({ state = "idle", subtitle = "Posez votre question. Je
         Laurent.ia
       </h1>
       <p
-        className="mt-3 max-w-md text-[15px] sm:text-base text-white/55 leading-relaxed"
+        className="mt-1.5 sm:mt-3 max-w-md text-[13px] sm:text-base text-white/55 leading-relaxed hidden sm:block"
         style={{ fontFamily: '"Urbanist", sans-serif' }}
         data-testid="hero-subtitle"
       >

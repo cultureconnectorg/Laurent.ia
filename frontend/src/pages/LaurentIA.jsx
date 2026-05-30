@@ -51,6 +51,7 @@ export default function LaurentIA() {
     error,
     startListening,
     stopListening,
+    paywallEvent,
     sendQuery,
     cancel,
     resetSession,
@@ -187,6 +188,19 @@ export default function LaurentIA() {
     toast("Quota PDF Free atteint. Active Creator 🪙 pour des exports illimités sans signature.");
     setPricingOpen(true);
   };
+
+  // Auto-ouverture du paywall lorsque le backend renvoie 402/403/429
+  useEffect(() => {
+    if (!paywallEvent) return;
+    if (paywallEvent.reason === "luciole") {
+      toast(paywallEvent.detail || "Énergie Luciole épuisée. Active Creator 🪙 pour libérer ta puissance.");
+    } else if (paywallEvent.reason === "upload_tier") {
+      toast("Upload de fichiers réservé aux plans Creator/Infinite. Active ton abonnement 🪙.");
+    } else {
+      toast("Quota atteint. Active Creator 🪙 pour continuer sans interruption.");
+    }
+    setPricingOpen(true);
+  }, [paywallEvent]);
 
   const handlePickSession = (sessionId) => {
     loadSession(sessionId);

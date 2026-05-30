@@ -195,10 +195,10 @@ export const Composer = ({
   };
 
   const handleAttachClick = () => {
-    if (!canUpload) {
-      onUpgradeClick?.();
-      return;
-    }
+    // Le trombone ouvre TOUJOURS l'input file natif caché. Si le tier ne permet
+    // pas l'upload, le serveur renverra 403 au moment du submit et le frontend
+    // déclenchera la PricingModal. C'est plus naturel : tu choisis ton document,
+    // tu vois ce que tu pourrais faire, puis le paywall s'active.
     fileInputRef.current?.click();
   };
 
@@ -304,17 +304,28 @@ export const Composer = ({
           data-testid="composer-file-input"
         />
 
-        {/* Trombone wireframe — sans fond, juste contour or fin */}
+        {/* Trombone wireframe — toujours interactif, ouvre le file picker natif.
+            Si tier=Free, on ajoute un petit cadenas en sur-couche pour signaler
+            le paywall qui arrivera au submit. */}
         <button
           type="button"
           onClick={handleAttachClick}
-          aria-label={canUpload ? "Joindre un fichier" : "Activer un plan pour joindre un fichier"}
-          title={canUpload ? "PDF, DOCX, TXT, MD · 10 Mo / fichier" : "Upload réservé aux plans Creator / Infinite"}
+          aria-label="Joindre un fichier"
+          title={canUpload ? "PDF, DOCX, TXT, MD · 10 Mo / fichier" : "Joindre un fichier — Creator requis pour l'envoi"}
           disabled={isBusy}
-          className={`w-9 h-9 flex items-center justify-center self-end pb-0.5 transition-transform duration-200 ${canUpload ? "hover:scale-110" : ""}`}
+          className="relative w-9 h-9 flex items-center justify-center self-end pb-0.5 transition-transform duration-200 hover:scale-110"
           data-testid="composer-attach-button"
+          data-can-upload={canUpload ? "true" : "false"}
         >
-          {canUpload ? <WirePaperclip tone="gold" /> : <Lock className="w-4 h-4 text-white/30" strokeWidth={1.7} />}
+          <WirePaperclip tone="gold" />
+          {!canUpload && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#0A0F1F] flex items-center justify-center ring-1 ring-[#C9A24B]/40"
+              aria-hidden="true"
+            >
+              <Lock className="w-2 h-2 text-[#C9A24B]" strokeWidth={2.4} />
+            </span>
+          )}
         </button>
 
         <textarea

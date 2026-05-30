@@ -20,6 +20,7 @@ const initialMeta = {
 export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direct" } = {}) {
   const [state, setState] = useState("idle"); // idle | listening | thinking | speaking
   const [phase, setPhase] = useState(null);   // "connecting" | "analyzing" | "synthesizing" | "rendering" | null
+  const [paywallEvent, setPaywallEvent] = useState(null); // {status, detail, reason, ts}
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
   const [history, setHistory] = useState([]); // [{role, text}]
@@ -27,6 +28,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   const [error, setError] = useState(null);
 
   const recognitionRef = useRef(null);
+  const audioStreamRef = useRef(null);
   const abortRef = useRef(null);
 
   // ------------- Reset / Load session -------------
@@ -97,13 +99,38 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     };
   }, [frekId]);
 
-  // ------------- Web Speech Recognition -------------
-  const startListening = useCallback(() => {
+  // ------------- Web Speech Recognition (avec permission micro hardware) -------------
+  const startListening = useCallback(async () => {
     setError(null);
     setTranscript("");
+
+    // 1. EXIGENCE HARDWARE : on demande explicitement le micro via getUserMedia
+    //    pour forcer l'apparition du prompt de permission OS (iOS Safari et Android
+    //    n'ouvrent pas toujours le micro avec SpeechRecognition seul).
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Ton navigateur ne supporte pas l'accès au micro.");
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      const msg =
+        err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError"
+          ? "Autorise le micro dans les réglages du navigateur pour parler à Laurent.ia."
+          : "Impossible d'ouvrir le micro de l'appareil.";
+      setError(msg);
+      setState("idle");
+      return;
+    }
+
+    // 2. Web Speech Recognition par-dessus (transcription temps réel).
+    //    Si indisponible : on garde l'écoute via stream (state="listening") + on
+    //    coupera proprement à stopListening.
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
-      // pas de reconnaissance vocale → fallback: state listening sans STT
+      // Pas de STT natif → on garde le mode "écoute" jusqu'à stop manuel
+      audioStreamRef.current = stream;
       setState("listening");
       return;
     }
@@ -124,14 +151,19 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     rec.onerror = (e) => {
       setError(e.error || "Erreur reconnaissance vocale");
       setState("idle");
+      try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
     };
     rec.onend = () => {
+      // Libère le micro hardware proprement
+      try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      audioStreamRef.current = null;
       if (finalText.trim()) {
         sendQuery(finalText.trim());
       } else {
         setState("idle");
       }
     };
+    audioStreamRef.current = stream;
     recognitionRef.current = rec;
     setState("listening");
     try {
@@ -140,6 +172,11 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopListening = useCallback(() => {
+    // Libère le micro hardware
+    if (audioStreamRef.current) {
+      try { audioStreamRef.current.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      audioStreamRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -265,6 +302,15 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
             const j = await r.json();
             if (j?.detail) detail = j.detail;
           } catch (_) {}
+          // Paywall : 402 (PDF quota), 403 (upload tier), 429 (rate-limit Luciole)
+          if (r.status === 402 || r.status === 403 || r.status === 429) {
+            setPaywallEvent({
+              status: r.status,
+              detail,
+              reason: r.status === 429 ? "luciole" : r.status === 403 ? "upload_tier" : "pdf_quota",
+              ts: Date.now(),
+            });
+          }
           throw new Error(detail);
         }
         const reader = r.body.getReader();
@@ -406,6 +452,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   return {
     state,
     phase,
+    paywallEvent,
     transcript,
     response,
     history,
