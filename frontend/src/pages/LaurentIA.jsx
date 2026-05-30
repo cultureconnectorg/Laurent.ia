@@ -12,6 +12,7 @@ import MenuDrawer from "@/components/laurentia/MenuDrawer";
 import { PricingModal } from "@/components/laurentia/PricingModal";
 import PhaseIndicator from "@/components/laurentia/PhaseIndicator";
 import WhiteLabelKiller from "@/components/laurentia/WhiteLabelKiller";
+import EnergyBraids from "@/components/laurentia/EnergyBraids";
 import { ECOSYSTEM_CHIPS } from "@/components/laurentia/ecosystemChips";
 import { withFingerprintHeaders } from "@/services/fingerprint";
 import { toast } from "sonner";
@@ -263,11 +264,14 @@ export default function LaurentIA() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35 }}
-              className="min-h-full flex flex-col items-center justify-center pt-2"
+              className="relative min-h-full flex flex-col items-center justify-center pt-2"
             >
-              <HeroPanel state={sealing ? "sealing" : state} />
-              <div className="w-full mt-6 mb-2">
-                <SuggestionChips chips={ecosystemMember ? ECOSYSTEM_CHIPS : undefined} onPick={handlePickChip} disabled={state !== "idle"} />
+              <EnergyBraids />
+              <div className="relative z-10 w-full flex flex-col items-center">
+                <HeroPanel state={sealing ? "sealing" : state} />
+                <div className="w-full mt-6 mb-2">
+                  <SuggestionChips chips={ecosystemMember ? ECOSYSTEM_CHIPS : undefined} onPick={handlePickChip} disabled={state !== "idle"} />
+                </div>
               </div>
             </motion.div>
           ) : (

@@ -117,7 +117,7 @@ export const Header = ({
         )}
 
         <div
-          className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 relative"
+          className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full bg-white/[0.04] border border-white/10 relative"
           data-testid="frekid-badge"
         >
           {picture ? (
@@ -139,9 +139,14 @@ export const Header = ({
               </span>
             </div>
           )}
-          {version === "pro" && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#E7C566] hidden sm:inline">Pro</span>
-          )}
+          <div className="flex flex-col leading-none">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#E7C566]/85" data-testid="header-cvln-label">
+              CVLN
+            </span>
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.22em] text-white/40 mt-0.5">
+              Group
+            </span>
+          </div>
         </div>
       </div>
     </motion.header>

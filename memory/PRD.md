@@ -27,6 +27,42 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté
 
+### v1.2-PRODUCTION — Phase 5 : Ancrage Culturel & Échos (30/05/2026)
+**Batch C — Pipeline d'Échos :**
+- ✅ **POST /api/laurentia/echo** : génère 3 reformulations (Pro LinkedIn/X, Instant WhatsApp, Visuel Stories 9:16) via Claude — JSON strict + persistance `laurentia_echoes`.
+- ✅ **GET /api/echo/{session_id}** (public, no auth) : payload SEO-ready + incrément views post-read.
+- ✅ **POST /api/echo/{session_id}/conversion** : attribution HMAC via X-Device-Fingerprint, redirect `/?from_echo={sid}`, doc `laurentia_echo_attributions`.
+- ✅ **EchoPage.jsx** : landing publique `/echo/:sessionId` — Cormorant Garamond + Urbanist, fond bleu nuit, sections Pro/Instant/Visual, OG meta dynamiques, CTA « Activer mon Intelligence Souveraine 🪙 ».
+
+**Persona v1.2 — Anti-jailbreak :**
+- ✅ Section 7 dans `cvl_brain_knowledge.py` : refus noble + réorientation business, ne nomme jamais Claude/Anthropic/OpenAI.
+
+**Cron RGPD J+90 :**
+- ✅ `services/rgpd_purge.py` + `POST /api/admin/rgpd/purge` (idempotent) + scheduler 24h au startup. Vide `device_ids` des instances inactives, anonymise `visitor_device_id` des attributions.
+
+**Cosmétique :**
+- ✅ Skip silencieux `GET /api/laurentia/instances/ANON-*` dans `useLaurentIA.js` (élimine 401 cosmétique).
+
+### v1.2-PRODUCTION — Phase 6 : Injection Culturelle Diaspora (30/05/2026)
+**Ancrage linguistique double lecture :**
+- ✅ **Composer placeholder créole** : « Djis poze keksion ou… » (vs. « Posez votre question… »)
+- ✅ **Bandeau multilingue défilant** (38s loop) sous le composer : Yoruba (Kowe Ètò Ìṣòwò), Amharique (ቢዘሮ ፕላን), Swahili (Andika Mpango wa Biashara), Punjabi (ਬੀਤ ਪਲਾਨ), Créole haïtien (Tontin' modèn), Wolof (Tey ñàddu réew). Pause au hover.
+- ✅ **SuggestionChips bilingues** : chaque chip a un subtitle Urbanist 10px or/cyan opacité 40-65% (Kowe Ètò Ìṣòwò, Analize kontra trans-Latlantik, Mpango wa Ukuaji wa Biashara, etc.). Structure flex-col stack.
+
+**Tresses d'Énergie :**
+- ✅ **EnergyBraids.jsx** : 9 courbes de Bézier SVG montant depuis le bas vers l'orbe (z-index 0, pointer-events none). 5 or + 4 cyan, drop-shadow Gaussian Blur, animation pathLength + opacity en boucle décalée (3.8s ± 1.2s repeat).
+
+**Composer Racines & Technologie :**
+- ✅ **GoldArrow sculptée** : SVG triangle isocèle aérodynamique avec gradient `#F4E0AA→#C9A24B`, 4 particules d'or scintillantes orbitant à r=10px au survol/saisie (motion infinite, opacity 0→1→0, scale 0.5→1→0.5).
+- ✅ **WirePaperclip filaire** : SVG path 1.4px stroke or, sans fond solide.
+- ✅ **SoundWave + Cercle de Résonance** : 7 barres verticales gradient or→bleu encapsulées dans un cercle bleu néon `#1D8CF8` (box-shadow + inset glow) animé `sonic-pulse` 1.4s scale 0.92↔1.08.
+
+**Header v1.2 :**
+- ✅ Avatar sceau doré + **label "CVLN · Group"** stack vertical à droite (data-testid `header-cvln-label`).
+
+**Tests :**
+- ✅ **64/64 pytest GREEN** (phases 1-4 + cleanup).
+
 ### v1.2 — Phase 3 : Persistance Fantôme + Signature Constellation + UX Souveraine (30/05/2026)
 **Batch A — Souveraineté Sensorielle :**
 - ✅ **TTS toggle** dans Header (data-testid `header-voice-toggle`) avec persistance localStorage, et bouton **Stop voix** transitoire pendant lecture (`header-stop-speaking`).

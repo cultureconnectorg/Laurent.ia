@@ -130,3 +130,35 @@ a[href*="emergentagent.com"] {
   height: 0 !important;
   overflow: hidden !important;
 }
+
+/* === Laurent.ia · Bandeau multilingue défilant (Tresses linguistiques) === */
+.diaspora-marquee {
+  display: flex;
+  width: max-content;
+  animation: diaspora-scroll 38s linear infinite;
+  will-change: transform;
+}
+.diaspora-marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes diaspora-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* === Onde sonore circulaire bleu néon (cercle de résonance vocale) === */
+.sonic-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #1D8CF8;
+  box-shadow: 0 0 14px rgba(29,140,248,0.55), inset 0 0 8px rgba(29,140,248,0.35);
+  pointer-events: none;
+}
+.sonic-ring-pulse {
+  animation: sonic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes sonic-pulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}

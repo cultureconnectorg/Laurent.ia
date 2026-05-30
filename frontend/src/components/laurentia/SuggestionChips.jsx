@@ -13,6 +13,7 @@ const DEFAULT_CHIPS = [
   {
     id: "plan-business",
     label: "Rédiger Plan Business d'Élite",
+    subtitle: "Kowe Ètò Ìṣòwò",
     icon: PenLine,
     prompt:
       "Aide-moi à rédiger un plan d'affaires d'élite pour un projet de la Diaspora caribéenne. " +
@@ -22,6 +23,7 @@ const DEFAULT_CHIPS = [
   {
     id: "import-export",
     label: "Analyser Accord d'Import-Export",
+    subtitle: "Analize kontra trans-Latlantik",
     icon: Compass,
     prompt:
       "J'ai un accord d'import-export entre Caraïbe et Europe à analyser. Je vais te coller les termes — " +
@@ -30,6 +32,7 @@ const DEFAULT_CHIPS = [
   {
     id: "innovation",
     label: "Générer Concepts d'Innovation Caribéenne",
+    subtitle: "ቢዘሮ ፕላን · Innovation soso",
     icon: Lightbulb,
     prompt:
       "Génère-moi 5 concepts d'innovation business ancrés dans les forces de la Caraïbe " +
@@ -39,6 +42,7 @@ const DEFAULT_CHIPS = [
   {
     id: "croissance",
     label: "Structurer un Plan de Croissance",
+    subtitle: "Mpango wa Ukuaji wa Biashara",
     icon: Target,
     prompt:
       "Mon entreprise stagne. Aide-moi à structurer un plan de croissance en 4 phases sur 12 mois. " +
@@ -47,6 +51,7 @@ const DEFAULT_CHIPS = [
   {
     id: "tontine",
     label: "Analyser les Flux de Tontine Moderne",
+    subtitle: "Soso lajan · Tontin' modèn",
     icon: Coins,
     prompt:
       "Analyse les flux financiers d'une tontine moderne (digitalisée, multi-pays). " +
@@ -56,6 +61,7 @@ const DEFAULT_CHIPS = [
   {
     id: "no-code",
     label: "Développer une Application No-Code Souveraine",
+    subtitle: "Andika Mpango wa Biashara · ਬੀਤ ਪਲਾਨ",
     icon: Code2,
     prompt:
       "Crée-moi une mini-app no-code totalement fonctionnelle en HTML/CSS/JS pur, " +
@@ -92,7 +98,7 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
               data-testid={`chip-${chip.id}`}
             >
               <span
-                className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center
+                className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
                   ${isNoCode
                     ? "bg-gradient-to-br from-[#C9A24B]/30 to-[#E7C566]/10 ring-1 ring-[#C9A24B]/40"
                     : "bg-white/[0.03] ring-1 ring-white/[0.05]"}
@@ -103,12 +109,26 @@ export const SuggestionChips = ({ chips = DEFAULT_CHIPS, onPick, disabled = fals
                   strokeWidth={1.7}
                 />
               </span>
-              <span
-                className="text-[14px] sm:text-[13.5px] leading-snug text-[#EDF1F7] font-medium"
-                style={{ fontFamily: '"Urbanist", sans-serif', letterSpacing: "0.005em" }}
-              >
-                {chip.label}
-              </span>
+              <div className="flex flex-col items-start min-w-0 flex-1">
+                <span
+                  className="text-[14px] sm:text-[13.5px] leading-tight text-[#EDF1F7] font-medium truncate w-full"
+                  style={{ fontFamily: '"Urbanist", sans-serif', letterSpacing: "0.005em" }}
+                  data-testid={`chip-${chip.id}-label`}
+                >
+                  {chip.label}
+                </span>
+                {chip.subtitle && (
+                  <span
+                    className={`mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] truncate w-full ${
+                      isNoCode ? "text-[#C9A24B]/65" : "text-[#17a2b8]/55"
+                    }`}
+                    style={{ fontFamily: '"Urbanist", sans-serif', fontWeight: 500 }}
+                    data-testid={`chip-${chip.id}-subtitle`}
+                  >
+                    {chip.subtitle}
+                  </span>
+                )}
+              </div>
               {isNoCode && (
                 <span
                   className="absolute top-1.5 right-2 font-mono text-[8px] uppercase tracking-[0.22em] text-[#C9A24B]"

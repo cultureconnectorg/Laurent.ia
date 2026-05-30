@@ -1,20 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUp, Square, Loader2, Paperclip, X, FileText, Lock, AudioLines } from "lucide-react";
+import { Square, Loader2, X, FileText, Lock } from "lucide-react";
 
 /**
- * Composer v1.2-PRODUCTION — fente noire translucide, sans contour.
- *  - Focus: scale 1.01 + halo bleu nuit profond derrière
- *  - Flèche envoi : grise → mutation Or vif dès le 1er caractère tapé
- *  - Trombone d'élite (sans contour) ouvre l'upload (gated tier)
- *  - Onde sonore animée pendant la dictée vocale (state="listening")
- *  - Bouton "Stop voix" lecture TTS géré dans Header (pas ici)
+ * Composer v1.2-PRODUCTION — fente noire translucide + Ancrage linguistique.
  *
- * Props:
- *   state: "idle" | "listening" | "thinking" | "speaking"
- *   value, onChange, onSubmit(text, files), onStartVoice, onStopVoice, onCancel
- *   tier: "free" | "creator" | "infinite"
- *   onUpgradeClick?: () => void
+ *  • Placeholder principal en CRÉOLE : "Djis poze keksion ou..."
+ *  • Bandeau multilingue défilant sous la barre : Yoruba, Swahili, Amharique, Wolof...
+ *  • Onde sonore encapsulée dans cercle bleu néon #1D8CF8
+ *  • Trombone wireframe filaire (sans fond)
+ *  • Flèche-Sagaie sculptée avec particules d'or au survol/saisie
+ *  • Focus : scale 1.01 + halo cyan profond
  */
 const UPLOAD_TIERS = new Set(["creator", "infinite"]);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -22,30 +18,46 @@ const MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 const MAX_FILES = 4;
 const ACCEPT = ".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
 
+// Concepts de commerce, plan, échange dans les langues de la Diaspora.
+// Sera défilé en boucle sous le composer. Sépare visuellement avec '·'.
+const DIASPORA_CONCEPTS = [
+  "Kowe Ètò Ìṣòwò",                  // Yoruba — Plan de commerce
+  "ቢዘሮ ፕላን",                          // Amharique — Plan business
+  "Andika Mpango wa Biashara",       // Swahili — Rédiger plan d'affaires
+  "ਬੀਤ ਪਲਾਨ",                          // Punjabi — Plan d'avenir
+  "Soso lajan · Tontin' modèn",      // Créole — Tontine moderne
+  "Bògòlanfini · Òṣiṣẹ́",              // Bambara/Yoruba — Tisser le travail
+  "Analize kontra trans-Latlantik",  // Créole haïtien — Accord trans-Atlantique
+  "Tey ñàddu réew",                  // Wolof — Diriger le pays
+  "Mpango wa Ukuaji wa Biashara",    // Swahili — Plan de croissance business
+];
+
 function formatBytes(n) {
   if (n < 1024) return `${n} o`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} Ko`;
   return `${(n / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-/** Onde sonore animée — remplace le micro statique de v1.1 */
+/** Onde sonore animée — bars verticales OR/BLEU, encapsulée dans un cercle bleu néon */
 const SoundWave = ({ active }) => {
   const bars = [3, 7, 5, 9, 4, 8, 6];
   return (
-    <button
-      type="button"
-      aria-label={active ? "Dictée en cours — clique pour arrêter" : "Démarrer la dictée vocale"}
-      className="flex items-end gap-[3px] h-6 px-2"
+    <div
+      className="relative flex items-end gap-[3px] h-6 px-2"
       data-testid="composer-sound-wave"
       data-active={active ? "true" : "false"}
+      role="button"
+      aria-label={active ? "Dictée en cours — clique pour arrêter" : "Démarrer la dictée vocale"}
     >
+      {/* Cercle de résonance bleu néon — visible uniquement quand active */}
+      {active && <span className="sonic-ring sonic-ring-pulse" aria-hidden="true" />}
       {bars.map((h, i) => (
         <motion.span
           key={i}
-          className="w-[2.5px] rounded-full"
+          className="relative w-[2.5px] rounded-full"
           style={{
             background: active
-              ? `linear-gradient(180deg, #E7C566 0%, #17a2b8 100%)`
+              ? "linear-gradient(180deg, #E7C566 0%, #1D8CF8 100%)"
               : "rgba(255,255,255,0.22)",
           }}
           animate={
@@ -60,9 +72,69 @@ const SoundWave = ({ active }) => {
           }
         />
       ))}
-    </button>
+    </div>
   );
 };
+
+/** Flèche-Sagaie : pièce sculptée or avec texture de particules */
+const GoldArrow = ({ armed }) => (
+  <span className="relative w-4 h-4 flex items-center justify-center" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="16" height="16" className="relative z-10">
+      <defs>
+        <linearGradient id="arrow-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#F4E0AA" />
+          <stop offset="50%" stopColor="#E7C566" />
+          <stop offset="100%" stopColor="#C9A24B" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M12 3 L12 21 M5 10 L12 3 L19 10"
+        stroke={armed ? "url(#arrow-gold)" : "currentColor"}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+    {armed && (
+      <>
+        {/* Particules d'or scintillantes autour de la flèche */}
+        {[0, 1, 2, 3].map((i) => {
+          const angle = (i / 4) * Math.PI * 2;
+          const r = 10;
+          return (
+            <motion.span
+              key={i}
+              className="absolute w-[3px] h-[3px] rounded-full"
+              style={{
+                left: `calc(50% + ${Math.cos(angle) * r}px)`,
+                top: `calc(50% + ${Math.sin(angle) * r}px)`,
+                background: "#E7C566",
+                boxShadow: "0 0 5px #E7C566",
+                transform: "translate(-50%, -50%)",
+              }}
+              animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+            />
+          );
+        })}
+      </>
+    )}
+  </span>
+);
+
+/** Trombone wireframe filaire (or fin) */
+const WirePaperclip = ({ tone = "gold" }) => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+    <path
+      d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l8.57-8.57a4 4 0 0 1 5.66 5.66l-8.58 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
+      stroke={tone === "gold" ? "#E7C566" : "rgba(255,255,255,0.35)"}
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export const Composer = ({
   value = "",
@@ -232,20 +304,17 @@ export const Composer = ({
           data-testid="composer-file-input"
         />
 
-        {/* Trombone d'élite — sans contour, juste icône qui réagit */}
+        {/* Trombone wireframe — sans fond, juste contour or fin */}
         <button
           type="button"
           onClick={handleAttachClick}
           aria-label={canUpload ? "Joindre un fichier" : "Activer un plan pour joindre un fichier"}
           title={canUpload ? "PDF, DOCX, TXT, MD · 10 Mo / fichier" : "Upload réservé aux plans Creator / Infinite"}
           disabled={isBusy}
-          className={`w-9 h-9 flex items-center justify-center self-end pb-0.5 transition-all duration-200
-            ${canUpload
-              ? "text-[#E7C566]/80 hover:text-[#E7C566] hover:scale-110"
-              : "text-white/30 hover:text-white/55"}`}
+          className={`w-9 h-9 flex items-center justify-center self-end pb-0.5 transition-transform duration-200 ${canUpload ? "hover:scale-110" : ""}`}
           data-testid="composer-attach-button"
         >
-          {canUpload ? <Paperclip className="w-[18px] h-[18px]" strokeWidth={1.7} /> : <Lock className="w-4 h-4" strokeWidth={1.7} />}
+          {canUpload ? <WirePaperclip tone="gold" /> : <Lock className="w-4 h-4 text-white/30" strokeWidth={1.7} />}
         </button>
 
         <textarea
@@ -256,32 +325,34 @@ export const Composer = ({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={
-            isListening ? "Laurent.ia écoute…" :
-            isBusy ? "Laurent.ia réfléchit…" :
+            isListening ? "Laurent.ia ap koute…" :
+            isBusy ? "Laurent.ia ap reflechi…" :
             files.length ? "Décris ce que tu veux faire avec ces fichiers…" :
-            "Posez votre question…"
+            "Djis poze keksion ou…"
           }
           rows={1}
           disabled={isBusy}
           className="flex-1 resize-none bg-transparent outline-none border-0 font-sans text-[15px] text-[#F1F4FA]
-            placeholder:text-white/35 leading-relaxed py-1.5 px-2 max-h-[168px] thin-scroll"
+            placeholder:text-white/40 leading-relaxed py-1.5 px-2 max-h-[168px] thin-scroll"
           data-testid="composer-input"
           style={{ scrollbarWidth: "thin", fontFamily: '"Urbanist", sans-serif' }}
         />
 
         <div className="flex items-center gap-1.5 self-end pb-0.5">
-          {/* Onde sonore : remplace le micro statique */}
-          <div
+          {/* Onde sonore : remplace le micro statique — clic active la dictée */}
+          <button
+            type="button"
             onClick={handleSoundWaveClick}
-            className={`flex items-center justify-center cursor-pointer rounded-full
-              ${isListening ? "bg-[#17a2b8]/[0.10] shadow-[0_0_18px_rgba(23,162,184,0.40)]" : "hover:bg-white/[0.04]"}
+            className={`relative flex items-center justify-center rounded-full p-1.5
+              ${isListening ? "bg-[#1D8CF8]/[0.06]" : "hover:bg-white/[0.04]"}
               transition-all duration-200`}
+            aria-label={isListening ? "Arrêter la dictée" : "Démarrer la dictée vocale"}
             data-testid="composer-mic-wave"
           >
             <SoundWave active={isListening} />
-          </div>
+          </button>
 
-          {/* Bouton submit : MUTATION OR LIQUIDE dès la première lettre tapée */}
+          {/* Flèche-Sagaie — mutation OR LIQUIDE dès le 1er caractère */}
           <motion.button
             type="submit"
             disabled={!hasContent || isBusy}
@@ -297,19 +368,37 @@ export const Composer = ({
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300
               ${hasContent && !isBusy
                 ? "bg-gradient-to-br from-[#C9A24B] to-[#E7C566] text-[#0A0F1F]"
-                : "bg-white/[0.04] text-white/30"
+                : "bg-white/[0.04] text-white/35"
               }`}
             data-testid="composer-submit"
             data-armed={hasContent && !isBusy ? "true" : "false"}
           >
             {isBusy ? <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} />
               : isListening ? <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
-              : <ArrowUp className="w-4 h-4" strokeWidth={2.4} />}
+              : <GoldArrow armed={hasContent} />}
           </motion.button>
         </div>
       </motion.form>
 
-      <div className="mt-2 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.28em] text-white/30">
+      {/* Bandeau multilingue défilant — ancrage culturel permanent */}
+      <div
+        className="mt-2 overflow-hidden px-2"
+        data-testid="diaspora-marquee-container"
+        aria-hidden="true"
+      >
+        <div
+          className="diaspora-marquee font-mono text-[10px] uppercase tracking-[0.28em] text-[#C9A24B]/40"
+          style={{ fontFamily: '"Urbanist", sans-serif', fontWeight: 500 }}
+        >
+          {[...DIASPORA_CONCEPTS, ...DIASPORA_CONCEPTS].map((c, i) => (
+            <span key={i} className="whitespace-nowrap px-3">
+              {c} <span className="text-[#17a2b8]/35 mx-2">·</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-1 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.28em] text-white/30">
         <span data-testid="composer-version">Laurent.ia · v1.2 · CVLN Group</span>
         <span className="hidden sm:inline">Entrée = envoyer</span>
       </div>
