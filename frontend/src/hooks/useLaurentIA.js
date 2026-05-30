@@ -141,6 +141,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
 
   // ------------- Speech Synthesis -------------
   const speak = useCallback((text) => {
+    if (window.localStorage.getItem("laurentia_voice") === "off") return;
     if (!("speechSynthesis" in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);

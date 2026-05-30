@@ -27,6 +27,18 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.8 — frekcore prod + markdown + paramètres + partage + service worker + multilingue (30/05/2026)
+- ✅ **frekcore production branché** : `FREKCORE_API_URL=https://frekcore.com` + `FREKCORE_API_KEY=cvl-brain` (client ID FREK). Bridge avec `follow_redirects=True`, headers `X-API-Key` + `X-Client-ID`. Routage intelligent : `DEMO-*` → whitelist locale (toujours), autres → frekcore réel
+- ✅ **Migration instances** : 6 instances existantes mises à jour avec `tier=free` + nouveaux quotas (`tokens_limit_month=100k`, `tokens_limit_day=15k`, `memory_window=10`, `rate_per_min=10`)
+- ✅ **Memory window enforcement** : le gateway charge uniquement les N derniers échanges (`memory_window` du tier) et les injecte dans le system prompt — économies tokens + isolation tier
+- ✅ **Daily quota** : compteur `tokens_used` par jour dans `laurentia_usage` (bucket `{frek_id, day}`), dégradation gracieuse si dépassement
+- ✅ **Markdown rendering** dans les bulles assistant via `react-markdown + remark-gfm` + thème CSS Laurent.ia (titres bleu, gras gold, code mono, tables, blockquotes). User reste en texte brut
+- ✅ **SettingsModal** (Paramètres) : tier + usage tokens (barre de progression) + toggle voix + toggle détection langue + URL de partage de la session courante (1-click copy)
+- ✅ **Partage session** : URL `?session={sid}` détectée au chargement → `loadSession(sid)` → conversation entière restaurée
+- ✅ **Détection langue auto** : system prompt mis à jour ("français par défaut, créole martiniquais/guadeloupéen si l'interlocuteur t'écrit en créole, anglais s'il t'écrit en anglais") — Claude détecte natif
+- ✅ **Service Worker** (`/sw.js`) : cache shell léger pour graceful offline (l'API n'est jamais cachée, message hors-ligne renvoyé sinon)
+- ✅ **Voix respect setting** : `localStorage.laurentia_voice === "off"` désactive le TTS
+
 ### v0.7 — 3 tiers Free/Creator/Infinite + quotas intelligents + PricingModal (30/05/2026)
 - ✅ **Modèle 3-tiers** : `Free` (gratuit, 10 échanges mémoire, 100k tokens/mois) · `Creator €15/mois` (100 échanges, 2M tokens, upload fichiers) · `Infinite €39/mois` (500 échanges, 10M tokens, agents IA, vitesse prioritaire, multi-modèles à venir). Source de vérité serveur : `PACKAGES` dict dans `routes/billing.py`
 - ✅ **Rate limiting per-min par tier** via `services/rate_limit.py` (sliding window in-memory, Redis-ready) ; le gateway `/api/laurentia/query` lève 429 si dépassement

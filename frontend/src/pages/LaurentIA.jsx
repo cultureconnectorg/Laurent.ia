@@ -104,6 +104,16 @@ export default function LaurentIA() {
     return () => { cancelled = true; };
   }, []);
 
+  // Load shared session from ?session=
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session");
+    if (sid) {
+      loadSession(sid);
+      window.history.replaceState({}, "", "/");
+    }
+  }, [loadSession]);
+
   const handleSubmit = (text) => {
     setComposerValue("");
     sendQuery(text);
@@ -144,6 +154,7 @@ export default function LaurentIA() {
         onOpenChange={setMenuOpen}
         onPickSession={handlePickSession}
         onNewSession={handleNewSession}
+        currentSessionId={meta.session_id}
       />
 
       <main

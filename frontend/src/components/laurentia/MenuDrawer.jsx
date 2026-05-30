@@ -16,10 +16,11 @@ import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerpr
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import PricingModal from "@/components/laurentia/PricingModal";
+import SettingsModal from "@/components/laurentia/SettingsModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) => {
+export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, currentSessionId = null }) => {
   const { user, isAuthenticated, login, loginWithFrekId, logout, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
   const [frekSubmitting, setFrekSubmitting] = useState(false);
   const [frekError, setFrekError] = useState(null);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const frekRef = useRef(null);
 
   // Charge l'historique UNIQUEMENT si authentifié
@@ -280,7 +282,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
             )}
             <button
               type="button"
-              onClick={() => toast("Paramètres bientôt disponibles")}
+              onClick={() => setSettingsOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left
                 hover:bg-white/[0.04] transition-colors text-white/70 hover:text-white"
               data-testid="menu-settings"
@@ -305,6 +307,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
       </SheetContent>
 
       <PricingModal open={pricingOpen} onOpenChange={setPricingOpen} currentTier={user?.tier || "free"} />
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} currentSessionId={currentSessionId} />
     </Sheet>
   );
 };

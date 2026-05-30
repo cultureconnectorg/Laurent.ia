@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 /**
  * ChatBubble — bulle de chat (utilisateur ou assistant).
  *
  * Props:
  *   role: "user" | "assistant"
- *   text: contenu
+ *   text: contenu (markdown pour l'assistant, brut pour user)
  *   streaming: bool — affiche le curseur clignotant
  */
 export const ChatBubble = ({ role = "assistant", text = "", streaming = false }) => {
@@ -32,10 +34,18 @@ export const ChatBubble = ({ role = "assistant", text = "", streaming = false })
         >
           {isUser ? "Toi" : "Laurent.ia"}
         </div>
-        <div className="font-sans text-[15px] sm:text-base leading-relaxed text-[#F1F4FA] whitespace-pre-wrap break-words">
-          {text}
-          {streaming && (
-            <span className="inline-block w-[7px] h-[16px] align-[-2px] ml-1 bg-[#6BA8FF]/85 animate-pulse rounded-[1px]" />
+        <div className="font-sans text-[15px] sm:text-base leading-relaxed text-[#F1F4FA] break-words">
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{text}</div>
+          ) : (
+            <div className="laurent-md">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {text || ""}
+              </ReactMarkdown>
+              {streaming && (
+                <span className="inline-block w-[7px] h-[16px] align-[-2px] ml-1 bg-[#6BA8FF]/85 animate-pulse rounded-[1px]" />
+              )}
+            </div>
           )}
         </div>
       </div>

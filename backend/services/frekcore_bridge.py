@@ -36,39 +36,56 @@ async def validate_frek_id(frek_id: str) -> dict:
     """
     Valide un FREK-ID auprès du service frekcore.
 
-    En dev (pas de FREKCORE_API_URL): liste blanche stricte _DEV_VALID_FREK_IDS.
-    En prod: appel HTTP vers FREKCORE_API_URL.
-
-    Retour: { valid: bool, frek_id, role, first_name? }
+    Routage:
+    - `DEMO-*` → toujours dev whitelist (utile pour démo/tests même en prod)
+    - autres   → frekcore.com si configuré, sinon dev whitelist
     """
-    if not is_remote_configured():
-        key = (frek_id or "").strip().upper()
+    key = (frek_id or "").strip().upper()
+
+    # Dev / demo IDs — toujours validés via whitelist locale
+    if key.startswith("DEMO-"):
         meta = _DEV_VALID_FREK_IDS.get(key)
         if not meta:
             return {"valid": False, "frek_id": key}
         return {"valid": True, "frek_id": key, **meta}
 
-    async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT) as client:
-        r = await client.get(
-            f"{FREKCORE_API_URL.rstrip('/')}/api/frek/validate/{frek_id}",
-            headers={"X-API-Key": FREKCORE_API_KEY},
-        )
-        if r.status_code == 404:
-            return {"valid": False, "frek_id": frek_id}
-        r.raise_for_status()
-        return r.json()
+    if not is_remote_configured():
+        meta = _DEV_VALID_FREK_IDS.get(key)
+        if not meta:
+            return {"valid": False, "frek_id": key}
+        return {"valid": True, "frek_id": key, **meta}
+
+    try:
+        async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT, follow_redirects=True) as client:
+            r = await client.get(
+                f"{FREKCORE_API_URL.rstrip('/')}/api/frek/validate/{frek_id}",
+                headers={"X-API-Key": FREKCORE_API_KEY, "X-Client-ID": "cvl-brain"},
+            )
+            if r.status_code == 404:
+                return {"valid": False, "frek_id": frek_id}
+            if r.status_code >= 500:
+                # Frekcore down → ne fallback pas (sécurité), refuse
+                return {"valid": False, "frek_id": frek_id, "error": "frekcore unavailable"}
+            r.raise_for_status()
+            return r.json()
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        return {"valid": False, "frek_id": frek_id, "error": "frekcore unreachable"}
 
 
 async def get_profile(frek_id: str) -> dict:
     """Profil complet enrichi (cultural_profile, badges, wallet)."""
-    if not is_remote_configured():
-        # En dev on délègue à kiltikonet_bridge qui détient les profils 7D mockés
+    key = (frek_id or "").strip().upper()
+    if key.startswith("DEMO-") or not is_remote_configured():
         return await kiltikonet_bridge.get_frek_profile(frek_id)
 
-    async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT) as client:
-        r = await client.get(
-            f"{FREKCORE_API_URL.rstrip('/')}/api/frek/{frek_id}/profile",
-            headers={"X-API-Key": FREKCORE_API_KEY},
-        )
-        r.raise_for_status()
-        return r.json()
+    try:
+        async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT, follow_redirects=True) as client:
+            r = await client.get(
+                f"{FREKCORE_API_URL.rstrip('/')}/api/frek/{frek_id}/profile",
+                headers={"X-API-Key": FREKCORE_API_KEY, "X-Client-ID": "cvl-brain"},
+            )
+            r.raise_for_status()
+            return r.json()
+    except (httpx.RequestError, httpx.HTTPStatusError):
+        # Fallback profil minimal
+        return {"frek_id": frek_id, "first_name": frek_id.split("-")[-1].capitalize(), "role": "member", "cultural_profile": {}, "badges": [], "wallet": {}}

@@ -24,6 +24,11 @@ function AppRouter() {
 function App() {
   useEffect(() => {
     document.documentElement.classList.add("dark");
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
   }, []);
 
   return (

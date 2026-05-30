@@ -194,6 +194,15 @@ async def query(payload: QueryRequest, request: Request):
     if not check_and_consume(payload.frek_id, rate_per_min):
         raise HTTPException(429, "Trop de requêtes. Patiente quelques secondes.")
 
+    # 2c. Daily quota
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    day_used = await db.laurentia_usage.find_one(
+        {"frek_id": payload.frek_id, "day": today}, {"_id": 0, "tokens_used": 1}
+    )
+    day_tokens = int((day_used or {}).get("tokens_used", 0))
+    day_limit = int(instance.get("tokens_limit_day", 15_000))
+    over_daily = day_tokens >= day_limit and instance.get("tier", "free") == "free"
+
     # 3. quota
     used = int(instance.get("tokens_used_month", 0))
     limit = int(instance.get("tokens_limit_month", 10000))
@@ -237,13 +246,24 @@ async def query(payload: QueryRequest, request: Request):
                 yield f"event: done\ndata: {json.dumps({'quota_warning': True, 'tokens_used': 0, 'latency_ms': int((time.perf_counter()-started)*1000)})}\n\n"
                 return
 
-            # Charge contextuel: derniers messages de la session (mémoire courte)
-            mem_doc = await db.laurentia_memory.find_one({"frek_id": payload.frek_id}, {"_id": 0})
+            # Charge contextuel: derniers messages selon memory_window du tier
+            memory_window = int(instance.get("memory_window", 10))
+            mem_doc = await db.laurentia_memory.find_one(
+                {"frek_id": payload.frek_id}, {"_id": 0, "sessions": {"$slice": -memory_window}}
+            )
+            recent_sessions = (mem_doc or {}).get("sessions", []) if mem_doc else []
+            enriched_prompt = system_prompt
+            if recent_sessions:
+                ctx_lines = []
+                for s in recent_sessions[-memory_window:]:
+                    ctx_lines.append(f"[Échange précédent] Utilisateur: {s.get('input','')[:300]}")
+                    ctx_lines.append(f"[Échange précédent] Laurent.ia: {s.get('output','')[:300]}")
+                enriched_prompt = system_prompt + "\n\n--- Mémoire récente ---\n" + "\n".join(ctx_lines[-memory_window*2:])
             full_response_parts: list[str] = []
 
             async for chunk in cvl_brain.chat_stream(
                 user_text=payload.input,
-                system_message=system_prompt,
+                system_message=enriched_prompt,
                 session_id=session_id,
             ):
                 full_response_parts.append(chunk)
@@ -290,6 +310,13 @@ async def query(payload: QueryRequest, request: Request):
                     "$inc": {"tokens_used": tokens_in + tokens_out, "requests_count": 1},
                     "$set": {"last_request": now_iso},
                 },
+                upsert=True,
+            )
+            # Update usage daily bucket
+            today_key = now_iso[:10]
+            await db.laurentia_usage.update_one(
+                {"frek_id": payload.frek_id, "day": today_key},
+                {"$inc": {"tokens_used": tokens_in + tokens_out, "requests_count": 1}},
                 upsert=True,
             )
             # Append to memory (court terme: derniers échanges)
