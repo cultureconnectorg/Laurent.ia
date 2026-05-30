@@ -7,8 +7,9 @@ const LABELS = {
   speaking:  "Laurent.ia répond",
 };
 
-export const StateIndicator = ({ state = "idle" }) => {
+export const StateIndicator = ({ state = "idle", hidden = false }) => {
   const label = LABELS[state] || LABELS.idle;
+  if (hidden) return null;
   return (
     <div className="absolute left-1/2 -translate-x-1/2 top-[calc(50%+min(34vmin,300px))] z-10">
       <AnimatePresence mode="wait">

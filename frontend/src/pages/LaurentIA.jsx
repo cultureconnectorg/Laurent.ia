@@ -88,7 +88,7 @@ export default function LaurentIA() {
         />
 
         <OrbeLaurentIA state={state} />
-        <StateIndicator state={state} />
+        <StateIndicator state={state} hidden={!!response} />
 
         <ConversationZone
           transcript={transcript}
