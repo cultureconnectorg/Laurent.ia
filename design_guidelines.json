@@ -1,0 +1,140 @@
+{
+  "project_name": "Laurent.ia Sovereign Dashboard",
+  "theme": "dark",
+  "archetype": "Archetype 5 (Luxury) mixed with Terminal Aesthetics",
+  "design_philosophy": {
+    "core_concept": "The Private Oracle. A highly confidential, sovereign, and premium voice-first single-page AI dashboard. It should feel like a private, intelligent chamber rather than a generic tech tool. Inspired by French Caribbean heritage (warmth, sovereignty, depth) intersecting with brutalist terminal typography.",
+    "anti_patterns_avoided": [
+      "No generic chatbot UI (no chat bubbles, no input fields, no send buttons).",
+      "No standard purple/blue tech gradients.",
+      "No Material Design shadows or generic cards.",
+      "No Inter or generic sans-serif fonts for main presence."
+    ]
+  },
+  "typography": {
+    "primary_heading_font": {
+      "name": "Cormorant Garamond",
+      "import_url": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap",
+      "usage": "Brand presence, FreKIDBadge, prominent numbers. Evokes sovereignty, exclusivity, and heritage."
+    },
+    "secondary_body_font": {
+      "name": "IBM Plex Mono",
+      "import_url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600&display=swap",
+      "usage": "ConversationZone (streaming tokens), StateIndicator, StatusBar. Evokes terminal aesthetics, precision, and raw intelligence."
+    },
+    "rules": [
+      "Headings and badges MUST use tight tracking (tracking-tight) for large text, and extremely wide tracking (tracking-[0.2em]) for uppercase labels.",
+      "Do not use generic sans-serif fonts anywhere.",
+      "Conversation stream text should be highly legible, using IBM Plex Mono at text-lg or text-xl, leading-relaxed."
+    ]
+  },
+  "color_palette": {
+    "background": {
+      "base": "#0A0A0A",
+      "surface": "#121212",
+      "description": "Deep obsidian and abyssal blacks. Do not use pure #000000. Use the provided background image for cinematic grain."
+    },
+    "text": {
+      "primary": "#F3EFE7",
+      "secondary": "#A19D98",
+      "muted": "#6B6865"
+    },
+    "accents": {
+      "caribbean_amber": "#D97736",
+      "oceanic_teal": "#1A3B3B",
+      "thinking_bone": "#E6E2D8"
+    },
+    "states": {
+      "idle": "Muted, extremely low contrast. Grays and transparent teal.",
+      "listening": "Caribbean Amber (#D97736) glow, signaling active attention.",
+      "thinking": "Pulsing Thinking Bone (#E6E2D8), feeling like a high-compute process."
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "Single-page absolute/fixed layout. Zero scroll. The orb is the center of the universe. UI elements (badges, status) are pushed to the absolute edges (p-6 or p-8) to maximize negative space.",
+    "components": {
+      "FreKIDBadge": "Absolute top-left. p-8.",
+      "StatusBar": "Absolute top-right. Minimal grid strip.",
+      "OrbeLaurentIA": "Absolute center of screen. Large and commanding.",
+      "StateIndicator": "Directly below the Orb, creating tension.",
+      "ConversationZone": "Bottom half of the screen, above the mic button. max-w-2xl, centered.",
+      "MicButton": "Absolute bottom-center, hovering with ample bottom padding (pb-12)."
+    }
+  },
+  "surface_strategies": {
+    "glassmorphism": {
+      "usage": "Used ONLY for FreKIDBadge and MicButton to separate them from the atmospheric background.",
+      "classes": "backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full"
+    },
+    "terminal_strip": {
+      "usage": "Used for StatusBar.",
+      "classes": "border-b border-white/10 bg-transparent text-white/50 uppercase text-xs tracking-widest px-4 py-2 flex gap-6"
+    }
+  },
+  "motion_and_interactions": {
+    "OrbeLaurentIA": {
+      "idle": "Slow, deep breathing scale (1.0 to 1.05) over 4 seconds. Opacity shifts between 30% and 50%. Layered blur-3xl divs.",
+      "listening": "Faster pulse. Scale pushes to 1.15. Color shifts aggressively to Caribbean Amber. Outer glow intensifies.",
+      "thinking": "Rapid, erratic micro-rotations and scale jumps. Color shifts to bright bone-white.",
+      "implementation": "Use framer-motion. Create 3-4 nested absolute divs with varying sizes and high blur (blur-3xl) to create a volumetric lighting effect."
+    },
+    "ConversationZone": {
+      "streaming_tokens": "Tokens should appear smoothly. If possible, add a slight blur-to-focus animation on new tokens entering.",
+      "fading": "Older text should gracefully fade out using mask-image: linear-gradient."
+    }
+  },
+  "media_assets": {
+    "images": [
+      {
+        "category": "background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/8c6b8aed-7c9d-4df8-bbdc-f9c683fc4e52/images/8bfb998ff7a2f0223d6fc292e64b5a5b4819bc00ec622b98e51befa5074cc799.png",
+        "description": "Premium dark cinematic grain background. MUST be used as a full-screen absolute background behind everything with opacity-40 to opacity-60 over a base #0A0A0A background.",
+        "slug": "premium_dark_bg"
+      }
+    ],
+    "icons_library": "lucide-react"
+  },
+  "components_spec": [
+    {
+      "name": "OrbeLaurentIA",
+      "type": "custom",
+      "instructions": "Central visual anchor. Do not use an image. Build using nested motion.div elements from framer-motion with rounded-full, mix-blend-screen, and heavy blur (blur-3xl). Pass a 'state' prop ('idle', 'listening', 'thinking') to trigger different animation variants."
+    },
+    {
+      "name": "StateIndicator",
+      "type": "custom",
+      "instructions": "Simple motion text. e.g., 'Laurent.ia écoute...'. Use IBM Plex Mono, uppercase, text-xs, tracking-[0.2em], text-white/40."
+    },
+    {
+      "name": "ConversationZone",
+      "type": "custom",
+      "instructions": "Container for SSE streaming text. Must handle text wrapping elegantly. Use IBM Plex Mono, text-lg, text-[#F3EFE7]."
+    },
+    {
+      "name": "FreKIDBadge",
+      "type": "custom",
+      "instructions": "Glassmorphic pill top-left. Shows user's first name. Font: Cormorant Garamond, italic, text-lg."
+    },
+    {
+      "name": "StatusBar",
+      "type": "custom",
+      "instructions": "Minimalist terminal strip top-right. Shows 'v2.0-SOVEREIGN', 'Tokens: XX', 'JCC: XX'. Font: IBM Plex Mono."
+    },
+    {
+      "name": "MicButton",
+      "type": "custom",
+      "instructions": "Massive tactile button. Bottom center. Toggle state between active/inactive. When active, glow Caribbean Amber. Must have data-testid='mic-toggle-button'."
+    }
+  ],
+  "accessibility_and_testing": {
+    "data_testids": [
+      "mic-toggle-button",
+      "conversation-zone",
+      "frekid-badge",
+      "status-bar-tokens",
+      "status-bar-jcc"
+    ],
+    "contrast": "Ensure streaming text (#F3EFE7) against dark background exceeds 4.5:1. Orb glowing should not obscure text."
+  },
+  "instructions_to_main_agent": "Implement a single-page React app (hybrid_fullstack). Install 'framer-motion' for the Orb animations. Import the specified Google Fonts in index.html or global CSS. The entire application must fit within 100vh with overflow-hidden to prevent scrolling. Use the provided background image in an absolute full-size container with z-[-1] to give the UI a premium cinematic grain. Create mock states for the Orb (idle -> listening -> thinking) triggered by the MicButton for the MVP."
+}
