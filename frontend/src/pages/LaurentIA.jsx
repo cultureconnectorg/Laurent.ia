@@ -17,19 +17,22 @@ import MenuDrawer from "@/components/laurentia/MenuDrawer";
  * Sinon mode démo (URL ?frek_id= ou localStorage ou DEMO-SAYD par défaut).
  */
 export default function LaurentIA() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, ecosystemMember, loading: authLoading } = useAuth();
 
-  const [demoFrekId] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.get("frek_id") ||
-      window.localStorage.getItem("laurentia_frek_id") ||
-      "DEMO-SAYD"
-    );
+  // FREK-ID anonyme par browser quand pas authentifié.
+  // Évite l'effet "pollution" où un visiteur voit l'historique d'un autre.
+  // Une fois login → on bascule sur le FREK-ID réel issu de l'auth.
+  const [anonFrekId] = useState(() => {
+    let v = window.localStorage.getItem("laurentia_anon_frek");
+    if (!v) {
+      v = "ANON-" + Math.random().toString(36).slice(2, 12).toUpperCase();
+      window.localStorage.setItem("laurentia_anon_frek", v);
+    }
+    return v;
   });
 
-  // Résout le FREK-ID : auth > démo
-  const frekId = isAuthenticated && user?.frek_id ? user.frek_id : demoFrekId;
+  // Résout le FREK-ID : auth > anonyme
+  const frekId = isAuthenticated && user?.frek_id ? user.frek_id : anonFrekId;
 
   const {
     state,
@@ -104,7 +107,6 @@ export default function LaurentIA() {
       <MenuDrawer
         open={menuOpen}
         onOpenChange={setMenuOpen}
-        frekId={frekId}
         onPickSession={handlePickSession}
         onNewSession={handleNewSession}
       />

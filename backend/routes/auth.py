@@ -17,6 +17,8 @@ import httpx
 from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
 from pydantic import BaseModel
 
+from services import frekcore_bridge
+
 EMERGENT_OAUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 SESSION_TTL_DAYS = 7
 COOKIE_NAME = "session_token"
@@ -28,6 +30,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 class SessionExchangeRequest(BaseModel):
     session_id: str
+
+
+class FrekLoginRequest(BaseModel):
+    frek_id: str
 
 
 class UserOut(BaseModel):
@@ -208,6 +214,112 @@ async def me(request: Request):
         "name": user["name"],
         "picture": user.get("picture"),
         "frek_id": user["frek_id"],
+        "role": user.get("role"),
+        "ecosystem_member": bool(user.get("ecosystem_member", False)),
+    }
+
+
+@router.post("/frek")
+async def login_with_frek_id(payload: FrekLoginRequest, request: Request, response: Response):
+    """
+    Connexion directe via un FREK-ID existant (membre de l'écosystème).
+    Valide auprès du service frekcore (mocké en dev, HTTP en prod).
+    """
+    db = request.app.state.db
+    raw = (payload.frek_id or "").strip().upper()
+    if not raw or len(raw) < 4:
+        raise HTTPException(400, "FREK-ID invalide")
+
+    validation = await frekcore_bridge.validate_frek_id(raw)
+    if not validation.get("valid"):
+        raise HTTPException(404, "FREK-ID non reconnu")
+
+    profile = await frekcore_bridge.get_profile(raw)
+    frek_id = validation.get("frek_id", raw)
+    first_name = profile.get("first_name") or raw.split("-")[-1].capitalize()
+    role = validation.get("role") or profile.get("role") or "member"
+    picture = profile.get("picture")
+    email = profile.get("email") or f"{frek_id.lower()}@frekcore.local"
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # Upsert user (clé = frek_id pour les membres écosystème)
+    existing = await db.users.find_one({"frek_id": frek_id}, {"_id": 0})
+    if existing:
+        user_id = existing["user_id"]
+        await db.users.update_one(
+            {"frek_id": frek_id},
+            {"$set": {"name": first_name, "picture": picture, "role": role, "last_login": now_iso}},
+        )
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id,
+            "email": email,
+            "name": first_name,
+            "picture": picture,
+            "frek_id": frek_id,
+            "role": role,
+            "ecosystem_member": True,  # flag pour réactiver la couche écosystème dans l'UI
+            "created_at": now_iso,
+            "last_login": now_iso,
+        })
+
+    # Upsert instance Laurent.ia
+    inst = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not inst:
+        await db.laurentia_instances.insert_one({
+            "frek_id": frek_id,
+            "tenant_path": f"/users/{frek_id}",
+            "version": "free",
+            "created_at": now_iso,
+            "last_active": now_iso,
+            "tokens_used_month": 0,
+            "tokens_limit_month": 10000,
+            "jcc_balance": int((profile.get("wallet") or {}).get("jcc_balance", 0)),
+            "status": "active",
+            "encryption_key_ref": f"ref::{frek_id[-8:]}",
+        })
+        await db.laurentia_memory.insert_one({
+            "frek_id": frek_id,
+            "sessions": [],
+            "long_term": {"facts": [], "preferences": {}, "projects": [], "people": []},
+            "cultural_profile": profile.get("cultural_profile", {}),
+            "updated_at": now_iso,
+        })
+
+    # Crée la session
+    session_token = f"frek_{uuid.uuid4().hex}"
+    expires_at = datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS)
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": expires_at.isoformat(),
+        "created_at": now_iso,
+        "auth_method": "frek",
+    })
+
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=session_token,
+        max_age=SESSION_TTL_DAYS * 24 * 3600,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+    )
+
+    return {
+        "ok": True,
+        "user": {
+            "user_id": user_id,
+            "email": email,
+            "name": first_name,
+            "picture": picture,
+            "frek_id": frek_id,
+            "role": role,
+            "ecosystem_member": True,
+        },
     }
 
 

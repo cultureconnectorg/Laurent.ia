@@ -56,14 +56,38 @@ export function AuthProvider({ children }) {
     window.location.href = "/";
   }, []);
 
+  // Connexion via un FREK-ID existant (membre écosystème).
+  // Retourne { ok: true } | { ok: false, error }.
+  const loginWithFrekId = useCallback(async (frekId) => {
+    try {
+      const r = await fetch(`${API}/auth/frek`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ frek_id: frekId }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        return { ok: false, error: data.detail || `Erreur ${r.status}` };
+      }
+      const data = await r.json();
+      setUser(data.user);
+      return { ok: true, user: data.user };
+    } catch (e) {
+      return { ok: false, error: e.message || "Erreur réseau" };
+    }
+  }, []);
+
   const value = {
     user,
     loading,
     login,
+    loginWithFrekId,
     logout,
     refresh,
     isAuthenticated: !!user,
     frekId: user?.frek_id || null,
+    ecosystemMember: !!user?.ecosystem_member,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

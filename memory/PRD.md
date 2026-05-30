@@ -27,6 +27,15 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.5 — Auth FREK-ID (frekcore) + anonymat propre (30/05/2026)
+- ✅ **2 chemins d'auth dans le menu** : `Continuer avec Google` (onboarding nouveaux) + `Mon identifiant` (FREK-ID code direct pour membres écosystème)
+- ✅ Nouveau service **`services/frekcore_bridge.py`** — séparé, structure HTTP-ready. Swap zéro-code en prod via `FREKCORE_API_URL` + `FREKCORE_API_KEY` (ajoutés au `.env`). En dev : liste blanche stricte `{DEMO-SAYD, DEMO-ARTIST, DEMO-PRO}` qui rejette correctement les codes inconnus (404)
+- ✅ Backend `POST /api/auth/frek` — valide via frekcore, upsert user avec flag `ecosystem_member=true`, crée tenant Laurent.ia + memory si nouveau, dépose cookie 7j
+- ✅ Frontend AuthContext étendu (`loginWithFrekId`, `ecosystemMember`), MenuDrawer rebuilt avec input FREK-ID
+- ✅ **Anonymat propre** : visiteur non-loggué reçoit un `ANON-XXXXXXXX` unique par browser (localStorage), ne voit AUCUN historique d'autres utilisateurs. Plus de pollution DEMO-SAYD
+- ✅ **Historique verrouillé tant que non auth** : message "Connecte-toi pour retrouver tes conversations" affiché à la place de la liste
+- 🟡 Conversations anonymes orphelines au login (pas de migration ANON→FREK pour l'instant — feature P1)
+
 ### v0.4 — Pivot commercial : écosystème invisible (30/05/2026)
 - ✅ **SuggestionChips** : remplacement des 6 chips écosystème (Kiltikonet, Jeton CC, CC2026, Mon FREK-ID, Espace Pro, Culture) par 6 prompts génériques universels (Aide-moi à écrire, Synthétise une idée, Brainstorm créatif, Analyse un texte, Plan d'action, Explique-moi) — Laurent.ia parle à tout utilisateur, pas qu'à un membre CVLN
 - ✅ **Header** : label "FREK-ID" supprimé du pill avatar, pill KT masqué par défaut (`kt={null}` → render conditionnel `kt > 0`)
