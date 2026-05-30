@@ -27,6 +27,18 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v1.0 — Phase 1 : Blindage SecOps & Data (30/05/2026)
+- ✅ **Chiffrement AES-256-GCM au repos** (cryptography lib) : `services/crypto.py` (encrypt_text/decrypt_text) avec nonce 96 bits aléatoire par chiffrement, format `{v:1,n,c}` stockable BSON. `LAURENTIA_ENCRYPTION_KEY` figé en .env (production-grade). Rétro-compat : str legacy renvoyé tel quel par decrypt.
+- ✅ **Collections chiffrées** : `laurentia_interactions.input_text/output_text` ET `laurentia_memory.sessions[*].input/output` sont désormais des dicts `{v:1,n,c}` (vérifié en MongoDB).
+- ✅ **LAURENTIA_SECRET_SALT** figé (déjà en place) — pas de tokens orphelins au reboot.
+- ✅ **Upload fichiers multipart** sur `POST /api/laurentia/query` : champ JSON `payload` + 1..N champs `files`. Tier gate Creator/Infinite (HTTP 403 sinon avec CTA commercial).
+- ✅ **Parsing PDF (pypdf), DOCX (python-docx), TXT, MD** : `services/file_parser.py`. Limites : 10 Mo/fichier, 25 Mo total, 30 000 caractères extraits/fichier, 4 fichiers max. Texte extrait injecté dans le prompt sous forme de bloc Markdown `## Pièces jointes utilisateur`.
+- ✅ **Endpoint `/api/laurentia/upload-limits`** : expose publiquement les limites pour la UI.
+- ✅ **Composer.jsx** : bouton trombone (creator/infinite) ↔ cadenas (free, click → PricingModal/MenuDrawer). Chips d'attachement, suppression individuelle, jauge volume total / 25 Mo, message d'erreur dédié.
+- ✅ **RichContent.jsx — Buffer de sécurisation** : balise `<json>` ou `<artifact>` non fermée → rendu d'un `PendingBlock` (skeleton + spinner), AUCUN parsing Markdown du contenu tronqué. Indestructible en streaming.
+- ✅ **Tests automatisés** : `tests/test_phase1_security_uploads.py` (17 tests) + `tests/test_phase1_integration_http.py` (6 tests) — 23/23 GREEN. Couvre crypto round-trip, nonce unique, rétrocompat, PDF/DOCX/TXT/MD parsing, limites taille, gate tier 403, encryption at rest, decrypt round-trip via API.
+- ✅ **conftest.py** : load_dotenv au démarrage des tests pour cohérence clé.
+
 ### v0.9 — Doctrine Laurent.ia v0.8 + multi-formats (JSON charts + Artifacts) (30/05/2026)
 - ✅ **System prompt souverain v0.8** appliqué : Diaspora, Daemon Luciole (silencieux), Crédits Computation, multi-agents Stitch, couplage NFC. Secret Défense strict (politique J+90 publique, jamais d'allusion fine-tuning/pipeline). Refus jailbreak.
 - ✅ **Bloc `<json>` → Recharts** : bar/line/area/pie auto-rendus depuis `RichContent.jsx`. Schéma `{type, title, data, xKey, series}`. Thème Laurent.ia (palette bleue + accents gold). Tooltip noir, légende blanche.
