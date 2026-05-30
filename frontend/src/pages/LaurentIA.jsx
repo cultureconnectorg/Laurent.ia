@@ -9,6 +9,8 @@ import ChatBubble from "@/components/laurentia/ChatBubble";
 import Composer from "@/components/laurentia/Composer";
 import OrbeLaurentIA from "@/components/laurentia/OrbeLaurentIA";
 import MenuDrawer from "@/components/laurentia/MenuDrawer";
+import { ECOSYSTEM_CHIPS } from "@/components/laurentia/ecosystemChips";
+import { toast } from "sonner";
 
 /**
  * LaurentIA — page principale chat-first.
@@ -69,6 +71,39 @@ export default function LaurentIA() {
     return () => window.removeEventListener("keydown", onKey);
   }, [cancel]);
 
+  // Poll Stripe checkout status si retour de succès
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get("session_id");
+    const upgrade = params.get("upgrade");
+    if (upgrade === "cancel") {
+      toast("Upgrade annulé");
+      window.history.replaceState({}, "", "/");
+      return;
+    }
+    if (upgrade !== "success" || !session) return;
+    let cancelled = false;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled || attempts >= 6) return;
+      attempts += 1;
+      try {
+        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/billing/status/${session}`, { credentials: "include" });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.payment_status === "paid") {
+            toast("Pro activé. Bienvenue.");
+            window.history.replaceState({}, "", "/");
+            return;
+          }
+        }
+      } catch (_) {}
+      setTimeout(poll, 2000);
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleSubmit = (text) => {
     setComposerValue("");
     sendQuery(text);
@@ -128,7 +163,7 @@ export default function LaurentIA() {
             >
               <HeroPanel state={state} />
               <div className="w-full mt-6 mb-2">
-                <SuggestionChips onPick={handlePickChip} disabled={state !== "idle"} />
+                <SuggestionChips chips={ecosystemMember ? ECOSYSTEM_CHIPS : undefined} onPick={handlePickChip} disabled={state !== "idle"} />
               </div>
             </motion.div>
           ) : (

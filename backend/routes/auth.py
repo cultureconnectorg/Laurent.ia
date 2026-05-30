@@ -335,3 +335,34 @@ async def logout(
         await request.app.state.db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie(COOKIE_NAME, path="/", samesite="none", secure=True)
     return {"ok": True}
+
+
+class MigrateAnonRequest(BaseModel):
+    anon_frek_id: str
+
+
+@router.post("/migrate-anon")
+async def migrate_anon(payload: MigrateAnonRequest, request: Request):
+    """
+    Migre les interactions anonymes (ANON-XXXX) vers le FREK-ID de l'utilisateur connecté.
+    Idempotent. Évite que le visiteur perde ce qu'il a fait avant login.
+    """
+    from services.security import tenant_id_for
+    db = request.app.state.db
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(401, "Non authentifié")
+    anon = (payload.anon_frek_id or "").strip().upper()
+    if not anon.startswith("ANON-"):
+        return {"ok": True, "migrated": 0}
+
+    src_tenant = tenant_id_for(anon)
+    dst_tenant = tenant_id_for(user["frek_id"])
+    if src_tenant == dst_tenant:
+        return {"ok": True, "migrated": 0}
+
+    res = await db.laurentia_interactions.update_many(
+        {"tenant_id": src_tenant},
+        {"$set": {"tenant_id": dst_tenant, "migrated_from_anon_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"ok": True, "migrated": res.modified_count}

@@ -12,7 +12,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight } from "lucide-react";
+import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -256,6 +256,40 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession }) 
 
           {/* Footer actions */}
           <div className="border-t border-white/[0.06] px-3 py-3 space-y-1">
+            {isAuthenticated && user?.version !== "pro" && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const r = await fetch(`${API}/billing/create-checkout`, {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ origin_url: window.location.origin, package_id: "pro_monthly" }),
+                    });
+                    if (!r.ok) {
+                      const d = await r.json().catch(() => ({}));
+                      toast(d.detail || "Erreur démarrage paiement");
+                      return;
+                    }
+                    const d = await r.json();
+                    window.location.href = d.url;
+                  } catch (e) {
+                    toast(e.message || "Erreur réseau");
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
+                  bg-gradient-to-br from-[#E7C566]/15 to-[#E7C566]/5 border border-[#E7C566]/30
+                  hover:from-[#E7C566]/25 hover:to-[#E7C566]/10 transition-colors text-[#E7C566]"
+                data-testid="menu-upgrade-pro"
+              >
+                <Sparkles className="w-4 h-4" strokeWidth={1.6} fill="#E7C566" />
+                <div className="flex-1">
+                  <div className="font-sans text-sm font-medium">Activer Pro</div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-70">€15/mois · Conversations illimitées</div>
+                </div>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => toast("Paramètres bientôt disponibles")}

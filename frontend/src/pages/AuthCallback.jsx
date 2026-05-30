@@ -38,6 +38,7 @@ export default function AuthCallback() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         await refresh();
+        await migrateAnonIfAny();
         // Clear hash and go home
         window.history.replaceState({}, "", "/");
         navigate("/", { replace: true, state: { user: data.user } });
@@ -46,7 +47,7 @@ export default function AuthCallback() {
         setTimeout(() => navigate("/", { replace: true }), 2000);
       }
     })();
-  }, [navigate, refresh]);
+  }, [navigate, refresh, migrateAnonIfAny]);
 
   return (
     <div className="w-full h-screen flex items-center justify-center bg-[#0A0F1F]" data-testid="auth-callback">

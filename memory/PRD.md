@@ -27,6 +27,15 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
+### v0.6 — Stripe Pro · Migration ANON→FREK · Écosystème conditionnel (30/05/2026)
+- ✅ **Stripe Checkout Pro €15/mois** via `emergentintegrations.payments.stripe` : `POST /api/billing/create-checkout` (auth-gated) → URL Stripe + session_id ; polling `GET /api/billing/status/{sid}` (frontend retombe sur la home avec `?upgrade=success&session_id=...` et active Pro de manière idempotente) ; webhook `POST /api/webhook/stripe` également idempotent (`credit_applied` flag dans `payment_transactions`)
+- ✅ **Bouton "Activer Pro"** visible dans le menu drawer (style gold, sous-titre "€15/mois · Conversations illimitées"), uniquement pour les utilisateurs authentifiés non-Pro
+- ✅ **Migration ANON→FREK** : nouveau `POST /api/auth/migrate-anon` → reaffecte les `laurentia_interactions` du `tenant_id(ANON-XXXX)` vers `tenant_id(user.frek_id)`. Appel automatique après chaque login (Google + FREK-ID) depuis `AuthContext.migrateAnonIfAny()`. localStorage anon vidé
+- ✅ **Chips conditionnels** : si `ecosystemMember=true` → chips spécialisés (Mon Kiltikonet · Mes Jetons CC · CC2026 · Mon FREK-ID · Espace Pro · LabelOS) ; sinon chips génériques universels. Switch live, zéro hardcoding visible aux utilisateurs hors écosystème
+- ✅ **Activation Pro idempotente** : double protection (status polling + webhook), `credit_applied=true` flag dans `payment_transactions` empêche le double-crédit
+- ✅ **PACKAGES côté serveur uniquement** : `{pro_monthly: €15}` — jamais le frontend ne décide du prix
+- 🟡 Le user object exposé à `useAuth().user` ne contient pas encore `version` (le check `user?.version !== "pro"` fonctionne en attendant que `/api/auth/me` renvoie `version` depuis l'instance — TODO P1)
+
 ### v0.5 — Auth FREK-ID (frekcore) + anonymat propre (30/05/2026)
 - ✅ **2 chemins d'auth dans le menu** : `Continuer avec Google` (onboarding nouveaux) + `Mon identifiant` (FREK-ID code direct pour membres écosystème)
 - ✅ Nouveau service **`services/frekcore_bridge.py`** — séparé, structure HTTP-ready. Swap zéro-code en prod via `FREKCORE_API_URL` + `FREKCORE_API_KEY` (ajoutés au `.env`). En dev : liste blanche stricte `{DEMO-SAYD, DEMO-ARTIST, DEMO-PRO}` qui rejette correctement les codes inconnus (404)

@@ -81,12 +81,15 @@ from routes.laurentia_sessions import router as laurentia_sessions_router  # noq
 from routes.brain import router as brain_router  # noqa: E402
 from routes.omega import router as omega_router  # noqa: E402
 from routes.auth import router as auth_router  # noqa: E402
+from routes.billing import router as billing_router, webhook_router as billing_webhook  # noqa: E402
 
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
 app.include_router(brain_router)
 app.include_router(omega_router)
 app.include_router(auth_router)
+app.include_router(billing_router)
+app.include_router(billing_webhook)
 
 
 # CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex

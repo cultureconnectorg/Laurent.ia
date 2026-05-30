@@ -31,6 +31,29 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Migration anonyme→FREK : appelée silencieusement après chaque login réussi.
+  // Définie tôt pour être référencée par le callback Auth (Google).
+  const migrateAnonIfAny = useCallback(async () => {
+    try {
+      const anon = window.localStorage.getItem("laurentia_anon_frek");
+      if (!anon || !anon.startsWith("ANON-")) return 0;
+      const r = await fetch(`${API}/auth/migrate-anon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ anon_frek_id: anon }),
+      });
+      window.localStorage.removeItem("laurentia_anon_frek");
+      if (r.ok) {
+        const d = await r.json();
+        return d.migrated || 0;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }, []);
+
   useEffect(() => {
     // CRITICAL: If returning from OAuth callback (hash with session_id),
     // skip the /me check. AuthCallback will exchange the session_id first.
@@ -57,7 +80,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Connexion via un FREK-ID existant (membre écosystème).
-  // Retourne { ok: true } | { ok: false, error }.
   const loginWithFrekId = useCallback(async (frekId) => {
     try {
       const r = await fetch(`${API}/auth/frek`, {
@@ -72,11 +94,12 @@ export function AuthProvider({ children }) {
       }
       const data = await r.json();
       setUser(data.user);
+      await migrateAnonIfAny();
       return { ok: true, user: data.user };
     } catch (e) {
       return { ok: false, error: e.message || "Erreur réseau" };
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = {
     user,
@@ -85,9 +108,11 @@ export function AuthProvider({ children }) {
     loginWithFrekId,
     logout,
     refresh,
+    migrateAnonIfAny,
     isAuthenticated: !!user,
     frekId: user?.frek_id || null,
     ecosystemMember: !!user?.ecosystem_member,
+    isPro: user?.version === "pro",
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
