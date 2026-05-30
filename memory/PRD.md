@@ -28,6 +28,13 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-PRODUCTION — Phase 8 : Manifeste Open-Core BSL 1.1 (30/05/2026)
+- ✅ **`/app/LICENSE.md`** : BSL 1.1 — Change Date 31/05/2029, Change License Apache 2.0, Usage Non Commercial (perso/académique/communautaire) autorisé, Usage Commercial via Creator (15 €/mois) / Infinite (39 €/mois) / Enterprise. 9 articles : octroi, restrictions, secret défense crypto, conversion, loi française.
+- ✅ **`/app/README.md`** : Manifeste public — vision souveraine, arborescence open-core/sovereign-brain, badges, démarrage rapide, capacités par tier, souveraineté.
+- ✅ **`/app/ARCHITECTURE.md`** : Roadmap 5 étapes — Façade `app.core` (alias d'imports), stubs fork public, injection secrets `os.environ`, mapping fichier-par-fichier, règles d'or contributeurs.
+- ✅ **Runtime intact** : 64/64 pytest GREEN, backend uptime stable, aucun import modifié. Split physique programmé à l'Étape 2.
+
+
 ### v1.2-PRODUCTION — Phase 7 : Hardware Branché (30/05/2026)
 - ✅ **Micro hardware** : `navigator.mediaDevices.getUserMedia({audio:true})` AVANT SpeechRecognition → prompt OS permission micro. Libération `MediaStreamTrack` à stop/onend.
 - ✅ **Trombone fonctionnel inconditionnel** : ouvre TOUJOURS file picker natif (peu importe tier). Badge Lock signal du paywall à venir. data-can-upload=true|false.
