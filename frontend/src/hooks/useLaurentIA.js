@@ -19,6 +19,7 @@ const initialMeta = {
 
 export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direct" } = {}) {
   const [state, setState] = useState("idle"); // idle | listening | thinking | speaking
+  const [phase, setPhase] = useState(null);   // "connecting" | "analyzing" | "synthesizing" | "rendering" | null
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
   const [history, setHistory] = useState([]); // [{role, text}]
@@ -143,17 +144,58 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   }, []);
 
   // ------------- Speech Synthesis -------------
+  // Sélection préférentielle d'une voix française à coloration caribéenne/chaleureuse.
+  // Heuristique : priorise les voix premium (Thomas, Audrey, Amélie, Antilles, Caribbean),
+  // puis les voix Google FR, puis tout fr-* par défaut.
+  const VOICE_PRIORITY = [
+    /antill|caribb|créol|creol|guadel|martin|haiti/i,        // 1. Voix créole / antillaise
+    /^Thomas$|^Audrey$|^Amélie$|^Amelie$|^Aurélie$|premium/i, // 2. Voix Apple premium FR
+    /Google.*français|Google.*French/i,                       // 3. Google FR
+    /Microsoft.*Henri|Microsoft.*Julie|Microsoft.*Paul/i,     // 4. Microsoft FR Premium
+  ];
+
+  const pickFrenchVoice = useCallback(() => {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    const frVoices = voices.filter((v) => /^fr/i.test(v.lang));
+    if (!frVoices.length) return null;
+    for (const pattern of VOICE_PRIORITY) {
+      const found = frVoices.find((v) => pattern.test(v.name) || pattern.test(v.lang));
+      if (found) return found;
+    }
+    // Préfère voix masculines pour le ton noble protecteur
+    const male = frVoices.find((v) => /thomas|paul|henri|antoine|mathieu|guillaume/i.test(v.name));
+    return male || frVoices[0];
+  }, []);
+
+  // Précharge la liste des voix (Chrome la lazy-load)
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const w = window;
+    if (w.speechSynthesis.getVoices().length === 0) {
+      w.speechSynthesis.onvoiceschanged = () => {};
+    }
+  }, []);
+
   const speak = useCallback((text) => {
     if (window.localStorage.getItem("laurentia_voice") === "off") return;
     if (!("speechSynthesis" in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "fr-FR";
-      u.rate = 1.0;
-      u.pitch = 1.0;
+      const voice = pickFrenchVoice();
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang || "fr-FR";
+      // Ton noble protecteur : légèrement plus grave et plus lent
+      u.rate = 0.95;
+      u.pitch = 0.92;
+      u.volume = 1.0;
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     } catch (_) {}
+  }, [pickFrenchVoice]);
+
+  const stopSpeaking = useCallback(() => {
+    try { window.speechSynthesis?.cancel(); } catch (_) {}
   }, []);
 
   // ------------- Send Query (SSE) -------------
@@ -162,6 +204,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
       if (!text || !text.trim()) return;
       setError(null);
       setState("thinking");
+      setPhase("connecting");
       setResponse("");
       const hasFiles = Array.isArray(files) && files.length > 0;
       const userBubble = hasFiles
@@ -238,6 +281,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
             const evt = parseSSE(raw);
             if (!evt) continue;
             if (evt.event === "meta") {
+              setPhase("analyzing");
               setMeta((m) => ({
                 ...m,
                 first_name: evt.data.first_name || m.first_name,
@@ -269,6 +313,13 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
               if (!switchedToSpeaking) {
                 switchedToSpeaking = true;
                 setState("speaking");
+                setPhase("synthesizing");
+              }
+              // Détection de bloc spécial → indication visuelle distincte
+              if (/<json>|<artifact>/.test(full) && !/(<\/json>|<\/artifact>)/.test(full)) {
+                setPhase("rendering");
+              } else if (phase === "rendering" && /(<\/json>|<\/artifact>)/.test(full)) {
+                setPhase("synthesizing");
               }
             } else if (evt.event === "done") {
               setHistory((h) => [...h, { role: "laurentia", text: full }]);
@@ -277,10 +328,12 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
                 tokens_remaining: Math.max(0, m.tokens_remaining - (evt.data.tokens_used || 0)),
               }));
               setState("idle");
+              setPhase(null);
               speak(full);
             } else if (evt.event === "error") {
               setError(evt.data.message || "Erreur");
               setState("idle");
+              setPhase(null);
             }
           }
         }
@@ -289,17 +342,19 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
           setError(e.message || "Erreur réseau");
         }
         setState("idle");
+        setPhase(null);
       } finally {
         abortRef.current = null;
       }
     },
-    [frekId, appContext, meta.session_id, speak]
+    [frekId, appContext, meta.session_id, speak, phase]
   );
 
   const cancel = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();
     window.speechSynthesis?.cancel();
     setState("idle");
+    setPhase(null);
   }, []);
 
   const exportPdf = useCallback(
@@ -317,7 +372,10 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || `Export PDF impossible (HTTP ${r.status})`);
+        const e = new Error(err.detail || `Export PDF impossible (HTTP ${r.status})`);
+        e.status = r.status;
+        e.payload = err;
+        throw e;
       }
       const blob = await r.blob();
       const slug = (title || "rapport").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50);
@@ -329,12 +387,19 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
+      // Lecture des en-têtes : quota / signature
+      return {
+        signature: r.headers.get("X-Laurentia-Signature") === "1",
+        free_exports_used: parseInt(r.headers.get("X-Laurentia-Free-Used") || "0", 10),
+        free_exports_limit: parseInt(r.headers.get("X-Laurentia-Free-Limit") || "0", 10),
+      };
     },
     []
   );
 
   return {
     state,
+    phase,
     transcript,
     response,
     history,
@@ -347,6 +412,7 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
     resetSession,
     loadSession,
     exportPdf,
+    stopSpeaking,
   };
 }
 

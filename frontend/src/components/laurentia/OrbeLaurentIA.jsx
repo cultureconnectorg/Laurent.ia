@@ -6,8 +6,11 @@ import { motion } from "framer-motion";
  * Compact (utilisé en hero), pas plein écran.
  *
  * Props:
- *   state: "idle" | "listening" | "thinking" | "speaking"
+ *   state: "idle" | "listening" | "thinking" | "speaking" | "sealing"
  *   size:  px (default 220)
+ *
+ * État "sealing" : utilisé pendant la génération PDF — pulsation Or + Bleu
+ * matérialisant la "Gravure" du document souverain.
  */
 export const OrbeLaurentIA = ({ state = "idle", size = 220 }) => {
   const colorByState = {
@@ -15,10 +18,11 @@ export const OrbeLaurentIA = ({ state = "idle", size = 220 }) => {
     listening: { ring: "rgba(107, 184, 255, 0.55)", core: "#3D8BF5", spot: "#A8D4FF", glow: "rgba(107, 184, 255, 0.65)" },
     thinking:  { ring: "rgba(180, 210, 255, 0.45)", core: "#5BA0FF", spot: "#E6F0FF", glow: "rgba(180, 210, 255, 0.55)" },
     speaking:  { ring: "rgba(75, 140, 230, 0.5)",  core: "#3D8BF5", spot: "#A8D4FF", glow: "rgba(75, 140, 230, 0.55)" },
+    sealing:   { ring: "rgba(201, 162, 75, 0.75)", core: "#C9A24B", spot: "#F4E0AA", glow: "rgba(231, 197, 102, 0.75)" },
   };
   const c = colorByState[state] || colorByState.idle;
 
-  const pulseSpeed = state === "listening" ? 1.6 : state === "thinking" ? 1.2 : 3.4;
+  const pulseSpeed = state === "listening" ? 1.6 : state === "thinking" ? 1.2 : state === "sealing" ? 0.9 : 3.4;
 
   return (
     <div

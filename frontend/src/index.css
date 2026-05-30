@@ -113,3 +113,20 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* === Laurent.ia · Effacement absolu des marques tierces === */
+[data-emergent],
+[class*="emergent"],
+[class*="Emergent"],
+[id*="emergent"],
+[id*="Emergent"],
+a[href*="emergent.sh"],
+a[href*="emergentagent.com"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}

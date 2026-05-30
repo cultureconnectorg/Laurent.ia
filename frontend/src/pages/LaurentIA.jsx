@@ -10,7 +10,10 @@ import Composer from "@/components/laurentia/Composer";
 import OrbeLaurentIA from "@/components/laurentia/OrbeLaurentIA";
 import MenuDrawer from "@/components/laurentia/MenuDrawer";
 import { PricingModal } from "@/components/laurentia/PricingModal";
+import PhaseIndicator from "@/components/laurentia/PhaseIndicator";
+import WhiteLabelKiller from "@/components/laurentia/WhiteLabelKiller";
 import { ECOSYSTEM_CHIPS } from "@/components/laurentia/ecosystemChips";
+import { withFingerprintHeaders } from "@/services/fingerprint";
 import { toast } from "sonner";
 
 /**
@@ -39,6 +42,7 @@ export default function LaurentIA() {
 
   const {
     state,
+    phase,
     transcript,
     response,
     history,
@@ -51,11 +55,13 @@ export default function LaurentIA() {
     resetSession,
     loadSession,
     exportPdf,
+    stopSpeaking,
   } = useLaurentIA({ frekId, appContext: "direct" });
 
   const [composerValue, setComposerValue] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
+  const [sealing, setSealing] = useState(false);
   const scrollRef = useRef(null);
   const composerRef = useRef(null);
 
@@ -117,6 +123,32 @@ export default function LaurentIA() {
     }
   }, [loadSession]);
 
+  // Persistance Fantôme — Résout l'historique depuis le device_id côté serveur
+  // dès le premier paint, si l'utilisateur n'a pas de frek_id authentifié.
+  useEffect(() => {
+    if (authLoading || isAuthenticated) return;
+    if (history.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/laurentia/resolve`, {
+          headers: withFingerprintHeaders({}),
+          credentials: "include",
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        if (data.last_session_id && !history.length) {
+          loadSession(data.last_session_id);
+        }
+      } catch (_) {
+        // silencieux : pas de session = pas de friction
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated]);
+
   const handleSubmit = (text, files) => {
     setComposerValue("");
     sendQuery(text, files || []);
@@ -136,6 +168,25 @@ export default function LaurentIA() {
     setTimeout(() => composerRef.current?.focus?.(), 30);
   };
 
+  const handleExportStart = () => {
+    setSealing(true);
+  };
+  const handleExportEnd = (result) => {
+    setSealing(false);
+    if (result?.signature && typeof result?.free_exports_used === "number") {
+      const remaining = (result.free_exports_limit || 2) - result.free_exports_used;
+      if (remaining <= 0) {
+        toast("Dernier export PDF gratuit utilisé. Creator 🪙 = exports illimités.");
+      } else if (remaining === 1) {
+        toast(`Encore ${remaining} export PDF gratuit ce mois. Passe à Creator 🪙 pour illimité.`);
+      }
+    }
+  };
+  const handlePaywall = (payload) => {
+    toast("Quota PDF Free atteint. Active Creator 🪙 pour des exports illimités sans signature.");
+    setPricingOpen(true);
+  };
+
   const handlePickSession = (sessionId) => {
     loadSession(sessionId);
   };
@@ -153,12 +204,42 @@ export default function LaurentIA() {
       className="relative w-full h-screen overflow-hidden bg-[#0A0F1F] atmo-glow flex flex-col"
       data-testid="laurentia-page"
     >
+      <WhiteLabelKiller />
+
+      {/* Rituel visuel : pulsation Or + Bleu lors de l'export PDF (gravure souveraine) */}
+      <AnimatePresence>
+        {sealing && (
+          <motion.div
+            key="sealing-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center"
+            data-testid="sealing-overlay"
+          >
+            <div className="absolute inset-0 bg-[#0A0F1F]/55 backdrop-blur-sm" />
+            <div className="relative flex flex-col items-center">
+              <OrbeLaurentIA state="sealing" size={180} />
+              <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.32em] text-[#E7C566]">
+                Gravure souveraine en cours…
+              </div>
+              <div className="mt-1 font-serif italic text-base text-[#F4E0AA]">
+                Apposition du sceau de la constellation
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Header
         firstName={displayFirstName}
         kt={null}
         version={meta.version}
         picture={user?.picture}
         onMenuClick={() => setMenuOpen(true)}
+        speakingState={state === "speaking" ? "active" : "idle"}
+        onStopSpeaking={stopSpeaking}
       />
 
       <MenuDrawer
@@ -184,7 +265,7 @@ export default function LaurentIA() {
               transition={{ duration: 0.35 }}
               className="min-h-full flex flex-col items-center justify-center pt-2"
             >
-              <HeroPanel state={state} />
+              <HeroPanel state={sealing ? "sealing" : state} />
               <div className="w-full mt-6 mb-2">
                 <SuggestionChips chips={ecosystemMember ? ECOSYSTEM_CHIPS : undefined} onPick={handlePickChip} disabled={state !== "idle"} />
               </div>
@@ -206,6 +287,9 @@ export default function LaurentIA() {
                   text={m.text}
                   files={m.files}
                   onExportPdf={exportPdf}
+                  onExportStart={handleExportStart}
+                  onExportEnd={handleExportEnd}
+                  onPaywall={handlePaywall}
                 />
               ))}
 
@@ -219,14 +303,23 @@ export default function LaurentIA() {
 
               {state === "thinking" && !response && (
                 <div className="flex justify-start" data-testid="thinking-indicator">
-                  <div className="rounded-2xl px-4 py-3 bg-white/[0.025] border border-white/[0.06]">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#6BA8FF] mb-1.5">
+                  <div className="rounded-2xl px-4 py-3 bg-white/[0.025] border border-white/[0.06] min-w-[260px]">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#6BA8FF] mb-2">
                       Laurent.ia
                     </div>
-                    <div className="dot-typing text-[#6BA8FF] text-base leading-none">
-                      <span>·</span><span>·</span><span>·</span>
-                    </div>
+                    <PhaseIndicator phase={phase} />
+                    {!phase && (
+                      <div className="dot-typing text-[#6BA8FF] text-base leading-none">
+                        <span>·</span><span>·</span><span>·</span>
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
+
+              {streamingAssistant && phase === "rendering" && (
+                <div className="pl-2 -mt-2">
+                  <PhaseIndicator phase={phase} />
                 </div>
               )}
 

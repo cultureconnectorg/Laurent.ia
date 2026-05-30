@@ -71,6 +71,9 @@ export const ChatBubble = ({
   streaming = false,
   files,
   onExportPdf,
+  onExportStart,
+  onExportEnd,
+  onPaywall,
 }) => {
   const isUser = role === "user";
   const [exportState, setExportState] = useState("idle"); // idle | loading | done | error
@@ -83,21 +86,30 @@ export const ChatBubble = ({
     if (exportState === "loading") return;
     setExportState("loading");
     setExportErr(null);
+    onExportStart?.();
     try {
       // Titre auto : première ligne markdown ou tronqué
       const firstLine = (text.split("\n").find((l) => l.trim()) || "Note Laurent.ia")
         .replace(/^[#>*\-\s]+/, "")
         .slice(0, 90);
-      await onExportPdf({
+      const result = await onExportPdf({
         title: firstLine,
         subtitle: "Note Laurent.ia · CVLN Group",
         content_md: text,
       });
       setExportState("done");
+      onExportEnd?.(result);
       setTimeout(() => setExportState("idle"), 2500);
     } catch (e) {
+      if (e?.status === 402) {
+        onPaywall?.(e.payload || {});
+        setExportState("idle");
+        onExportEnd?.(null);
+        return;
+      }
       setExportState("error");
       setExportErr(e.message || "Échec de l'export");
+      onExportEnd?.(null);
       setTimeout(() => setExportState("idle"), 3500);
     }
   };

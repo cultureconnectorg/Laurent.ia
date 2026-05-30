@@ -158,6 +158,57 @@ async def get_instance(frek_id: str, request: Request):
     }
 
 
+@router.get("/resolve")
+async def resolve_by_device(request: Request):
+    """
+    Persistance Fantôme — Résout le frek_id le plus récent associé au device_id
+    courant (via header X-Device-Fingerprint).
+
+    Permet au frontend, dès le premier paint, de recharger l'instance et
+    l'historique de l'utilisateur anonyme sans cookie ni mot de passe.
+
+    Réponse :
+      { "device_id": "<hex64>" | null,
+        "frek_id":   "<id>"     | null,
+        "instance":  {...}      | null,
+        "session_count": <int>,
+        "last_session_id": "<id>" | null }
+    """
+    db = _get_db(request)
+    device_fp = request.headers.get("x-device-fingerprint") or request.headers.get("X-Device-Fingerprint")
+    device_id = device_id_from_fingerprint(device_fp)
+    if not device_id:
+        return {"device_id": None, "frek_id": None, "instance": None, "session_count": 0, "last_session_id": None}
+
+    inst = await db.laurentia_instances.find_one(
+        {"device_ids": device_id},
+        {"_id": 0},
+        sort=[("last_active", -1)],
+    )
+    if not inst:
+        return {"device_id": device_id, "frek_id": None, "instance": None, "session_count": 0, "last_session_id": None}
+
+    mem = await db.laurentia_memory.find_one(
+        {"frek_id": inst["frek_id"]},
+        {"_id": 0, "sessions": {"$slice": -1}},
+    )
+    last_session_id = None
+    session_count = 0
+    if mem and mem.get("sessions"):
+        last_session_id = mem["sessions"][-1].get("session_id")
+        # count complet (sans projection) — petit doc, ok
+        full = await db.laurentia_memory.find_one({"frek_id": inst["frek_id"]}, {"_id": 0, "sessions": 1})
+        session_count = len((full or {}).get("sessions", []))
+
+    return {
+        "device_id": device_id,
+        "frek_id": inst["frek_id"],
+        "instance": inst,
+        "session_count": session_count,
+        "last_session_id": last_session_id,
+    }
+
+
 @router.get("/memory/{frek_id}")
 async def get_memory(frek_id: str, request: Request):
     db = _get_db(request)
@@ -236,6 +287,15 @@ async def _run_query(
             status_code=429,
             detail=err.noble_message(),
             headers={"Retry-After": str(decision.retry_in_seconds)},
+        )
+
+    # 2b-bis. Persistance Fantôme : on lie le device_id à l'instance.
+    # Permet à un user anonyme de retrouver son historique sur la même machine
+    # même après vidage du localStorage, ET au PDF export de résoudre le tier.
+    if device_id:
+        await db.laurentia_instances.update_one(
+            {"frek_id": frek_id},
+            {"$addToSet": {"device_ids": device_id}},
         )
 
     # 2c. Daily quota

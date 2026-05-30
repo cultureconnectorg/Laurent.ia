@@ -1,14 +1,38 @@
 import { motion } from "framer-motion";
-import { Menu, Inbox, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Menu, Inbox, Zap, Volume2, VolumeX, Square } from "lucide-react";
 
 /**
  * Header — top bar de l'app.
  * Layout (de gauche à droite) :
- *   ☰  Laurent.ia (wordmark italique doré subtil)    📥   ⚡ 10 KT   (Avatar prénom)
+ *   ☰  Laurent.ia                       🔊/🔇   📥   ⚡ 10 KT   (Avatar prénom)
+ *
+ * Props additionnels :
+ *   speakingState: "active" | "idle"  — affiche un bouton STOP si TTS en cours
+ *   onStopSpeaking: () => void        — interrompt la voix
  */
-export const Header = ({ firstName = "Hôte", kt = null, version = "free", picture = null, onMenuClick }) => {
+export const Header = ({
+  firstName = "Hôte",
+  kt = null,
+  version = "free",
+  picture = null,
+  onMenuClick,
+  speakingState = "idle",
+  onStopSpeaking,
+}) => {
   const initials = (firstName || "H").slice(0, 2).toUpperCase();
   const showKt = kt !== null && kt !== undefined && Number(kt) > 0;
+  const [voiceOn, setVoiceOn] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("laurentia_voice") !== "off";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("laurentia_voice", voiceOn ? "on" : "off");
+    if (!voiceOn) {
+      try { window.speechSynthesis?.cancel(); } catch (_) {}
+    }
+  }, [voiceOn]);
 
   return (
     <motion.header
@@ -39,8 +63,39 @@ export const Header = ({ firstName = "Hôte", kt = null, version = "free", pictu
         </div>
       </div>
 
-      {/* right — inbox + KT + avatar */}
+      {/* right — voice + inbox + KT + avatar */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Bouton STOP voix en cours (visible uniquement pendant TTS) */}
+        {speakingState === "active" && (
+          <button
+            type="button"
+            onClick={onStopSpeaking}
+            aria-label="Couper la lecture vocale en cours"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#E7C566]/[0.08] border border-[#E7C566]/40 text-[#E7C566] hover:bg-[#E7C566]/[0.14] transition-all"
+            data-testid="header-stop-speaking"
+          >
+            <Square className="w-3 h-3" fill="currentColor" strokeWidth={0} />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em]">Stop voix</span>
+          </button>
+        )}
+
+        {/* Toggle TTS ON/OFF persistant */}
+        <button
+          type="button"
+          onClick={() => setVoiceOn((v) => !v)}
+          aria-label={voiceOn ? "Désactiver la lecture vocale" : "Activer la lecture vocale"}
+          title={voiceOn ? "Lecture vocale active" : "Lecture vocale coupée"}
+          className={`p-2 rounded-full transition-colors ${
+            voiceOn
+              ? "text-[#6BA8FF] hover:text-white hover:bg-white/[0.06]"
+              : "text-white/35 hover:text-white/70 hover:bg-white/[0.04]"
+          }`}
+          data-testid="header-voice-toggle"
+          data-voice-on={voiceOn ? "true" : "false"}
+        >
+          {voiceOn ? <Volume2 className="w-4 h-4" strokeWidth={1.6} /> : <VolumeX className="w-4 h-4" strokeWidth={1.6} />}
+        </button>
+
         <button
           type="button"
           aria-label="Inbox"
