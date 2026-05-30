@@ -79,7 +79,8 @@ module.exports = {
                 ,
                 fontFamily: {
                         serif: ['"Cormorant Garamond"', 'serif'],
-                        mono: ['"IBM Plex Mono"', 'monospace']
+                        mono: ['"IBM Plex Mono"', 'monospace'],
+                        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif']
                 }
         }
   },

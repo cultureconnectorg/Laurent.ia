@@ -27,7 +27,18 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 
 ## 5. Implémenté (v0.1 — 30/05/2026)
 
-### Backend
+### v0.2 — Pivot UI chat-first (30/05/2026)
+- ✅ Refonte complète de l'interface vers un layout **chat-first** inspiré des screenshots Kiltikonet/CVL Brain + Claude + ChatGPT
+- ✅ Nouvelle palette : navy `#0A0F1F` + orbe radar bleu électrique + accent gold subtil pour wordmark/KT pill
+- ✅ Nouveaux composants `Header`, `HeroPanel`, `SuggestionChips`, `ChatBubble`, `Composer`, `BottomTabBar`
+- ✅ Bulles utilisateur "TOI" (gradient bleu) + bulles assistant "LAURENT.IA" (dark glass) — match IMG_3673
+- ✅ 6 suggestion chips (Kiltikonet · Jeton CC · CC2026 · Mon FREK-ID · Espace Pro · Culture)
+- ✅ Composer style Claude/ChatGPT (textarea auto-grow + mic + send, Enter pour envoyer)
+- ✅ Bottom tab bar mobile-feel avec Laurent.ia central actif + toasts "Bientôt disponible" pour les autres
+- ✅ Police IBM Plex Sans pour le body, Cormorant Garamond italique pour wordmark uniquement
+- ✅ Backend inchangé — l'orbe reste blue radar, transitions framer-motion idle/listening/thinking/speaking
+
+### Backend (v0.1)
 - ✅ `/app/backend/services/cvl_brain.py` — wrapper Claude Sonnet 4.5 via emergentintegrations + EMERGENT_LLM_KEY (bug fix #1 : modèle migré vers `claude-sonnet-4-5-20250929`)
 - ✅ `/app/backend/services/cvl_brain_agents.py` — registre 10 agents + `log_write()` activé (bug fix #2)
 - ✅ `/app/backend/services/cvl_brain_knowledge.py` — doctrine + system prompt builder

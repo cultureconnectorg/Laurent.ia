@@ -1,80 +1,83 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 /**
- * OrbeLaurentIA — Le présence centrale.
- * State: "idle" | "listening" | "thinking" | "speaking"
- * Aucune image — composition de divs floutés en blend-mode screen.
+ * OrbeLaurentIA — radar bleu électrique concentrique.
+ * Inspiré des screenshots CVL Brain : anneaux concentriques avec un noyau central.
+ * Compact (utilisé en hero), pas plein écran.
+ *
+ * Props:
+ *   state: "idle" | "listening" | "thinking" | "speaking"
+ *   size:  px (default 220)
  */
-export const OrbeLaurentIA = ({ state = "idle" }) => {
-  const colors = {
-    idle: ["#1A3B3B", "#0E2A2A", "#1A3B3B"],
-    listening: ["#D97736", "#8C3D14", "#F4A259"],
-    thinking: ["#E6E2D8", "#9C9890", "#E6E2D8"],
-    speaking: ["#D97736", "#C56624", "#E6E2D8"],
+export const OrbeLaurentIA = ({ state = "idle", size = 220 }) => {
+  const colorByState = {
+    idle:      { ring: "rgba(45, 111, 224, 0.35)", core: "#2D6FE0", spot: "#6BB8FF", glow: "rgba(45, 111, 224, 0.45)" },
+    listening: { ring: "rgba(107, 184, 255, 0.55)", core: "#3D8BF5", spot: "#A8D4FF", glow: "rgba(107, 184, 255, 0.65)" },
+    thinking:  { ring: "rgba(180, 210, 255, 0.45)", core: "#5BA0FF", spot: "#E6F0FF", glow: "rgba(180, 210, 255, 0.55)" },
+    speaking:  { ring: "rgba(75, 140, 230, 0.5)",  core: "#3D8BF5", spot: "#A8D4FF", glow: "rgba(75, 140, 230, 0.55)" },
   };
-  const c = colors[state] || colors.idle;
+  const c = colorByState[state] || colorByState.idle;
 
-  const breath = {
-    idle:      { scale: [1, 1.05, 1],   opacity: [0.35, 0.55, 0.35], transition: { duration: 4.5, repeat: Infinity, ease: "easeInOut" } },
-    listening: { scale: [1.05, 1.18, 1.05], opacity: [0.65, 0.9, 0.65], transition: { duration: 1.2, repeat: Infinity, ease: "easeInOut" } },
-    thinking:  { scale: [1, 1.08, 0.98, 1.04, 1], rotate: [0, 1.5, -1.5, 0.8, 0], opacity: [0.5, 0.8, 0.6, 0.85, 0.5], transition: { duration: 1.6, repeat: Infinity, ease: "easeInOut" } },
-    speaking:  { scale: [1.04, 1.12, 1.04], opacity: [0.7, 0.95, 0.7], transition: { duration: 0.9, repeat: Infinity, ease: "easeInOut" } },
-  };
+  const pulseSpeed = state === "listening" ? 1.6 : state === "thinking" ? 1.2 : 3.4;
 
   return (
     <div
-      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
-      style={{ width: "min(60vmin, 560px)", height: "min(60vmin, 560px)" }}
+      className="relative pointer-events-none select-none"
+      style={{ width: size, height: size }}
       data-testid="orbe-laurentia"
       aria-label={`orb-${state}`}
     >
-      {/* outer halo */}
+      {/* outer rings — radar */}
+      {[0, 1, 2, 3].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute inset-0 rounded-full border"
+          style={{
+            borderColor: c.ring,
+            transform: `scale(${1 - i * 0.18})`,
+            opacity: 0.6 - i * 0.12,
+          }}
+          animate={{
+            scale: [1 - i * 0.18, 1 - i * 0.18 + 0.06, 1 - i * 0.18],
+            opacity: [0.6 - i * 0.12, 0.85 - i * 0.12, 0.6 - i * 0.12],
+          }}
+          transition={{ duration: pulseSpeed, repeat: Infinity, ease: "easeInOut", delay: i * 0.18 }}
+        />
+      ))}
+
+      {/* soft glow halo */}
       <motion.div
-        className="absolute inset-0 rounded-full blur-3xl"
-        style={{ backgroundColor: c[0], mixBlendMode: "screen" }}
-        animate={breath[state]}
+        className="absolute inset-[18%] rounded-full blur-2xl"
+        style={{ background: c.glow }}
+        animate={{ opacity: [0.55, 0.85, 0.55], scale: [0.95, 1.05, 0.95] }}
+        transition={{ duration: pulseSpeed * 0.8, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* middle ring */}
+
+      {/* core sphere */}
       <motion.div
-        className="absolute inset-[12%] rounded-full blur-2xl"
-        style={{ backgroundColor: c[1], mixBlendMode: "screen" }}
-        animate={{
-          scale: state === "thinking" ? [1, 1.12, 0.95, 1.06, 1] : [1, 1.06, 1],
-          opacity: [0.5, 0.75, 0.5],
-          transition: { duration: state === "listening" ? 1.0 : 3.2, repeat: Infinity, ease: "easeInOut" },
-        }}
-      />
-      {/* inner core */}
-      <motion.div
-        className="absolute inset-[28%] rounded-full blur-xl"
+        className="absolute inset-[30%] rounded-full"
         style={{
-          background: `radial-gradient(circle at 50% 45%, ${c[2]}, ${c[1]} 70%)`,
-          mixBlendMode: "screen",
+          background: `radial-gradient(circle at 50% 38%, ${c.spot} 0%, ${c.core} 40%, #0E1B36 90%)`,
+          boxShadow: `0 0 40px ${c.glow}, inset 0 0 30px rgba(255,255,255,0.06)`,
         }}
         animate={{
-          scale: state === "thinking" ? [1, 1.1, 0.9, 1] : [1, 1.04, 1],
-          opacity: [0.8, 1, 0.8],
-          transition: { duration: state === "listening" ? 0.8 : 2.6, repeat: Infinity, ease: "easeInOut" },
+          scale: state === "thinking" ? [1, 1.06, 0.96, 1.03, 1] : [1, 1.03, 1],
         }}
+        transition={{ duration: pulseSpeed * 0.6, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* thin focal point */}
-      <AnimatePresence>
-        {(state === "listening" || state === "speaking") && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.3 }}
-            animate={{ opacity: 0.9, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.3 }}
-            transition={{ duration: 0.4 }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{
-              width: "10px",
-              height: "10px",
-              background: "#F3EFE7",
-              boxShadow: "0 0 20px 6px rgba(243,239,231,0.8)",
-            }}
-          />
-        )}
-      </AnimatePresence>
+
+      {/* center focal point */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: size * 0.04,
+          height: size * 0.04,
+          background: c.spot,
+          boxShadow: `0 0 ${size * 0.06}px ${size * 0.02}px ${c.spot}`,
+        }}
+        animate={{ opacity: state === "idle" ? [0.7, 1, 0.7] : [0.9, 1, 0.9] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+      />
     </div>
   );
 };

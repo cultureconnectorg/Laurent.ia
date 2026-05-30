@@ -1,20 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import useLaurentIA from "@/hooks/useLaurentIA";
+import Header from "@/components/laurentia/Header";
+import HeroPanel from "@/components/laurentia/HeroPanel";
+import SuggestionChips from "@/components/laurentia/SuggestionChips";
+import ChatBubble from "@/components/laurentia/ChatBubble";
+import Composer from "@/components/laurentia/Composer";
+import BottomTabBar from "@/components/laurentia/BottomTabBar";
 import OrbeLaurentIA from "@/components/laurentia/OrbeLaurentIA";
-import StateIndicator from "@/components/laurentia/StateIndicator";
-import ConversationZone from "@/components/laurentia/ConversationZone";
-import FreKIDBadge from "@/components/laurentia/FreKIDBadge";
-import StatusBar from "@/components/laurentia/StatusBar";
-import MicButton from "@/components/laurentia/MicButton";
 
 /**
- * LaurentIA — Single page voice-first.
- * - Aucun chrome, aucune navigation.
- * - Tap mic → STT → POST /api/laurentia/query (SSE) → stream tokens → TTS.
- * - Fallback texte: si STT indisponible, un champ texte discret s'active sur ESPACE.
+ * LaurentIA — page principale chat-first.
+ *
+ * Layout :
+ *   [Header bar]
+ *   [Hero panel (empty state) OR Conversation thread]
+ *   [Suggestion chips]
+ *   [Composer]
+ *   [BottomTabBar]
  */
 export default function LaurentIA() {
-  // FREK-ID: récupéré depuis localStorage ou URL ?frek_id=... sinon DEMO-SAYD
+  // FREK-ID source
   const [frekId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return (
@@ -28,6 +34,7 @@ export default function LaurentIA() {
     state,
     transcript,
     response,
+    history,
     meta,
     error,
     startListening,
@@ -36,108 +43,160 @@ export default function LaurentIA() {
     cancel,
   } = useLaurentIA({ frekId, appContext: "direct" });
 
-  const [textInput, setTextInput] = useState("");
-  const [showTextFallback, setShowTextFallback] = useState(false);
+  const [composerValue, setComposerValue] = useState("");
+  const scrollRef = useRef(null);
+  const composerRef = useRef(null);
 
-  // Détecte si Web Speech API est dispo, sinon active fallback texte
+  // Auto-scroll to bottom on new message
   useEffect(() => {
-    const hasSTT = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-    if (!hasSTT) setShowTextFallback(true);
-  }, []);
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [history.length, response, transcript]);
 
-  // Raccourci clavier: ESPACE pour démarrer/arrêter
+  // ESC to cancel
   useEffect(() => {
     const onKey = (e) => {
-      if (e.code === "Space" && !showTextFallback && e.target.tagName !== "INPUT") {
-        e.preventDefault();
-        if (state === "idle") startListening();
-        else if (state === "listening") stopListening();
-        else if (state === "thinking" || state === "speaking") cancel();
-      }
       if (e.code === "Escape") cancel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state, startListening, stopListening, cancel, showTextFallback]);
+  }, [cancel]);
 
-  const submitText = (e) => {
-    e?.preventDefault?.();
-    if (!textInput.trim()) return;
-    sendQuery(textInput.trim());
-    setTextInput("");
+  const handleSubmit = (text) => {
+    setComposerValue("");
+    sendQuery(text);
   };
 
+  const handlePickChip = (prompt) => {
+    setComposerValue(prompt);
+    // focus composer textarea
+    setTimeout(() => composerRef.current?.focus?.(), 30);
+  };
+
+  const conversationEmpty = history.length === 0 && !response && !transcript;
+  const streamingAssistant = (state === "thinking" || state === "speaking") && response;
+
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#0A0A0A] grain-overlay" data-testid="laurentia-page">
-      {/* Vignette atmosphérique */}
-      <div
-        className="absolute inset-0 z-[1] pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(10,10,10,0) 0%, rgba(10,10,10,0.85) 80%)",
-        }}
+    <div
+      className="relative w-full h-screen overflow-hidden bg-[#0A0F1F] atmo-glow flex flex-col"
+      data-testid="laurentia-page"
+    >
+      {/* Header */}
+      <Header
+        firstName={meta.first_name}
+        kt={10}
+        version={meta.version}
       />
 
-      <div className="relative z-10 w-full h-full">
-        <FreKIDBadge firstName={meta.first_name} />
-        <StatusBar
-          version={meta.version}
-          tokensRemaining={meta.tokens_remaining}
-          jccBalance={0}
-          quotaWarning={meta.quota_warning}
-        />
+      {/* Main scroll area */}
+      <main
+        ref={scrollRef}
+        className="relative flex-1 overflow-y-auto thin-scroll pb-2"
+        data-testid="conversation-zone"
+      >
+        <AnimatePresence mode="wait">
+          {conversationEmpty ? (
+            <motion.div
+              key="hero"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="min-h-full flex flex-col items-center justify-center pt-2"
+            >
+              <HeroPanel state={state} />
+              <div className="w-full mt-6 mb-2">
+                <SuggestionChips onPick={handlePickChip} disabled={state !== "idle"} />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="thread"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="w-full max-w-2xl mx-auto px-4 pt-4 pb-4 space-y-4"
+              data-testid="conversation-thread"
+            >
+              {/* Conversation history */}
+              {history.map((m, i) => (
+                <ChatBubble key={`h-${i}`} role={m.role === "laurentia" ? "assistant" : m.role} text={m.text} />
+              ))}
 
-        <OrbeLaurentIA state={state} />
-        <StateIndicator state={state} hidden={!!response} />
+              {/* Live transcript (during listening) */}
+              {transcript && state === "listening" && (
+                <ChatBubble role="user" text={transcript} />
+              )}
 
-        <ConversationZone
-          transcript={transcript}
-          response={response}
-          error={error}
+              {/* Streaming assistant response */}
+              {streamingAssistant && (
+                <ChatBubble role="assistant" text={response} streaming />
+              )}
+
+              {/* Thinking placeholder before first token */}
+              {state === "thinking" && !response && (
+                <div className="flex justify-start" data-testid="thinking-indicator">
+                  <div className="rounded-2xl px-4 py-3 bg-white/[0.025] border border-white/[0.06]">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#6BA8FF] mb-1.5">
+                      Laurent.ia
+                    </div>
+                    <div className="dot-typing text-[#6BA8FF] text-base leading-none">
+                      <span>·</span><span>·</span><span>·</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error banner */}
+              {error && (
+                <div
+                  className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300 font-mono"
+                  data-testid="conversation-error"
+                >
+                  ! {error}
+                </div>
+              )}
+
+              {/* Quota warning CTA */}
+              {meta.quota_warning && (
+                <div className="flex items-center justify-between rounded-xl border border-[#E7C566]/30 bg-[#E7C566]/[0.04] px-4 py-3" data-testid="quota-warning-cta">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#E7C566]">
+                    Quota mensuel atteint
+                  </span>
+                  <button className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#E7C566] underline" data-testid="upgrade-pro-cta">
+                    Activer Pro
+                  </button>
+                </div>
+              )}
+
+              {/* Small breathing orb in thread mode (when state is active) */}
+              {state !== "idle" && state !== "thinking" && (
+                <div className="flex justify-center py-2 opacity-60">
+                  <OrbeLaurentIA state={state} size={64} />
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Composer */}
+      <div className="relative z-30 pt-1 bg-gradient-to-t from-[#0A0F1F] via-[#0A0F1F]/95 to-[#0A0F1F]/0">
+        <Composer
+          value={composerValue}
+          onChange={setComposerValue}
+          onSubmit={handleSubmit}
           state={state}
+          onStartVoice={startListening}
+          onStopVoice={stopListening}
+          onCancel={cancel}
+          externalValueRef={composerRef}
         />
-
-        {showTextFallback ? (
-          <form
-            onSubmit={submitText}
-            className="absolute left-1/2 -translate-x-1/2 bottom-10 z-30 w-full max-w-xl px-6"
-            data-testid="text-fallback-form"
-          >
-            <div className="flex items-center gap-3 backdrop-blur-xl bg-white/[0.04] border border-white/10 rounded-full px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
-              <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#D97736]/70">›</span>
-              <input
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Parle à Laurent.ia…"
-                className="flex-1 bg-transparent outline-none font-mono text-sm text-[#F3EFE7] placeholder:text-white/30"
-                data-testid="text-fallback-input"
-              />
-              <button
-                type="submit"
-                disabled={!textInput.trim() || state !== "idle"}
-                className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#F3EFE7]/80 hover:text-[#D97736] disabled:opacity-30 transition-colors"
-                data-testid="text-fallback-submit"
-              >
-                Envoyer
-              </button>
-            </div>
-          </form>
-        ) : (
-          <MicButton
-            state={state}
-            onStart={startListening}
-            onStop={stopListening}
-            onCancel={cancel}
-          />
-        )}
-
-        {/* CTA Pro discret en cas de quota warning */}
-        {meta.quota_warning && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 font-mono text-[10px] uppercase tracking-[0.28em] text-[#D97736]/90" data-testid="quota-warning-cta">
-            Quota atteint · <button className="underline" data-testid="upgrade-pro-cta">Activer Pro</button>
-          </div>
-        )}
       </div>
+
+      {/* Bottom tab bar */}
+      <BottomTabBar active="brain" />
     </div>
   );
 }
