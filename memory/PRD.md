@@ -28,6 +28,24 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Chantier 7 : Autonomie & Apprentissage continu (Feb 2026)
+- ✅ **Corpus Pipeline hebdo** (`jobs/corpus_pipeline.py`) — cron dimanche 03h00 Martinique (UTC-4) : scoring 3D (culturel/pertinence/souverain) + seuil 0.7, scrubbing PII (CB/email/tel/FREK-ID), normalisation créole, JSONL versionné `corpus_v{n}`, upload OVHcloud S3 AES-256 ou fallback local `/tmp/laurentia_corpus/`. Rapport persisté dans `laurentia_corpus_reports`.
+- ✅ **Image Generator** (`services/image_generator.py`) — Stable Diffusion souverain via `SD_API_URL/sdapi/v1/txt2img`. 7 préfixes stylistiques par thème éditorial. Fallback `None` silencieux si SD down → publication texte seul jamais bloquée.
+- ✅ **Social Agent quotidien** (`jobs/social_agent.py`) — cron 09h00 Martinique, calendrier rotatif (vision/actualité/feature/culture/artiste/créole/citation). Génération JSON triple (IG/LI/X) via Claude (cvl_brain + persona Laurent.ia v1.2 + COEURVOLAN), retry x3. Publication parallèle avec fallbacks indépendants. Analytics J+1 à 10h00.
+- ✅ **Gate manuelle SOCIAL_MANUAL_APPROVAL=true** par défaut → posts générés en `status=pending_approval`, ZÉRO publication réseau sans approbation admin explicite. Bascule à `false` pour activer auto-publication totale.
+- ✅ **Admin Dashboard** (`routes/social_admin.py`) — role `founder`/`admin` requis :
+  - `GET /api/admin/social/posts` — liste posts + analytics
+  - `GET /api/admin/social/preview` — aperçu post du jour
+  - `POST /api/admin/social/approve` — valide + publie (avec `generate_now=true` bypass)
+  - `POST /api/admin/social/pause` — toggle pause
+  - `GET /api/admin/corpus/stats` — rapports pipeline
+  - `POST /api/admin/corpus/run` — déclenche manuellement
+  - `GET /api/admin/corpus/export?version=N` — télécharge JSONL
+- ✅ **5 collections MongoDB** : `laurentia_corpus_reports`, `laurentia_social_posts`, `laurentia_social_analytics`, `laurentia_model_versions`, `laurentia_finetuning_jobs`.
+- ✅ **Variables d'env Go-LIVE** ajoutées dans `backend/.env` : `SD_API_URL`, `INSTAGRAM_ACCESS_TOKEN/BUSINESS_ID`, `LINKEDIN_ACCESS_TOKEN/ACTOR_URN`, `X_BEARER_TOKEN/API_KEY/SECRET/...`, `OVHCLOUD_S3_KEY/SECRET/BUCKET/ENDPOINT/REGION`, `SOCIAL_MANUAL_APPROVAL=true`.
+- ✅ **Tests** : `test_image_generator.py` (5), `test_corpus_pipeline.py` (5), `test_social_agent.py` (10) — total **84/84 pytest verts** (64 ancestraux préservés).
+
+
 ### v1.2-LIVE — Phase 9 : Verrous Techniques Go-LIVE (Feb 2026)
 - ✅ **Kiltikonet bridge STRICT** : `services/kiltikonet_bridge.py` — exception `KiltikonetUnavailable` levée sur 5xx/timeout/network quand bridge configuré. DEMO-* whitelist + mode dev unconfigured préservés. Handler global FastAPI → HTTP 503 `{"code":"kiltikonet_unavailable"}`. Identité = strict, pas de silent guest fallback.
 - ✅ **LabelOS bridge SILENT FALLBACK** : `services/labelos_bridge.py` — stub `{}` neutre si LabelOS down ou non configuré. Enrichissement contexte artiste = optionnel, ne bloque jamais un chat.

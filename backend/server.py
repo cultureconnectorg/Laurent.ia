@@ -88,6 +88,9 @@ from routes.echo import (  # noqa: E402
     public_router as echo_public_router,
 )
 from routes.rgpd_purge import router as rgpd_purge_router, schedule_periodic_purge  # noqa: E402
+from routes.social_admin import router as social_admin_router  # noqa: E402
+from jobs.corpus_pipeline import schedule_corpus_pipeline  # noqa: E402
+from jobs.social_agent import schedule_social_agent  # noqa: E402
 
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
@@ -100,6 +103,7 @@ app.include_router(pdf_export_router)
 app.include_router(echo_private_router)
 app.include_router(echo_public_router)
 app.include_router(rgpd_purge_router)
+app.include_router(social_admin_router)
 
 
 # Exception handler — Kiltikonet panne amont → HTTP 503 (strict v1.2-LIVE).
@@ -149,6 +153,10 @@ async def on_startup():
     await ensure_registry(db)
     await ensure_ratelimit_indexes(db)
     schedule_periodic_purge(app, db)
+    # Chantier 7 — Autonomie & Apprentissage continu
+    if os.environ.get("CHANTIER7_SCHEDULERS_DISABLED", "").lower() not in ("1", "true", "yes"):
+        schedule_corpus_pipeline(app, db)
+        schedule_social_agent(app, db)
     logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
 
 
