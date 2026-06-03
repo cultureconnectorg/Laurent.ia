@@ -260,6 +260,7 @@ async def _run_query(
     files_context: str = "",
     files_summary: list[dict] | None = None,
     device_fp: str | None = None,
+    orchestrator=None,
 ):
     """
     Cœur d'exécution — partagé entre route JSON et route multipart.
@@ -334,6 +335,17 @@ async def _run_query(
         composed_input = f"{user_input}\n\n{files_context}"
 
     async def event_stream():
+        # Chantier 9 — hook orchestrator (NON-BLOQUANT, fire-and-forget)
+        orch = orchestrator
+        if orch is not None:
+            try:
+                orch.dispatch_intake(
+                    session_id=session_id,
+                    frek_id_hash=t_id,
+                    user_input=composed_input,
+                )
+            except Exception:
+                pass
         try:
             meta = {
                 "interaction_id": interaction_id,
@@ -386,11 +398,28 @@ async def _run_query(
                 session_id=session_id,
             ):
                 full_response_parts.append(chunk)
+                # Chantier 9 — shadow dispatch chunk (NON-BLOQUANT)
+                if orch is not None:
+                    try:
+                        orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk)
+                    except Exception:
+                        pass
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
 
             full_response = "".join(full_response_parts).strip()
             tokens_in = max(1, len(composed_input) // 4)
             tokens_out = max(1, len(full_response) // 4)
+            # Chantier 9 — shadow dispatch fin de stream
+            if orch is not None:
+                try:
+                    orch.dispatch_stream_done(
+                        session_id=session_id,
+                        full_text=full_response,
+                        latency_ms=int((time.perf_counter() - started) * 1000),
+                        tokens=tokens_in + tokens_out,
+                    )
+                except Exception:
+                    pass
 
             # Log interaction (anonymisé via tenant_id, contenu chiffré AES-256-GCM)
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -552,6 +581,7 @@ async def query(request: Request):
             files_context=files_context,
             files_summary=files_summary,
             device_fp=device_fp,
+            orchestrator=getattr(request.app.state, "orchestrator", None),
         )
 
     # JSON path (legacy)
@@ -567,4 +597,5 @@ async def query(request: Request):
         context_app=payload.context.app,
         session_id_in=payload.context.session_id,
         device_fp=device_fp,
+        orchestrator=getattr(request.app.state, "orchestrator", None),
     )

@@ -28,6 +28,27 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Chantier 9 : Orchestrateur 20 agents (Feb 2026, Mode SHADOW)
+- ✅ **20 agents WARM en RAM** (`orchestrator/agents.py`) répartis en 4 départements : Stratégie (3) · Opérations (7) · Création (6) · Interface (4). Instanciés une seule fois au startup, persistants, snapshot santé green/orange/red.
+- ✅ **EventBus asyncio.Queue** (`orchestrator/event_bus.py`) — pub/sub par canal (`intake`, `stream`, `stream_done`, `guardrail`, `critical`, `memory`), back-pressure protégée (drop si queue > 1024), erreurs handlers isolées via `asyncio.gather(return_exceptions=True)`.
+- ✅ **Signal typé** (`orchestrator/signals.py`) — 4 niveaux (0=auto, 1=log, 2=check, 3=critical) × 4 types (INFO/CHECK/CRITICAL/UPDATE) avec `incident_id` UUID, `session_id`, `source_agent`, timestamp UTC.
+- ✅ **Orchestrator** (`orchestrator/orchestrator.py`) — câblage des 20 handlers aux canaux, persistance `laurentia_guardrail_logs` + `laurentia_orchestrator_incidents`, escalade SIGNAL_CRITICAL automatique avec SMS OVH.
+- ✅ **Garde du Corpus (anti-souverainete-breach)** — détection patterns CVL Brain/Kiltikonet/Phases internes/Emergent dans le flux SSE → incident CRITICAL + SMS Founder.
+- ✅ **Anti-jailbreak** texte entrée + chunks SSE (patterns "ignore previous", "you are now", "act as", "pretend to be", "prompt injection", "sudo mode").
+- ✅ **Circuit Breaker** (`orchestrator/circuit_breaker.py`) — Mode SHADOW par défaut (ORCHESTRATOR_CIRCUIT_BREAKER=false) : observe & logge sans bloquer. Mode ACTIVE (=true) : peut couper un session_id. Décisions Founder : `validate` / `block` / `modify`.
+- ✅ **SMS OVH souverain** (`orchestrator/sms_ovh.py`) — client httpx async avec signature SHA1 OVH ($1$+sha1(AS+CK+METHOD+URL+BODY+TS)), timestamp via `/auth/time` (anti-drift), format `[ALERTE LAURENTIA] Agent: X | Incident: Y | Action: Valider/Bloquer/Modifier`. Best-effort : ne bloque jamais, retourne `{sent:False, reason:...}` si non configuré ou échec.
+- ✅ **Hook NON-BLOQUANT dans `laurentia_gateway.py`** : `dispatch_intake()` au début, `dispatch_stream_chunk()` par chunk SSE, `dispatch_stream_done()` à la fin. Fire-and-forget, isolés en try/except → **84 tests existants préservés intacts**.
+- ✅ **Routes admin** (`routes/orchestrator_admin.py`) role founder/admin requis :
+  - `GET /api/admin/orchestrator/status` — état 20 agents + bus stats
+  - `GET /api/admin/orchestrator/alerts` — incidents open/closed
+  - `GET /api/admin/orchestrator/signals` — derniers logs guardrail
+  - `POST /api/admin/orchestrator/decisions` — décision Founder (validate/block/modify)
+- ✅ **Webhook inbound SMS OVH** (`/api/webhook/ovh-sms-reply`) public best-effort : parse "OK inc-xxxx", "BLOCK inc-xxxx", "MODIFY inc-xxxx", vérifie `from == FOUNDER_PHONE_NUMBER`, exécute décision Circuit Breaker.
+- ✅ **2 nouvelles collections** : `laurentia_guardrail_logs`, `laurentia_orchestrator_incidents`.
+- ✅ **Variables d'env Go-LIVE** : `OVH_APPLICATION_KEY/SECRET/CONSUMER_KEY/SMS_SERVICE_NAME/SMS_SENDER`, `FOUNDER_PHONE_NUMBER`, `ORCHESTRATOR_CIRCUIT_BREAKER=false`.
+- ✅ **Tests** : `test_orchestrator.py` (16 cas) — détecteurs, EventBus, Circuit Breaker shadow/active, SMS signature/format/fallback, dispatch end-to-end avec breach → incident persisté. **100/100 pytest verts** (84 ancestraux + 16 nouveaux).
+
+
 ### v1.2-LIVE — Chantier 7 : Autonomie & Apprentissage continu (Feb 2026)
 - ✅ **Corpus Pipeline hebdo** (`jobs/corpus_pipeline.py`) — cron dimanche 03h00 Martinique (UTC-4) : scoring 3D (culturel/pertinence/souverain) + seuil 0.7, scrubbing PII (CB/email/tel/FREK-ID), normalisation créole, JSONL versionné `corpus_v{n}`, upload OVHcloud S3 AES-256 ou fallback local `/tmp/laurentia_corpus/`. Rapport persisté dans `laurentia_corpus_reports`.
 - ✅ **Image Generator** (`services/image_generator.py`) — Stable Diffusion souverain via `SD_API_URL/sdapi/v1/txt2img`. 7 préfixes stylistiques par thème éditorial. Fallback `None` silencieux si SD down → publication texte seul jamais bloquée.

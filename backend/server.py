@@ -89,8 +89,13 @@ from routes.echo import (  # noqa: E402
 )
 from routes.rgpd_purge import router as rgpd_purge_router, schedule_periodic_purge  # noqa: E402
 from routes.social_admin import router as social_admin_router  # noqa: E402
+from routes.orchestrator_admin import (  # noqa: E402
+    router as orchestrator_admin_router,
+    webhook_router as orchestrator_webhook_router,
+)
 from jobs.corpus_pipeline import schedule_corpus_pipeline  # noqa: E402
 from jobs.social_agent import schedule_social_agent  # noqa: E402
+from orchestrator.orchestrator import make_orchestrator  # noqa: E402
 
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
@@ -104,6 +109,8 @@ app.include_router(echo_private_router)
 app.include_router(echo_public_router)
 app.include_router(rgpd_purge_router)
 app.include_router(social_admin_router)
+app.include_router(orchestrator_admin_router)
+app.include_router(orchestrator_webhook_router)
 
 
 # Exception handler — Kiltikonet panne amont → HTTP 503 (strict v1.2-LIVE).
@@ -157,9 +164,18 @@ async def on_startup():
     if os.environ.get("CHANTIER7_SCHEDULERS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_corpus_pipeline(app, db)
         schedule_social_agent(app, db)
+    # Chantier 9 — Orchestrateur 20 agents (mode SHADOW par défaut)
+    if os.environ.get("ORCHESTRATOR_DISABLED", "").lower() not in ("1", "true", "yes"):
+        orch = make_orchestrator(db)
+        orch.start()
+        app.state.orchestrator = orch
+        logger.info("Orchestrator chantier-9 ready — 20 agents WARM")
     logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    orch = getattr(app.state, "orchestrator", None)
+    if orch is not None:
+        orch.stop()
     client.close()
