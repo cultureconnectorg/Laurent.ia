@@ -53,6 +53,17 @@ from . import sms_ovh
 logger = logging.getLogger(__name__)
 
 
+def _allowed_for_signal_tier(agent_id: str, signal: Signal) -> bool:
+    """Vrai si l'agent fait partie de l'allocation du tier porté par le signal.
+    Si pas de tier dans le payload (ex: signal système) → autorisé par défaut."""
+    tier = signal.payload.get("tier") if signal.payload else None
+    if not tier:
+        return True
+    # Import local pour éviter la dépendance circulaire au boot
+    from services.tenant_factory import tenant_allows
+    return tenant_allows(tier, agent_id)
+
+
 class Orchestrator:
     """Singleton attaché à app.state.orchestrator."""
 
@@ -65,32 +76,41 @@ class Orchestrator:
 
     # ---------------- Câblage agents ----------------
 
+    def _gate(self, agent_id: str, handler):
+        """Wrappe un handler pour bloquer si le tier du signal n'autorise pas cet agent."""
+        async def wrapped(s: Signal):
+            if not _allowed_for_signal_tier(agent_id, s):
+                return
+            await handler(s)
+        return wrapped
+
     def _wire_agents(self) -> None:
         # --- Pôle Stratégique
-        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._h_souverainete)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_memoire)
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_veille)
+        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._gate("agent-souverainete", self._h_souverainete))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-memoire", self._h_memoire))
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-veille", self._h_veille))
         # --- Pôle Opérationnel
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_guardrail_text)
-        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._h_guardrail_text_chunk)
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_guardrail_image)
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_guardrail_code)
-        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._h_streaming)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_latence)
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_securite)
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-guardrail-text", self._h_guardrail_text))
+        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._gate("agent-guardrail-text", self._h_guardrail_text_chunk))
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-guardrail-image", self._h_guardrail_image))
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-guardrail-code", self._h_guardrail_code))
+        self.bus.subscribe(CHANNEL_STREAM_CHUNK, self._gate("agent-streaming", self._h_streaming))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-latence", self._h_latence))
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-securite", self._h_securite))
+        # agent-sms-alert reste TOUJOURS armé (CRITICAL ne respecte aucun tier)
         self.bus.subscribe(CHANNEL_CRITICAL,     self._h_sms_alert)
-        # --- Pôle Créatif (observateurs passifs en mode shadow)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_redaction)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_visuel)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_data)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_recherche)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_traduction)
-        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._h_social)
+        # --- Pôle Créatif (observateurs passifs)
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-redaction", self._h_redaction))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-visuel", self._h_visuel))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-data", self._h_data))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-recherche", self._h_recherche))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-traduction", self._h_traduction))
+        self.bus.subscribe(CHANNEL_STREAM_DONE,  self._gate("agent-social", self._h_social))
         # --- Pôle Interface
-        self.bus.subscribe(CHANNEL_INTAKE,       self._h_receptionniste)
-        self.bus.subscribe(CHANNEL_GUARDRAIL,    self._h_arbitre)
-        self.bus.subscribe(CHANNEL_MEMORY,       self._h_rapporteur)
-        self.bus.subscribe(CHANNEL_GUARDRAIL,    self._h_auto_maintenance)
+        self.bus.subscribe(CHANNEL_INTAKE,       self._gate("agent-receptionniste", self._h_receptionniste))
+        self.bus.subscribe(CHANNEL_GUARDRAIL,    self._gate("agent-arbitre", self._h_arbitre))
+        self.bus.subscribe(CHANNEL_MEMORY,       self._gate("agent-rapporteur", self._h_rapporteur))
+        self.bus.subscribe(CHANNEL_GUARDRAIL,    self._gate("agent-auto-maintenance", self._h_auto_maintenance))
 
     def start(self) -> None:
         self.bus.start()
@@ -102,33 +122,37 @@ class Orchestrator:
 
     # ---------------- API publique appelée par laurentia_gateway ----------------
 
-    def dispatch_intake(self, *, session_id: str, frek_id_hash: str, user_input: str) -> None:
+    def dispatch_intake(self, *, session_id: str, frek_id_hash: str, user_input: str,
+                         tier: str | None = None) -> None:
         """Hook NON-BLOQUANT appelé dès qu'une requête utilisateur arrive."""
         self.bus.publish(Signal(
             type=SIGNAL_INFO, channel=CHANNEL_INTAKE,
             session_id=session_id, level=LEVEL_LOG,
-            payload={"frek_id_hash": frek_id_hash, "input": user_input},
+            payload={"frek_id_hash": frek_id_hash, "input": user_input, "tier": tier},
         ))
 
-    def dispatch_stream_chunk(self, *, session_id: str, chunk: str) -> None:
+    def dispatch_stream_chunk(self, *, session_id: str, chunk: str,
+                               tier: str | None = None) -> None:
         """Hook NON-BLOQUANT — émis pour chaque token/groupe de tokens SSE."""
         self.bus.publish(Signal(
             type=SIGNAL_INFO, channel=CHANNEL_STREAM_CHUNK,
             session_id=session_id, level=LEVEL_LOG,
-            payload={"chunk": chunk},
+            payload={"chunk": chunk, "tier": tier},
         ))
 
     def dispatch_stream_done(self, *, session_id: str, full_text: str,
-                              latency_ms: int, tokens: int) -> None:
+                              latency_ms: int, tokens: int,
+                              tier: str | None = None) -> None:
         self.bus.publish(Signal(
             type=SIGNAL_INFO, channel=CHANNEL_STREAM_DONE,
             session_id=session_id, level=LEVEL_LOG,
-            payload={"full_text": full_text, "latency_ms": latency_ms, "tokens": tokens},
+            payload={"full_text": full_text, "latency_ms": latency_ms,
+                     "tokens": tokens, "tier": tier},
         ))
         self.bus.publish(Signal(
             type=SIGNAL_UPDATE, channel=CHANNEL_MEMORY,
             session_id=session_id, level=LEVEL_LOG,
-            payload={"tokens": tokens, "latency_ms": latency_ms},
+            payload={"tokens": tokens, "latency_ms": latency_ms, "tier": tier},
         ))
 
     def is_session_blocked(self, session_id: str | None) -> bool:

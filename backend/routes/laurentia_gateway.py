@@ -343,6 +343,7 @@ async def _run_query(
                     session_id=session_id,
                     frek_id_hash=t_id,
                     user_input=composed_input,
+                    tier=tier,
                 )
             except Exception:
                 pass
@@ -401,7 +402,7 @@ async def _run_query(
                 # Chantier 9 — shadow dispatch chunk (NON-BLOQUANT)
                 if orch is not None:
                     try:
-                        orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk)
+                        orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk, tier=tier)
                     except Exception:
                         pass
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
@@ -417,9 +418,19 @@ async def _run_query(
                         full_text=full_response,
                         latency_ms=int((time.perf_counter() - started) * 1000),
                         tokens=tokens_in + tokens_out,
+                        tier=tier,
                     )
                 except Exception:
                     pass
+            # Chantier 10 — log activity métier (ROI souverain)
+            try:
+                from services.tenant_factory import Tenant
+                tenant = Tenant(frek_id=frek_id, tier=tier, db=db)
+                await tenant.log_activity("QUERY_PROCESSED",
+                                          metadata={"session_id": session_id,
+                                                    "tokens": tokens_in + tokens_out})
+            except Exception:
+                pass
 
             # Log interaction (anonymisé via tenant_id, contenu chiffré AES-256-GCM)
             now_iso = datetime.now(timezone.utc).isoformat()

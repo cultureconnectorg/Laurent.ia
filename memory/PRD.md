@@ -28,6 +28,28 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Chantier 10 : Pyramide Tenants + Reporting Bilan (Feb 2026)
+- ✅ **TenantFactory virtuel** (`services/tenant_factory.py`) — Orchestrator unique en RAM, allocation d'agents par tier :
+  - Free → 3 essentiels (Réceptionniste, Streaming, Souveraineté)
+  - Creator → 10 (essentiels + Sécurité, Guardrails text/code, Mémoire, Rapporteur, Latence, Data)
+  - Pro / Infinite → 20 (toute la pyramide)
+- ✅ **Tier-aware Orchestrator** — wrapping `_gate(agent_id, handler)` chaque subscribe ; handler skip silencieusement si le tier du signal n'autorise pas l'agent. `agent-sms-alert` reste TOUJOURS armé (CRITICAL transcende les tiers).
+- ✅ **Tenant.log_activity()** — persistance `laurentia_activity_log` avec estimation `value_estimator.estimate()` (ratios fixes configurables via env `LAURENTIA_VALUE_<ACTION>`).
+- ✅ **Hook ROI** dans `laurentia_gateway.py` : chaque query SSE complète → `log_activity("QUERY_PROCESSED", time_saved=5min)`.
+- ✅ **API Keys par tenant** (`services/api_keys.py`) — clés `lia_<tier>_<random32>` SHA-256 hashées, status active/revoked, use_count + last_used_at. Création/Liste/Révocation via `/api/me/keys`. Validation auto en parallèle du JWT pour `/api/me/*` et `/api/admin/*`.
+- ✅ **Auth dépendance souple** (`_resolve_caller`) — JWT cookie OU `X-API-Key` header. `create/revoke/list keys` uniquement via JWT (clé ne peut s'auto-révoquer).
+- ✅ **Rapports daily user** (`GET /api/me/report/daily`) — JSON {total_actions, time_saved_min, time_saved_hours, by_action[], top_incidents[], tier}.
+- ✅ **Rapports weekly user** (`GET /api/me/report/weekly`) — fenêtre 7j.
+- ✅ **Rapports daily founder** (`GET /api/admin/reports/daily`) — agrégé : active_tenants, tier_distribution, total_actions, time_saved, latency p50/p95, top_incidents, top_tenants.
+- ✅ **Rapports weekly founder** (`GET /api/admin/reports/weekly`) — + paid_subscribers (MRR proxy) + corpus_score_avg.
+- ✅ **Cron 00:00 Martinique** (`jobs/reports.py`) — snapshot daily systématique, snapshot weekly le lundi. Idempotent (`replace_one` sur `report_id`). Collections : `laurentia_reports_daily`, `laurentia_reports_weekly`.
+- ✅ **Endpoint `/api/me/tenant`** — debug & transparence : renvoie l'allocation d'agents du tenant courant.
+- ✅ **POST `/api/admin/reports/snapshot`** — déclenche manuellement le snapshot daily.
+- ✅ **Variables d'env** : `LAURENTIA_VALUE_QUERY_PROCESSED=5`, `LAURENTIA_VALUE_PDF_EXPORT=15`, etc. (override ratios), `CHANTIER10_REPORTS_DISABLED=false`.
+- ✅ **2 nouvelles collections** : `laurentia_activity_log`, `laurentia_api_keys` (+ `laurentia_reports_daily`, `laurentia_reports_weekly`).
+- ✅ **Tests** : `test_chantier10.py` (17 cas) — value estimator, allocations strictes par tier, log_activity persistance + override, TenantFactory resolve depuis instances, API Keys roundtrip create/validate/list/revoke + isolation cross-tenant, reports aggregation, snapshot idempotence, weekly paid_subscribers. **117/117 pytest verts** (100 ancestraux + 17 nouveaux).
+
+
 ### v1.2-LIVE — Chantier 9 : Orchestrateur 20 agents (Feb 2026, Mode SHADOW)
 - ✅ **20 agents WARM en RAM** (`orchestrator/agents.py`) répartis en 4 départements : Stratégie (3) · Opérations (7) · Création (6) · Interface (4). Instanciés une seule fois au startup, persistants, snapshot santé green/orange/red.
 - ✅ **EventBus asyncio.Queue** (`orchestrator/event_bus.py`) — pub/sub par canal (`intake`, `stream`, `stream_done`, `guardrail`, `critical`, `memory`), back-pressure protégée (drop si queue > 1024), erreurs handlers isolées via `asyncio.gather(return_exceptions=True)`.
