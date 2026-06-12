@@ -28,6 +28,21 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Hotfix UX : Historique anonyme + Zéro auto-popup (Feb 2026)
+- 🐛 **Bug 1 — Historique anonyme caché** : `MenuDrawer.fetchSessions` ne chargeait JAMAIS les sessions des visiteurs anonymes (le backend `/api/laurentia/sessions/list?frek_id=ANON-xxx` les retourne pourtant correctement — confirmé : 4 sessions persistées pour `ANON-GI23H5MU65` dont "Salut" reportée dans la capture user).
+  - Fix : `fetchSessions()` lit `localStorage.laurentia_anon_frek` et appelle `?frek_id=ANON-xxx` quand non authentifié. `handleDelete()` ajoute aussi le `frek_id=` pour la suppression RGPD anonyme.
+  - UI : section "Historique" visible pour TOUS, avec petit badge **"Local"** pour signaler aux anonymes que c'est local-device (transparence).
+  - Suppression du blocage `data-testid="menu-locked-history"` "Connecte-toi pour retrouver tes conversations".
+- 🐛 **Bug 2 — Auto-popup pricing intrusif** : la stratégie "modale au 2e hit dans 24h" du Chantier 10b restait trop agressive. Désormais **ZÉRO auto-popup, jamais** (comportement Claude).
+  - `paywallEvent` (SSE 402/403/429) → **toast actionnable uniquement** "Voir Creator pour continuer" avec bouton "Mon bilan" → `/me/reports`. Plus de `setPricingOpen(true)` automatique.
+  - PricingModal s'ouvre désormais UNIQUEMENT via clic explicite utilisateur :
+    - Bouton trombone (attach files, gate Creator) → `handleAttachUpgrade`
+    - Bouton "Améliorer mon plan" dans le menu drawer
+    - Bouton "Voir Creator" sur la carte upsell SOFT de `/me/reports`
+    - Quota PDF dépassé (action utilisateur explicite "Export PDF")
+- ✅ Smoke test UI confirmé : badge "LOCAL" + "HISTORIQUE" visibles, toast non-bloquant remplace la modale, backend valide 4 sessions sur le FREK-ID anonyme persistant.
+
+
 ### v1.2-LIVE — Chantier 10b : Dashboard `/me/reports` + Upsell SOFT (Feb 2026)
 - ✅ **Page `/me/reports`** (`frontend/src/pages/ReportsPage.jsx`) — dashboard utilisateur "Bilan Souverain Laurent.ia" :
   - Topline 4 cards : Temps économisé · Actions traitées · Agents actifs (X/20 selon tier) · Souveraineté

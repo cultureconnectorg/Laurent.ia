@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import useLaurentIA from "@/hooks/useLaurentIA";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
  */
 export default function LaurentIA() {
   const { user, isAuthenticated, ecosystemMember, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   // FREK-ID anonyme par browser quand pas authentifié.
   // Évite l'effet "pollution" où un visiteur voit l'historique d'un autre.
@@ -189,45 +191,22 @@ export default function LaurentIA() {
     setPricingOpen(true);
   };
 
-  // Auto-ouverture du paywall : THROTTLE pour ne pas casser l'expérience Free.
-  // Stratégie : on n'ouvre la modale qu'au 2e blocage dans une fenêtre 24h.
-  // Le 1er blocage = toast informatif + CTA vers /me/reports pour voir le bilan.
+  // Paywall : ZÉRO auto-popup (comportement Claude).
+  // On affiche seulement un toast actionnable, jamais de modale forcée.
+  // L'utilisateur ouvre PricingModal uniquement via le bouton explicite
+  // "Améliorer mon plan" dans le menu hamburger ou la carte upsell de /me/reports.
   useEffect(() => {
     if (!paywallEvent) return;
-    const navigate = (path) => { window.location.assign(path); };
-    const STORAGE_KEY = "laurentia_paywall_hits_v1";
-    let store;
-    try {
-      store = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null") || { hits: [], last_modal_at: 0 };
-    } catch (_) { store = { hits: [], last_modal_at: 0 }; }
-    const now = Date.now();
-    const DAY_MS = 24 * 3600 * 1000;
-    // Purge hits > 24h
-    store.hits = (store.hits || []).filter((t) => now - t < DAY_MS);
-    store.hits.push(now);
-
-    // Message contextuel
     const msg = paywallEvent.reason === "luciole"
-      ? (paywallEvent.detail || "Énergie Luciole épuisée. Voir Creator 🪙 pour libérer ta puissance.")
+      ? (paywallEvent.detail || "Énergie Luciole épuisée. Repasse demain ou active Creator pour libérer ta puissance.")
       : paywallEvent.reason === "upload_tier"
-        ? "Upload réservé à Creator/Infinite 🪙."
-        : "Quota atteint. Voir Creator 🪙 pour continuer.";
-
-    // Throttle : modale uniquement au 2e hit OU si > 12h depuis dernière ouverture
-    const SHOULD_OPEN_MODAL = (store.hits.length >= 2) && (now - (store.last_modal_at || 0) > 12 * 3600 * 1000);
-    if (SHOULD_OPEN_MODAL) {
-      store.last_modal_at = now;
-      toast(msg);
-      setPricingOpen(true);
-    } else {
-      // 1er hit : juste un toast actionnable, pas de modale forcée
-      toast(msg, {
-        action: { label: "Voir mon bilan", onClick: () => navigate("/me/reports") },
-        duration: 6000,
-      });
-    }
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
-  }, [paywallEvent]);
+        ? "Upload réservé à Creator / Infinite."
+        : "Quota atteint. Voir Creator pour continuer.";
+    toast(msg, {
+      action: { label: "Mon bilan", onClick: () => navigate("/me/reports") },
+      duration: 6000,
+    });
+  }, [paywallEvent, navigate]);
 
   const handlePickSession = (sessionId) => {
     loadSession(sessionId);

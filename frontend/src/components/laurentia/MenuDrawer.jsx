@@ -33,15 +33,22 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
   const [settingsOpen, setSettingsOpen] = useState(false);
   const frekRef = useRef(null);
 
-  // Charge l'historique UNIQUEMENT si authentifié
+  // Charge l'historique — authentifié OU anonyme (FREK-ID en localStorage).
+  // Côté backend, sessions/list accepte ?frek_id=ANON-xxx pour les visiteurs.
   const fetchSessions = async () => {
-    if (!isAuthenticated) {
-      setSessions([]);
-      return;
-    }
     setLoading(true);
     try {
-      const r = await fetch(`${API}/laurentia/sessions/list`, { credentials: "include" });
+      let url = `${API}/laurentia/sessions/list`;
+      if (!isAuthenticated) {
+        const anon = window.localStorage.getItem("laurentia_anon_frek");
+        if (!anon) {
+          setSessions([]);
+          setLoading(false);
+          return;
+        }
+        url += `?frek_id=${encodeURIComponent(anon)}`;
+      }
+      const r = await fetch(url, { credentials: "include" });
       if (r.ok) {
         const data = await r.json();
         setSessions(data.sessions || []);
@@ -56,7 +63,12 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
 
   const handleDelete = async (sid) => {
     try {
-      const r = await fetch(`${API}/laurentia/sessions/${sid}`, { method: "DELETE", credentials: "include" });
+      let url = `${API}/laurentia/sessions/${sid}`;
+      if (!isAuthenticated) {
+        const anon = window.localStorage.getItem("laurentia_anon_frek");
+        if (anon) url += `?frek_id=${encodeURIComponent(anon)}`;
+      }
+      const r = await fetch(url, { method: "DELETE", credentials: "include" });
       if (r.ok) {
         setSessions((s) => s.filter((x) => x.session_id !== sid));
         toast("Conversation supprimée");
@@ -204,19 +216,20 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
             </button>
           </div>
 
-          {/* History — only when authenticated */}
+          {/* History — visible pour tous (auth ET anonymes via localStorage FREK-ID) */}
           <div className="flex-1 min-h-0">
-            {isAuthenticated && (
-              <div className="px-5 pb-2 font-mono text-[10px] uppercase tracking-[0.28em] text-white/35">
+            <div className="px-5 pb-2 flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-white/35">
                 Historique
-              </div>
-            )}
+              </span>
+              {!isAuthenticated && (
+                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/25" title="Cet appareil uniquement">
+                  Local
+                </span>
+              )}
+            </div>
             <ScrollArea className="h-full px-3">
-              {!isAuthenticated ? (
-                <div className="px-3 py-8 text-center font-mono text-[11px] uppercase tracking-[0.22em] text-white/30" data-testid="menu-locked-history">
-                  Connecte-toi pour retrouver tes conversations
-                </div>
-              ) : loading ? (
+              {loading ? (
                 <div className="flex items-center gap-2 px-3 py-4 text-white/40 text-sm">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" /> Chargement…
                 </div>
