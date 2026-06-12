@@ -12,8 +12,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles } from "lucide-react";
+import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles, BarChart3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PricingModal from "@/components/laurentia/PricingModal";
 import SettingsModal from "@/components/laurentia/SettingsModal";
@@ -22,6 +23,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, currentSessionId = null }) => {
   const { user, isAuthenticated, login, loginWithFrekId, logout, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [frekInput, setFrekInput] = useState("");
@@ -260,6 +262,24 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
 
           {/* Footer actions */}
           <div className="border-t border-white/[0.06] px-3 py-3 space-y-1">
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => { onOpenChange(false); navigate("/me/reports"); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left
+                  hover:bg-white/[0.04] transition-colors text-white/80 hover:text-white"
+                data-testid="menu-reports-btn"
+              >
+                <BarChart3 className="w-4 h-4" strokeWidth={1.6} />
+                <div className="flex-1">
+                  <div className="font-sans text-sm">Mon bilan</div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-50">
+                    Temps gagné · Agents · Souveraineté
+                  </div>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 opacity-50" strokeWidth={1.6} />
+              </button>
+            )}
             {isAuthenticated && user?.tier !== "infinite" && (
               <button
                 type="button"

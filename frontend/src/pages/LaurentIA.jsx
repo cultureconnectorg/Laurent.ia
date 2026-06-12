@@ -189,17 +189,44 @@ export default function LaurentIA() {
     setPricingOpen(true);
   };
 
-  // Auto-ouverture du paywall lorsque le backend renvoie 402/403/429
+  // Auto-ouverture du paywall : THROTTLE pour ne pas casser l'expérience Free.
+  // Stratégie : on n'ouvre la modale qu'au 2e blocage dans une fenêtre 24h.
+  // Le 1er blocage = toast informatif + CTA vers /me/reports pour voir le bilan.
   useEffect(() => {
     if (!paywallEvent) return;
-    if (paywallEvent.reason === "luciole") {
-      toast(paywallEvent.detail || "Énergie Luciole épuisée. Active Creator 🪙 pour libérer ta puissance.");
-    } else if (paywallEvent.reason === "upload_tier") {
-      toast("Upload de fichiers réservé aux plans Creator/Infinite. Active ton abonnement 🪙.");
+    const navigate = (path) => { window.location.assign(path); };
+    const STORAGE_KEY = "laurentia_paywall_hits_v1";
+    let store;
+    try {
+      store = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null") || { hits: [], last_modal_at: 0 };
+    } catch (_) { store = { hits: [], last_modal_at: 0 }; }
+    const now = Date.now();
+    const DAY_MS = 24 * 3600 * 1000;
+    // Purge hits > 24h
+    store.hits = (store.hits || []).filter((t) => now - t < DAY_MS);
+    store.hits.push(now);
+
+    // Message contextuel
+    const msg = paywallEvent.reason === "luciole"
+      ? (paywallEvent.detail || "Énergie Luciole épuisée. Voir Creator 🪙 pour libérer ta puissance.")
+      : paywallEvent.reason === "upload_tier"
+        ? "Upload réservé à Creator/Infinite 🪙."
+        : "Quota atteint. Voir Creator 🪙 pour continuer.";
+
+    // Throttle : modale uniquement au 2e hit OU si > 12h depuis dernière ouverture
+    const SHOULD_OPEN_MODAL = (store.hits.length >= 2) && (now - (store.last_modal_at || 0) > 12 * 3600 * 1000);
+    if (SHOULD_OPEN_MODAL) {
+      store.last_modal_at = now;
+      toast(msg);
+      setPricingOpen(true);
     } else {
-      toast("Quota atteint. Active Creator 🪙 pour continuer sans interruption.");
+      // 1er hit : juste un toast actionnable, pas de modale forcée
+      toast(msg, {
+        action: { label: "Voir mon bilan", onClick: () => navigate("/me/reports") },
+        duration: 6000,
+      });
     }
-    setPricingOpen(true);
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
   }, [paywallEvent]);
 
   const handlePickSession = (sessionId) => {

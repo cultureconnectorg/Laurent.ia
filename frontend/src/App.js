@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import LaurentIA from "@/pages/LaurentIA";
 import AuthCallback from "@/pages/AuthCallback";
 import EchoPage from "@/pages/EchoPage";
+import ReportsPage from "@/pages/ReportsPage";
 
 function AppRouter() {
   const location = useLocation();
@@ -18,6 +19,7 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<LaurentIA />} />
       <Route path="/laurentia" element={<LaurentIA />} />
+      <Route path="/me/reports" element={<ReportsPage />} />
       <Route path="/echo/:sessionId" element={<EchoPage />} />
     </Routes>
   );

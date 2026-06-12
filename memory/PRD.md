@@ -28,6 +28,31 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Chantier 10b : Dashboard `/me/reports` + Upsell SOFT (Feb 2026)
+- ✅ **Page `/me/reports`** (`frontend/src/pages/ReportsPage.jsx`) — dashboard utilisateur "Bilan Souverain Laurent.ia" :
+  - Topline 4 cards : Temps économisé · Actions traitées · Agents actifs (X/20 selon tier) · Souveraineté
+  - **Courbe AreaChart** Recharts time-saved 7 derniers jours (gradient or souverain `#E7C566`)
+  - **BarChart** breakdown actions principales (violet)
+  - **Liste agents alloués** au tenant (transparence pyramide)
+  - Toggle Daily/Weekly (24h / 7j)
+- ✅ **Upsell SOFT, non-interruptif** — carte visible UNIQUEMENT en bas de page si `report.upsell_hint` ≠ null. Jamais en popup. Logique anti-spam serveur :
+  - Tier `infinite`/`pro` → jamais d'upsell
+  - Compte < 3 jours → jamais d'upsell (laisser le temps de tester l'expérience)
+  - Free < 20 actions ET < 60 min → jamais d'upsell
+  - Free ≥ 20 actions OU ≥ 60 min sur la fenêtre → hint vers Creator
+  - Creator ≥ 80 actions OU ≥ 240 min → hint vers Infinite
+- ✅ **Throttle paywall popup agressif** (`pages/LaurentIA.jsx`) — `paywallEvent` ne déclenche plus PricingModal au 1er hit :
+  - 1er hit dans 24h → **toast actionnable** avec bouton "Voir mon bilan" → `/me/reports` (durée 6s)
+  - ≥ 2e hit ET > 12h depuis dernière modale → ouverture modale autorisée
+  - Persistance hits via `localStorage` (`laurentia_paywall_hits_v1`)
+- ✅ **Lien menu drawer** "Mon bilan" (`menu-reports-btn`) avec icône `BarChart3`, visible uniquement si authentifié, navigation via `react-router-dom`.
+- ✅ **Backend `compute_user_timeline()`** — agrégation jour par jour sur N jours avec zéros pour jours sans activité (courbe propre).
+- ✅ **Backend `compute_upsell_hint()`** — règles seuils + âge compte (`account_created_at` depuis `laurentia_instances`).
+- ✅ **`compute_user_daily()` enrichi** : ajoute `timeline` + `upsell_hint` au payload existant.
+- ✅ **Route React** `/me/reports` enregistrée dans `App.js`. Redirection silencieuse `/` si `!isAuthenticated` (anti-leak).
+- ✅ **Tests** : `test_reports_upsell_timeline.py` (11 cas) — upsell hint infinite/young account/low usage/free thresholds/creator thresholds + timeline empty zeros + timeline daily aggregation + compute_user_daily intègre timeline & upsell. **128/128 pytest verts** (117 + 11 nouveaux).
+
+
 ### v1.2-LIVE — Chantier 10 : Pyramide Tenants + Reporting Bilan (Feb 2026)
 - ✅ **TenantFactory virtuel** (`services/tenant_factory.py`) — Orchestrator unique en RAM, allocation d'agents par tier :
   - Free → 3 essentiels (Réceptionniste, Streaming, Souveraineté)

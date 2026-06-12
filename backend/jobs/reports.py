@@ -66,11 +66,23 @@ async def compute_user_daily(db: AsyncIOMotorDatabase, frek_id: str,
     ).sort("created_at", -1).limit(3)
     incidents = await incidents_cur.to_list(length=3)
 
-    # Tier resolution
+    # Tier resolution + account age
     inst = await db.laurentia_instances.find_one(
-        {"frek_id": frek_id}, {"_id": 0, "tier": 1, "version": 1}
+        {"frek_id": frek_id}, {"_id": 0, "tier": 1, "version": 1, "created_at": 1}
     )
     tier = (inst or {}).get("tier") or (inst or {}).get("version") or "free"
+    created_at = (inst or {}).get("created_at")
+
+    # Timeline 7 derniers jours (pour la courbe)
+    timeline = await compute_user_timeline(db, frek_id, days=max(7, hours // 24))
+
+    # Upsell hint smart — pas de spam, only when value delivered
+    upsell_hint = compute_upsell_hint(
+        tier=tier,
+        total_actions_window=total_actions,
+        time_saved_min_window=total_minutes,
+        account_created_at=created_at,
+    )
 
     return {
         "frek_id": frek_id,
@@ -83,8 +95,88 @@ async def compute_user_daily(db: AsyncIOMotorDatabase, frek_id: str,
         "alerts": total_alerts,
         "by_action": by_action,
         "top_incidents": incidents,
+        "timeline": timeline,
+        "upsell_hint": upsell_hint,
         "generated_at": _utc_iso(datetime.now(timezone.utc)),
     }
+
+
+async def compute_user_timeline(db: AsyncIOMotorDatabase, frek_id: str,
+                                 *, days: int = 7) -> list[dict]:
+    """Renvoie [{date: 'YYYY-MM-DD', minutes: int, actions: int}, ...] des N derniers jours.
+    Inclut les jours sans activité avec zéros pour une courbe propre."""
+    since = _window(24 * days)
+    pipeline = [
+        {"$match": {"frek_id": frek_id, "ts": {"$gte": since}}},
+        {"$addFields": {"day": {"$substr": ["$ts", 0, 10]}}},
+        {"$group": {
+            "_id": "$day",
+            "minutes": {"$sum": "$time_saved_min"},
+            "actions": {"$sum": 1},
+        }},
+    ]
+    raw = {}
+    async for r in db.laurentia_activity_log.aggregate(pipeline):
+        raw[r["_id"]] = {"minutes": r["minutes"], "actions": r["actions"]}
+
+    out: list[dict] = []
+    today = datetime.now(timezone.utc).date()
+    for i in range(days - 1, -1, -1):
+        d = today - timedelta(days=i)
+        key = d.isoformat()
+        rec = raw.get(key, {"minutes": 0, "actions": 0})
+        out.append({"date": key, "minutes": rec["minutes"], "actions": rec["actions"]})
+    return out
+
+
+def compute_upsell_hint(*, tier: str, total_actions_window: int, time_saved_min_window: int,
+                         account_created_at: str | None) -> dict | None:
+    """
+    Suggestion d'upsell SMART — ne s'affiche pas pour ne pas casser l'expérience.
+
+    Règles :
+      - Tier infinite/pro → None (déjà au max)
+      - Compte < 3 jours OU < 20 actions cumulées → None (laisser le temps de tester)
+      - Free + ≥20 actions sur la fenêtre OU ≥60 min sauvées → hint vers Creator
+      - Creator + ≥80 actions OU ≥240 min sauvées → hint vers Infinite
+    """
+    tier = (tier or "free").lower()
+    if tier in ("infinite", "pro"):
+        return None
+
+    # Âge du compte
+    if account_created_at:
+        try:
+            created = datetime.fromisoformat(account_created_at.replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - created).days
+        except Exception:
+            age_days = 999
+    else:
+        age_days = 999
+    if age_days < 3:
+        return None
+
+    if tier == "free":
+        if total_actions_window < 20 and time_saved_min_window < 60:
+            return None
+        return {
+            "target_tier": "creator",
+            "headline": "Tu as gagné du temps. Active Creator pour aller plus loin.",
+            "reason": f"+{time_saved_min_window // 60}h économisées · 7 agents Aigle débloqués (10/20)",
+            "cta": "Voir Creator",
+            "soft": True,
+        }
+    if tier == "creator":
+        if total_actions_window < 80 and time_saved_min_window < 240:
+            return None
+        return {
+            "target_tier": "infinite",
+            "headline": "Tu utilises Laurent.ia intensément. Passe à Infinite.",
+            "reason": "10 agents supplémentaires (créatifs, arbitrage, SMS alert) — pyramide complète",
+            "cta": "Voir Infinite",
+            "soft": True,
+        }
+    return None
 
 
 async def compute_founder_daily(db: AsyncIOMotorDatabase, *, hours: int = 24) -> dict:
