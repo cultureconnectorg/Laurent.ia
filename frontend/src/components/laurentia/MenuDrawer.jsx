@@ -12,7 +12,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles, BarChart3 } from "lucide-react";
+import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles, BarChart3, Cpu, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -275,6 +275,41 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
 
           {/* Footer actions */}
           <div className="border-t border-white/[0.06] px-3 py-3 space-y-1">
+            {/* Admin section — visible uniquement pour founder / admin */}
+            {isAuthenticated && ["founder", "admin"].includes((user?.role || "").toLowerCase()) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { onOpenChange(false); navigate("/admin/orchestrator"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-white/[0.04] transition-colors text-[#E7C566]/90 hover:text-[#E7C566]"
+                  data-testid="menu-admin-orchestrator-btn"
+                >
+                  <Cpu className="w-4 h-4" strokeWidth={1.6} />
+                  <div className="flex-1">
+                    <div className="font-sans text-sm">Admin · Orchestrateur</div>
+                    <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-60">
+                      20 agents · incidents · décisions
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-50" strokeWidth={1.6} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onOpenChange(false); navigate("/admin/reports"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-white/[0.04] transition-colors text-[#E7C566]/90 hover:text-[#E7C566]"
+                  data-testid="menu-admin-reports-btn"
+                >
+                  <ShieldCheck className="w-4 h-4" strokeWidth={1.6} />
+                  <div className="flex-1">
+                    <div className="font-sans text-sm">Admin · Bilan global</div>
+                    <div className="font-mono text-[9px] uppercase tracking-[0.22em] opacity-60">
+                      Tenants · latence · souveraineté
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-50" strokeWidth={1.6} />
+                </button>
+              </>
+            )}
             {isAuthenticated && (
               <button
                 type="button"

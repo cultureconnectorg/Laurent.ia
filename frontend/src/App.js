@@ -7,6 +7,8 @@ import LaurentIA from "@/pages/LaurentIA";
 import AuthCallback from "@/pages/AuthCallback";
 import EchoPage from "@/pages/EchoPage";
 import ReportsPage from "@/pages/ReportsPage";
+import AdminOrchestratorPage from "@/pages/admin/AdminOrchestratorPage";
+import AdminReportsPage from "@/pages/admin/AdminReportsPage";
 
 function AppRouter() {
   const location = useLocation();
@@ -20,6 +22,8 @@ function AppRouter() {
       <Route path="/" element={<LaurentIA />} />
       <Route path="/laurentia" element={<LaurentIA />} />
       <Route path="/me/reports" element={<ReportsPage />} />
+      <Route path="/admin/orchestrator" element={<AdminOrchestratorPage />} />
+      <Route path="/admin/reports" element={<AdminReportsPage />} />
       <Route path="/echo/:sessionId" element={<EchoPage />} />
     </Routes>
   );

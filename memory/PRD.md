@@ -28,6 +28,18 @@ Laurent.ia est l'infrastructure d'intelligence souveraine du groupe CVLN. Systè
 ## 5. Implémenté
 
 
+### v1.2-LIVE — Hotfix UX bis : Boot propre + Privacy ghost persistence (Feb 2026)
+- 🐛 **Bug "Salut" auto-resume à chaque ouverture** : la "Persistance Fantôme" appelait `/api/laurentia/resolve` au boot et rechargeait automatiquement la dernière `last_session_id` en mémoire device. Effet : l'app rouvrait toujours sur la dernière conversation au lieu de démarrer fresh.
+  - Fix : suppression du `useEffect` qui auto-chargeait `last_session_id` au démarrage. L'app boot maintenant TOUJOURS sur l'écran d'accueil "Laurent.ia — Posez votre question. Je vous écoute." (preuve visuelle confirmée par smoke test).
+  - Les conversations restent accessibles via le menu hamburger (Historique → click pour reprendre).
+  - Le hook URL `#session_id=...` continue de marcher pour reprendre une session précise via lien partagé.
+- 🛡️ **Privacy ghost persistence clarifiée** :
+  - 2 devices différents → 2 anon FREK-IDs différents en localStorage + 2 fingerprints distincts (Canvas/WebGL/UserAgent) → **AUCUNE fuite cross-device**.
+  - Même device physique partagé (tablette familiale) → ghost persistence par design (le menu hamburger affiche les conversations locales). Mitigation : auth Google liée à l'email = isolation forte. C'est documenté côté UI par le badge "LOCAL" dans le menu drawer.
+  - L'auto-resume retiré supprime aussi un signal involontaire : un nouvel utilisateur sur ton device ne voit plus la dernière conversation s'ouvrir automatiquement à l'écran — il devra explicitement aller dans le menu.
+- 🧹 Cleanup : suppression de l'import inutile `withFingerprintHeaders` dans `LaurentIA.jsx` (la résolution device n'est plus appelée au boot).
+
+
 ### v1.2-LIVE — Hotfix UX : Historique anonyme + Zéro auto-popup (Feb 2026)
 - 🐛 **Bug 1 — Historique anonyme caché** : `MenuDrawer.fetchSessions` ne chargeait JAMAIS les sessions des visiteurs anonymes (le backend `/api/laurentia/sessions/list?frek_id=ANON-xxx` les retourne pourtant correctement — confirmé : 4 sessions persistées pour `ANON-GI23H5MU65` dont "Salut" reportée dans la capture user).
   - Fix : `fetchSessions()` lit `localStorage.laurentia_anon_frek` et appelle `?frek_id=ANON-xxx` quand non authentifié. `handleDelete()` ajoute aussi le `frek_id=` pour la suppression RGPD anonyme.

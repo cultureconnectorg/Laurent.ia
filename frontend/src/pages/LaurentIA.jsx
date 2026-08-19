@@ -15,7 +15,6 @@ import PhaseIndicator from "@/components/laurentia/PhaseIndicator";
 import WhiteLabelKiller from "@/components/laurentia/WhiteLabelKiller";
 import EnergyBraids from "@/components/laurentia/EnergyBraids";
 import { ECOSYSTEM_CHIPS } from "@/components/laurentia/ecosystemChips";
-import { withFingerprintHeaders } from "@/services/fingerprint";
 import { toast } from "sonner";
 
 /**
@@ -110,7 +109,7 @@ export default function LaurentIA() {
             return;
           }
         }
-      } catch (_) {}
+      } catch (_) { /* silent retry via setTimeout */ }
       setTimeout(poll, 2000);
     };
     poll();
@@ -127,31 +126,13 @@ export default function LaurentIA() {
     }
   }, [loadSession]);
 
-  // Persistance Fantôme — Résout l'historique depuis le device_id côté serveur
-  // dès le premier paint, si l'utilisateur n'a pas de frek_id authentifié.
-  useEffect(() => {
-    if (authLoading || isAuthenticated) return;
-    if (history.length > 0) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/laurentia/resolve`, {
-          headers: withFingerprintHeaders({}),
-          credentials: "include",
-        });
-        if (!r.ok) return;
-        const data = await r.json();
-        if (cancelled) return;
-        if (data.last_session_id && !history.length) {
-          loadSession(data.last_session_id);
-        }
-      } catch (_) {
-        // silencieux : pas de session = pas de friction
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAuthenticated]);
+  // Persistance Fantôme — désactivée à l'ouverture pour démarrer SUR écran d'accueil propre.
+  // Les anciennes conversations restent accessibles via le menu hamburger (Historique).
+  // L'auto-resume au boot a été retiré : il rouvrait toujours la dernière session,
+  // ce qui empêchait de démarrer un nouvel échange et faisait croire qu'une autre
+  // personne pouvait voir les conversations. Désormais l'utilisateur choisit
+  // explicitement quelle conversation reprendre depuis le menu.
+  // (Garde la résolution device pour hydrater le menu via /sessions/list?frek_id=ANON-xxx)
 
   const handleSubmit = (text, files) => {
     setComposerValue("");
