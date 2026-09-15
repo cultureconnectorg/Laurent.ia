@@ -94,6 +94,7 @@ from routes.orchestrator_admin import (  # noqa: E402
     webhook_router as orchestrator_webhook_router,
 )
 from routes.reports import router as reports_router  # noqa: E402
+from routes.cvln_runtime import router as cvln_runtime_router  # noqa: E402
 from jobs.corpus_pipeline import schedule_corpus_pipeline  # noqa: E402
 from jobs.social_agent import schedule_social_agent  # noqa: E402
 from jobs.reports import schedule_reports  # noqa: E402
@@ -114,6 +115,7 @@ app.include_router(social_admin_router)
 app.include_router(orchestrator_admin_router)
 app.include_router(orchestrator_webhook_router)
 app.include_router(reports_router)
+app.include_router(cvln_runtime_router)
 
 
 # Exception handler — Kiltikonet panne amont → HTTP 503 (strict v1.2-LIVE).
@@ -131,6 +133,23 @@ async def kiltikonet_unavailable_handler(_request, exc):
             "code": "kiltikonet_unavailable",
         },
     )
+
+
+# PATCH-007 — trace_id de bout en bout (contrat Event v1.0 de Meta CVLN).
+# Chaque requête porte un trace_id : celui fourni par l'appelant via
+# X-CVLN-Trace-Id, sinon un nouveau. Il est exposé sur request.state et renvoyé
+# dans la réponse, pour qu'un appel puisse être suivi Laurentia -> Agent Factory
+# -> Meta CVLN sans corrélation manuelle.
+from services.cvln_contracts import new_trace_id as _new_trace_id  # noqa: E402
+
+
+@app.middleware("http")
+async def cvln_trace_id_middleware(request, call_next):
+    trace_id = request.headers.get("X-CVLN-Trace-Id") or _new_trace_id()
+    request.state.cvln_trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-CVLN-Trace-Id"] = trace_id
+    return response
 
 
 # CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
