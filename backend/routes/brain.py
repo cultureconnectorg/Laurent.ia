@@ -4,12 +4,14 @@ MVP: implémentation minimale ADDITIVE (compat).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 
 from services import cvl_brain, cvl_brain_knowledge
-from services.api_keys import validate_key
 from services.cvl_brain_agents import AGENT_REGISTRY
+
+import hmac
+import os
 
 
 router = APIRouter(prefix="/api/brain", tags=["brain"])
@@ -53,10 +55,9 @@ async def chat_enriched(payload: ChatEnrichedRequest):
 async def briefing(payload: BriefingRequest, request: Request):
     """Stable JSON facade for Meta CVLN and other trusted CVLN consumers."""
     raw_key = request.headers.get("X-API-Key", "")
-    key_doc = await validate_key(request.app.state.db, raw_key)
-    if not key_doc:
-        from fastapi import HTTPException
-        raise HTTPException(403, "X-API-Key invalide")
+    service_key = os.environ.get("LAURENTIA_CVLN_SERVICE_API_KEY", "").strip()
+    if not service_key or not raw_key or not hmac.compare_digest(raw_key, service_key):
+        raise HTTPException(403, "X-API-Key inter-service invalide")
     prompt = (payload.request or payload.topic or "").strip()
     if not prompt:
         prompt = "Fournis un briefing synthétique à partir du contexte transmis."
