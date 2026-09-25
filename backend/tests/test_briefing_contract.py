@@ -7,9 +7,9 @@ client = TestClient(app)
 
 
 def test_briefing_contract():
-    with patch("routes.brain.validate_key", new=AsyncMock(return_value={"key_id": "key-test"})), \
+    with patch.dict("os.environ", {"LAURENTIA_CVLN_SERVICE_API_KEY": "svc-cvln-test"}), \
          patch("routes.brain.cvl_brain.chat_enriched", new=AsyncMock(return_value="Briefing OK")):
-        response = client.post("/api/brain/briefing", headers={"X-API-Key": "lia_test_secret"}, json={
+        response = client.post("/api/brain/briefing", headers={"X-API-Key": "svc-cvln-test"}, json={
             "topic": "Kiltikonet Code",
             "context": {"surface": "cockpit"},
             "trace_id": "trc-test",
@@ -25,6 +25,12 @@ def test_briefing_contract():
 
 
 def test_briefing_rejects_missing_api_key():
-    with patch("routes.brain.validate_key", new=AsyncMock(return_value=None)):
+    with patch.dict("os.environ", {"LAURENTIA_CVLN_SERVICE_API_KEY": "svc-cvln-test"}):
         response = client.post("/api/brain/briefing", json={"topic": "x"})
+    assert response.status_code == 403
+
+
+def test_briefing_rejects_user_style_laurentia_key():
+    with patch.dict("os.environ", {"LAURENTIA_CVLN_SERVICE_API_KEY": "svc-cvln-test"}):
+        response = client.post("/api/brain/briefing", headers={"X-API-Key": "lia_creator_userkey"}, json={"topic": "x"})
     assert response.status_code == 403
