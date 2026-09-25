@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from services import cvl_brain, cvl_brain_knowledge
+from services.api_keys import validate_key
 from services.cvl_brain_agents import AGENT_REGISTRY
 
 
@@ -49,8 +50,13 @@ async def chat_enriched(payload: ChatEnrichedRequest):
 
 
 @router.post("/briefing")
-async def briefing(payload: BriefingRequest):
+async def briefing(payload: BriefingRequest, request: Request):
     """Stable JSON facade for Meta CVLN and other trusted CVLN consumers."""
+    raw_key = request.headers.get("X-API-Key", "")
+    key_doc = await validate_key(request.app.state.db, raw_key)
+    if not key_doc:
+        from fastapi import HTTPException
+        raise HTTPException(403, "X-API-Key invalide")
     prompt = (payload.request or payload.topic or "").strip()
     if not prompt:
         prompt = "Fournis un briefing synthétique à partir du contexte transmis."
