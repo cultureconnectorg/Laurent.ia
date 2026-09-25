@@ -5,7 +5,7 @@ MVP: implémentation minimale ADDITIVE (compat).
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from services import cvl_brain, cvl_brain_knowledge
 from services.cvl_brain_agents import AGENT_REGISTRY
@@ -18,6 +18,14 @@ class ChatEnrichedRequest(BaseModel):
     message: str
     session_id: str | None = None
     frek_id: str | None = None
+
+
+class BriefingRequest(BaseModel):
+    topic: str | None = None
+    request: str | None = None
+    context: dict = Field(default_factory=dict)
+    trace_id: str | None = None
+    issuer: str | None = None
 
 
 @router.get("/health")
@@ -38,3 +46,22 @@ async def chat_enriched(payload: ChatEnrichedRequest):
     system = cvl_brain_knowledge.build_system_prompt()
     text = await cvl_brain.chat_enriched(payload.message, system, payload.session_id)
     return {"response": text}
+
+
+@router.post("/briefing")
+async def briefing(payload: BriefingRequest):
+    """Stable JSON facade for Meta CVLN and other trusted CVLN consumers."""
+    prompt = (payload.request or payload.topic or "").strip()
+    if not prompt:
+        prompt = "Fournis un briefing synthétique à partir du contexte transmis."
+    if payload.context:
+        prompt += "\n\n[CONTEXTE]\n" + str(payload.context)
+    system = cvl_brain_knowledge.build_system_prompt()
+    text = await cvl_brain.chat_enriched(prompt, system, payload.trace_id)
+    return {
+        "contract": "laurentia.briefing",
+        "version": "1.0",
+        "trace_id": payload.trace_id,
+        "issuer": payload.issuer,
+        "response": text,
+    }
