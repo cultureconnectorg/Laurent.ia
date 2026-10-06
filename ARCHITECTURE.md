@@ -1,3 +1,5 @@
+> ⚠️ **Document historique — ancien produit B2C.** La référence canonique de Laurent.ia est désormais [`docs/product/LAURENTIA_V1_CADRAGE.md`](docs/product/LAURENTIA_V1_CADRAGE.md) (Personal Intelligence OS, souveraineté locale — décision [D8](docs/decisions/D8-sovereign-local-intelligence.md)). En cas de contradiction, le cadrage prévaut.
+
 # Architecture de Découpage — Roadmap Technique Laurent.ia
 
 > Ce document définit la **séparation physique** entre les couches **open** et **privées** de la plateforme Laurent.ia. Toute contribution au dépôt doit s'y conformer.

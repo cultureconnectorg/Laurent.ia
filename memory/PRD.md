@@ -1,3 +1,5 @@
+> ⚠️ **Document historique — ancien produit B2C.** La référence canonique de Laurent.ia est désormais [`docs/product/LAURENTIA_V1_CADRAGE.md`](../docs/product/LAURENTIA_V1_CADRAGE.md) (Personal Intelligence OS, souveraineté locale — décision [D8](../docs/decisions/D8-sovereign-local-intelligence.md)). En cas de contradiction, le cadrage prévaut.
+
 # Laurent.ia — PRD (Product Requirements Doc)
 
 > v0.1 — MVP voice-first single-page · Mai 2026

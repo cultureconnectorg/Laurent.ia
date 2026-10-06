@@ -1,3 +1,5 @@
+> ⚠️ **Document historique — ancien produit B2C.** La référence canonique de Laurent.ia est désormais [`docs/product/LAURENTIA_V1_CADRAGE.md`](docs/product/LAURENTIA_V1_CADRAGE.md) (Personal Intelligence OS, souveraineté locale — décision [D8](docs/decisions/D8-sovereign-local-intelligence.md)). En cas de contradiction, le cadrage prévaut.
+
 # Laurent.ia — v1.2-PRODUCTION
 
 > **Laurent.ia est une Infrastructure Souveraine de Décision, conçue pour l'excellence économique et culturelle de l'Afro-diaspora.**
