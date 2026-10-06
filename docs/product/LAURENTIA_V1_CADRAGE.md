@@ -4,6 +4,7 @@
 > Remplace la v1 de ce document (qui recommandait à tort un accès direct à un LLM externe et un index vectoriel cloud).
 > Méthode : audit → architecture canonique → décisions → exécution. **Evidence First : aucun « fait » sans preuve.**
 > Ce document prévaut sur `README.md`, `ARCHITECTURE.md` et `memory/PRD.md`, qui décrivent l'ancien produit B2C.
+> La spécification exécutable de la V1 (objets, contrats, user stories, DONE/NOT DONE) est le [**Product Contract**](./LAURENTIA_V1_PRODUCT_CONTRACT.md). Il précise et, en cas d'écart, remplace les §4.2, §5 et §9 ci-dessous.
 
 ---
 
@@ -117,7 +118,7 @@ Billing Stripe et tiers (`routes/billing.py`), paywall et quotas, PricingModal, 
  │   Reasoning ── planification, instruction des décisions, traçabilité       │
  │   Agents    ── agents spécialisés internes et agents externes sous contrat │
  │   Tools     ── capacités atomiques typées (lire, chercher, écrire, appeler)│
- │   Decision / Action ── niveaux L0–L3, validation humaine, journal          │
+ │   Decision / Action ── READ · PROPOSE · EXECUTE, approbation, journal    │
  ├────────────────────────────────────────────────────────────────────────────┤
  │ Local LLM (interface unique, moteurs substituables, hôtes internes)        │
  │ Memory (épisodes, faits, décisions, engagements, journal des actions)      │
@@ -141,16 +142,13 @@ Billing Stripe et tiers (`routes/billing.py`), paywall et quotas, PricingModal, 
 | **Reasoning** | Décomposer une demande, instruire une décision (options, critères, hypothèses, risques), expliciter l'incertitude | Exécuter | — (à construire) |
 | **Agents** | Spécialisations internes (ex. instruction de décision, veille, rédaction) et pilotage d'agents externes **sous contrat** | Héberger les agents d'Agent Factory | `orchestrator/agents.py` → requalifié en garde-fous |
 | **Tools** | Capacités atomiques, typées, déclarant leur niveau d'action | Décider seules | `file_parser`, bridges |
-| **Decision / Action** | Niveaux L0–L3, demandes de validation, journal immuable de ce qui a été fait | Contourner une validation | `circuit_breaker.py`, `sms_ovh.py` |
+| **Decision / Action** | Niveaux READ · PROPOSE · EXECUTE, approbations, journal immuable de ce qui a été fait | Contourner une validation | `circuit_breaker.py`, `sms_ovh.py` |
 | **Evaluation** | Jeux de tests issus des vraies tâches de Laurent, benchmark des modèles (D8), régression à chaque changement de modèle ou de prompt, métriques de qualité | — | `event_bus.py`, journaux d'incidents |
 | **Contracts** | Schémas versionnés `laurentia.*`, authentification par clé de service dédiée par consommateur, tests de contrat | Exposer de la mémoire brute | `laurentia.briefing@1.0` |
 
 ### 4.2 Niveaux d'action
 
-- **L0 Lire** : libre.
-- **L1 Préparer** (brouillon, proposition) : libre, visible.
-- **L2 Exécuter réversible** : confirmation en un geste.
-- **L3 Irréversible ou externe** (envoyer, publier, payer, supprimer, engager un tiers) : validation explicite de Laurent à chaque fois, journalisée. Aucune exception en V1.
+Trois niveaux, définis dans le [Product Contract §7](./LAURENTIA_V1_PRODUCT_CONTRACT.md) : 🟢 **READ** (automatique) · 🟡 **PROPOSE** (préparé, sans effet) · 🔴 **EXECUTE** (confirmation explicite à chaque fois en V1). Ils remplacent les niveaux L0–L3 de la version précédente de ce document.
 
 ### 4.3 Structure du code (transformation progressive, sans big bang)
 
@@ -235,11 +233,13 @@ Ce qui existe déjà, de façon vérifiable : le contrat `laurentia.briefing@1.0
 3. Mesures automatiques (exactitude des appels d'outils, contexte long, latence, mémoire) + notation à l'aveugle par Laurent pour la qualité.
 4. Rapport chiffré versionné dans `docs/benchmarks/`. Le choix est une décision tracée, révisable à chaque nouveau modèle.
 
-**Candidats initiaux** (liste à rafraîchir le jour du benchmark, licences à vérifier sur la version exacte) : familles Mistral (éditeur français ; certaines versions sous Apache 2.0), Qwen (plusieurs versions sous Apache 2.0), DeepSeek (certaines versions sous MIT), Llama et Gemma (licences propres à l'éditeur, avec restrictions à examiner). Les modèles open-weight publiés par des fournisseurs cités en D8 (ex. gpt-oss) tournent localement et ne contreviennent pas techniquement à la règle ; **à Laurent de dire s'ils sont exclus par principe.**
+**Candidats initiaux** (liste à rafraîchir le jour du benchmark, licences à vérifier sur la version exacte) : familles Mistral (éditeur français ; certaines versions sous Apache 2.0), Qwen (plusieurs versions sous Apache 2.0), DeepSeek (certaines versions sous MIT), Llama et Gemma (licences propres à l'éditeur, avec restrictions à examiner). Les modèles open-weight de toutes origines (y compris ceux publiés par des fournisseurs cités en D8, ex. gpt-oss, Gemma) sont **autorisés** lorsqu'ils tournent localement pour enrichir le système de Laurent (**D11**).
 
 ---
 
 ## 9. Exécution — lots et preuves exigées
+
+> Remplacé par le [Product Contract §13](./LAURENTIA_V1_PRODUCT_CONTRACT.md). Conservé ci-dessous pour mémoire.
 
 Aucun lot n'est « terminé » sans les preuves listées. Chaque preuve est versionnée (`docs/evidence/lot-N.md` : commandes, sorties, captures).
 
@@ -294,5 +294,6 @@ Aucun lot n'est « terminé » sans les preuves listées. Chaque preuve est vers
 | **D6** | Transparence totale envers Laurent ; confidentialité stricte envers les tiers ; pas de persona | **Validée** |
 | **D7** | Aucune responsabilité de KORA, Agent Factory ou CVL Brain n'est supposée ; contrats établis avant intégration | **Validée** |
 | **D8** | Sovereign Local Intelligence (§2, §8, fichier dédié) | **Validée** |
-| **D9** | Infrastructure d'inférence : serveur détenu par Laurent ou serveur dédié loué chez un hébergeur soumis au droit européen | **À trancher** avant le Lot 1 |
+| **D9** | Infrastructure d'inférence et données : **un serveur détenu par Laurent**, pas d'hébergeur externe | **Validée** (6 oct. 2026) |
 | **D10** | Licence du dépôt : la BSL 1.1 actuelle (`LICENSE.md`) décrit des offres commerciales B2C | **À revoir**, non bloquant |
+| **D11–D15** | Modèles open-weight toutes origines, recherche web, contrat briefing, registres du groupe, validation du contrat | Voir [Product Contract §14](./LAURENTIA_V1_PRODUCT_CONTRACT.md) |

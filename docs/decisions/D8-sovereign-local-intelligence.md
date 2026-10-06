@@ -28,6 +28,8 @@ modèle local → mémoire locale → connaissances locales → outils → agent
 4. Les hôtes d'inférence autorisés sont déclarés explicitement ; tout autre hôte est refusé.
 5. Aucune donnée réelle de Laurent n'est versionnée dans le dépôt ni transmise à un outil de développement.
 6. Le choix du modèle local est fait sur benchmark (critères ci-dessous) et tracé ; il est révisable.
+7. L'inférence et les données tournent sur **un serveur détenu par Laurent** (D9).
+8. Les modèles open-weight de **toutes origines** sont autorisés lorsqu'ils tournent localement (D11).
 
 ## Critères du benchmark
 
