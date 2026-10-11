@@ -294,3 +294,59 @@ CVL Brain apparaît comme la **couche cognitive interne de Meta CVLN** (`server.
 
 - **Périmètre du Learning Plane** : Laurent.ia sert Laurent d'abord ; ses capacités (briefing, évaluation, confiance) sont offertes aux autres systèmes **uniquement via les contrats de Meta CVLN**, sa mémoire personnelle n'étant jamais exposée brute. Est-ce la bonne lecture ?
 - **CVL Brain et Laurent.ia**, tous deux « Learning » : CVL Brain reste-t-il la couche cognitive propre à Meta CVLN, ou doit-il à terme s'appuyer sur Laurent.ia ?
+
+---
+
+## 10. Audit de `cultureconnectorg/Cvln-ios-v.1` — la doctrine CVLN Intelligence OS (11 octobre 2026)
+
+Lecture seule, branche la plus récente `claude/cvln-groupe-ecosystem-qf2pj2` (commit `1cedf8a`, 15 sept. 2026, en avance de 53 fichiers sur `main`).
+
+### 10.1 Ce qu'est ce dépôt
+
+Malgré son nom, ce n'est pas une application iOS. C'est **le corpus de doctrine de l'écosystème**, `cvln-intelligence-os/` :
+- une constitution ;
+- 31 décisions d'architecture (ADR D-001 à D-031, toutes au statut DECIDED) ;
+- 5 décisions fondatrices encore ouvertes (FD-001 à FD-005) ;
+- des architectures par système, des contrats d'API, des registres et des audits ;
+- une application FastAPI + React qui l'affiche et vérifie son gel (« freeze ») par des tests.
+
+Il renvoie aussi à un dépôt `Foundation-Cvln` (`lib/registry/cvlnRegistry.js`, l'arbre fondateur), **non audité ici**.
+
+### 10.2 Les rôles qu'il définit
+
+| Niveau | Système | Rôle (`registry/ECOSYSTEM-REGISTRY.md`) | Statut |
+|---|---|---|---|
+| −1 | Meta CVLN (entité) | Gouvernance du groupe | OBSERVED |
+| 0 | MetaCVLN (logiciel) | Noyau : gouvernance, registre, permissions, état d'exécution | IMPLEMENTED |
+| — | CVLN Intelligence OS | Intelligence système, orchestration commune (D-027 : jamais fusionné avec Meta CVLN) | Déclaré |
+| 1 | **CVLN Brain** | **Moteur d'intelligence souveraine : doctrine, raisonnement, mémoire** ; cible = un service unique possédant persona, doctrine, mémoire, apprentissage, raisonnement, routage de modèles et comportement d'urgence | TARGET |
+| 2 | CVLN Agent Factory | « Système nerveux » : langage de définition d'agents, runtime, portes, bus | IMPLEMENTED |
+| 3 | **Laurentia** | **« Opérateur de l'industrie culturelle »** : sessions, artefacts, rapports ; enfant d'Agent Factory dans l'arbre fondateur | PARTIAL |
+| 4 | KORA, LabelOS, Wallet, Kiltikonet | Applications | REFERENCED |
+
+### 10.3 Travail déjà fait sur Laurent.ia, à ne pas refaire
+
+**PR #1 de `cultureconnectorg/Laurent.ia`** (« PATCH-007 — Laurentia runtime connection to the CVLN estate », ouverte le 15 sept. 2026, **non fusionnée**, base `public`). Elle apporte, avec 19 tests :
+- `GET /api/capabilities` au format `Capability` v1.0, découvrable par Meta CVLN ;
+- `/api/system/identity` et `/api/system/state` (`SystemState` v1.0) ;
+- l'émission d'`Event` v1.0 vers le bus signé de Meta CVLN ;
+- la propagation d'un identifiant de traçage (`X-CVLN-Trace-Id`) ;
+- la délégation du choix du modèle au routeur d'Agent Factory (`POST /api/providers/route`).
+
+Le Lot 0 de Laurent.ia doit **partir de cette PR**, pas réimplémenter ces points.
+
+**Conflit avec D8** : cette PR délègue l'inférence au routeur d'Agent Factory, dont la stratégie par défaut appelle Anthropic, OpenAI ou Gemini ; son repli local reste Emergent. Telle quelle, elle est incompatible avec la souveraineté locale. Le reste (identité, capacités, état, événements, traçage) est compatible.
+
+### 10.4 Trois définitions de Laurent.ia qui ne coïncident pas
+
+| Source | Laurent.ia est… |
+|---|---|
+| Doctrine CVLN Intelligence OS (ADR décidés) | Un **produit** de niveau 3 : opérateur de l'industrie culturelle, enfant d'Agent Factory. L'intelligence souveraine (mémoire, raisonnement, doctrine, routage de modèles) relève de **CVLN Brain**, niveau 1 |
+| Registre Meta CVLN | Le **Learning Plane** : cognition, mémoire, évaluation, confiance |
+| Vision de Laurent dans cette session (D1, D8) | Le **système d'intelligence personnel et souverain** de Laurent : modèle local, mémoire, raisonnement, actions sous autorisation |
+
+**Observation** : la vision de Laurent (mémoire, raisonnement, modèle local, souveraineté) correspond presque terme à terme à ce que la doctrine attribue à **CVLN Brain**, et dont la définition est précisément la décision fondatrice ouverte **FD-001** (« ce que CVL Brain désigne »). Elle correspond aussi au Learning Plane de Meta CVLN. Elle ne correspond pas au Laurentia « opérateur culturel » de niveau 3.
+
+### 10.5 Collision de numérotation
+
+Les décisions de ce dépôt Laurent.ia (D1 à D18) portent les mêmes numéros que les ADR de l'écosystème (D-001 à D-031), avec des contenus différents. À renommer (par exemple `LIA-D1`…) pour éviter toute confusion.
