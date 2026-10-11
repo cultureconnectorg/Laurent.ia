@@ -1,0 +1,27 @@
+{
+	admin off
+	# Local certificate authority: no request to any public CA (no ACME).
+	local_certs
+	auto_https disable_redirects
+}
+
+{$SITE_ADDRESSES} {
+	tls internal
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		# The page may only talk to this same host.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy backend:8001
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

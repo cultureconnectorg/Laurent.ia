@@ -1,0 +1,138 @@
+# Laurent.ia — self-hosted stack on Laurent's own machines (G1).
+#
+# Sovereignty by construction:
+#   - every service except the reverse proxy sits on the `core` network, declared
+#     `internal: true`: Docker gives it NO route to the Internet (no egress);
+#   - the inference engine runs here, on this machine (LIA-D8, LIA-D9);
+#   - FREKCORE (identity, passkeys, proofs) runs here too, built from its own repository;
+#   - the proxy only publishes HTTPS on BIND_ADDRESS (loopback or the WireGuard address).
+#
+# Usage: see deploy/README.md. Secrets live in deploy/.env (generated, never committed).
+
+name: laurentia
+
+networks:
+  core:
+    internal: true        # no egress for mongo, engine, backend, frekcore
+  edge: {}                # proxy only: publishes the HTTPS port
+
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    command: ["--auth", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?run scripts/init-secrets.sh}
+      LAURENTIA_DB_PASSWORD: ${LAURENTIA_DB_PASSWORD:?}
+      FREKCORE_DB_PASSWORD: ${FREKCORE_DB_PASSWORD:?}
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks: [core]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 10s
+      retries: 10
+
+  engine:
+    # llama.cpp server (CPU). Weights are downloaded once by scripts/fetch-model.sh;
+    # the container itself has no network access.
+    image: ghcr.io/ggml-org/llama.cpp:server-b5350
+    restart: unless-stopped
+    command: ["-m", "/models/${MODEL_FILE:-model-not-fetched.gguf}", "--alias", "${MODEL_ALIAS:-local}",
+              "--host", "0.0.0.0", "--port", "8080", "-c", "${MODEL_CONTEXT:-8192}",
+              "-t", "${ENGINE_THREADS:-4}"]
+    volumes:
+      - ./models:/models:ro
+    networks: [core]
+    profiles: ["engine"]   # off when using the deterministic test engine (verification)
+
+  frekcore:
+    build:
+      context: ${FREKCORE_SRC:-../../frekcoreAout2026}
+      dockerfile_inline: |
+        # syntax=docker/dockerfile:1.7
+        FROM python:3.12-slim
+        WORKDIR /app/backend
+        COPY backend/requirements.txt ./requirements.txt
+        RUN --mount=type=secret,id=extra_ca,required=false \
+            if [ -f /run/secrets/extra_ca ]; then export PIP_CERT=/run/secrets/extra_ca; fi \
+         && pip install --no-cache-dir -r requirements.txt
+        COPY backend ./
+        RUN useradd --system --uid 10002 frek && chown -R frek /app
+        USER frek
+        CMD ["uvicorn", "runtime.app:app", "--host", "0.0.0.0", "--port", "8001"]
+      secrets: [extra_ca]
+    restart: unless-stopped
+    depends_on:
+      mongo: {condition: service_healthy}
+    environment:
+      MONGO_URL: mongodb://frekcore:${FREKCORE_DB_PASSWORD}@mongo:27017/frekcore?authSource=frekcore
+      DB_NAME: frekcore
+      FREK_ENV: production
+      SECRET_KEY: ${FREK_SECRET_KEY:?}
+      FREK_EMAIL_SALT: ${FREK_EMAIL_SALT:?}
+      FREK_CLIENT_CVLBRAIN_SECRET: ${FREK_CLIENT_CVLBRAIN_SECRET:?}
+      FREK_CLIENT_KILTIKONET_SECRET: ${FREK_CLIENT_KILTIKONET_SECRET:?}
+      FREK_CLIENT_RP_ORIGINS_JSON: '{"cvl-brain": "${PUBLIC_ORIGIN:?}"}'
+      CORS_ORIGINS: ${PUBLIC_ORIGIN}
+      FREK_BIOMETRIC_ENABLED: "false"
+    networks: [core]
+
+  backend:
+    build:
+      context: ../backend
+      secrets: [extra_ca]
+    restart: unless-stopped
+    depends_on:
+      mongo: {condition: service_healthy}
+    environment:
+      APP_ENV: production
+      MONGO_URL: mongodb://laurentia:${LAURENTIA_DB_PASSWORD}@mongo:27017/laurentia?authSource=laurentia
+      DB_NAME: laurentia
+      LAURENTIA_ENCRYPTION_KEY: ${LAURENTIA_ENCRYPTION_KEY:?}
+      LAURENTIA_SECRET_SALT: ${LAURENTIA_SECRET_SALT:?}
+      LAURENTIA_CVLN_SERVICE_API_KEY: ${LAURENTIA_CVLN_SERVICE_API_KEY:?}
+      CORS_ORIGINS: ${PUBLIC_ORIGIN}
+      LAURENTIA_PUBLIC_URL: ${PUBLIC_ORIGIN}
+      # Sovereign engine (S2) — the only allowed model host.
+      BRAIN_ENGINE_URL: ${BRAIN_ENGINE_URL:-http://engine:8080}
+      BRAIN_ENGINE_MODEL: ${MODEL_ALIAS:-local}
+      BRAIN_ENGINE_TIMEOUT: "300"
+      LAURENTIA_ALLOWED_MODEL_HOSTS: ${ALLOWED_MODEL_HOSTS:-engine}
+      # FREKCORE on this machine (identity, passkeys, proofs).
+      FREKCORE_API_URL: http://frekcore:8001
+      FREKCORE_API_KEY: ${FREK_CLIENT_CVLBRAIN_SECRET}
+      # B2C and outbound jobs off (LIA-D2; no silent copy of the corpus, R1).
+      CHANTIER7_SCHEDULERS_DISABLED: "1"
+      CHANTIER10_REPORTS_DISABLED: "1"
+      ORCHESTRATOR_DISABLED: "1"
+    networks: [core]
+
+  proxy:
+    # Web interface (static build) + reverse proxy to the API, HTTPS with a local CA.
+    build:
+      context: ../frontend
+      secrets: [extra_ca]
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      SITE_ADDRESSES: ${SITE_ADDRESSES:-https://localhost}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [core, edge]
+
+secrets:
+  extra_ca:
+    # Build-time only, for a TLS-intercepting proxy. Empty file on a normal network.
+    file: ${EXTRA_CA_FILE:-./empty-ca.pem}

@@ -1,0 +1,14 @@
+# Verification only (CI or a machine without model weights): replaces the real engine
+# by the deterministic local test engine. Never used for real work.
+services:
+  test-engine:
+    image: python:3.12-slim
+    command: ["python", "/h/fake_engine.py", "--port", "8090", "--host", "0.0.0.0"]
+    volumes:
+      - ../backend/tests/_harness:/h:ro
+    networks: [core]
+  backend:
+    environment:
+      BRAIN_ENGINE_URL: http://test-engine:8090
+      LAURENTIA_ALLOWED_MODEL_HOSTS: test-engine
+      BRAIN_ENGINE_MODEL: fake-deterministic

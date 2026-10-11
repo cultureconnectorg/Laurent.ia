@@ -97,6 +97,7 @@ class FakeEngine:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8090)
+    ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--log")
     args = ap.parse_args()
-    ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(args.log, [])).serve_forever()
+    ThreadingHTTPServer((args.host, args.port), make_handler(args.log, [])).serve_forever()
