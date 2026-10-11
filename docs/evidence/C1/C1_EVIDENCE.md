@@ -51,3 +51,21 @@
 
 - La **récupération** d'une passkey perdue suit le parcours de FREKCORE : une deuxième credential exige une preuve du titulaire ou le recovery FREKCORE. Ce parcours n'est pas encore exposé dans Laurent.ia : c'est le prochain point de la préparation des machines.
 - La preuve renvoyée par `/api/auth/passkey/proof` est le **premier bloc** du FREK-ID (émission). La notarisation `identity_holder_verified` existe bien dans la chaîne ; il reste à l'exposer de façon ciblée.
+
+## Correctif issu de la revue de sécurité : inscription initiale
+
+**Faille** : `register/begin` et `register/complete` étaient publiques. Une personne qui atteignait le proxy et connaissait le FREK-ID du titulaire pouvait inscrire **sa** passkey la première. FREKCORE ne garde que la première passkey : cette personne aurait obtenu la session du titulaire de façon durable.
+
+**Correctif** (`routes/passkey_auth.py`, sans modifier FREKCORE) :
+- l'inscription exige un **code à usage unique**, généré par `frekcore-setup.sh` ;
+- seule l'empreinte SHA-256 de ce code est conservée, et la comparaison se fait en temps constant ;
+- sans code configuré, l'inscription est **fermée** ;
+- après la première liaison, elle est **fermée définitivement**, et cet état est stocké en base ;
+- rien n'atteint FREKCORE avant ces contrôles ;
+- la connexion par passkey n'est pas modifiée.
+
+| Preuve | Avant le correctif | Après le correctif |
+|---|---|---|
+| `test_c1_enrollment.py` (6 tests, avec une doublure locale de FREKCORE) | **5 échecs, 1 réussite** : inscription acceptée sans code (200 au lieu de 403) — `raw/enrollment-unit-red-before-fix.txt` | **6 réussites** — `raw/enrollment-unit-green-after-fix.txt` |
+| `verify/passkey_check.py` avec le **vrai FREKCORE** et un vrai navigateur | **Échec** : passkey inscrite **sans code** (200) — `raw/enrollment-e2e-red-before-fix.txt` | **14 étapes sur 14** : refus sans code (403) et avec un mauvais code ; inscription avec le bon code ; **fermeture après liaison, même avec le bon code (403)** ; révocation et désactivation toujours OK ; aucune requête hors de la pile — `raw/enrollment-e2e-green-after-fix.txt` |
+| Suite complète | — | **218 réussis, 3 sautés (vraie inférence), 0 régression, 0 sortie réseau** |

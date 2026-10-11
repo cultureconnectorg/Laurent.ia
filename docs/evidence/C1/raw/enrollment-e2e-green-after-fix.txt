@@ -1,0 +1,15 @@
+OK   first passkey refused without the enrollment code 403
+OK   first passkey refused with a wrong code INSCRIPTION FERMÉE OU CODE D'INSCRIPTION INVALIDE.
+OK   intruder FREK-ID refused CE FREK-ID N'EST PAS AUTORISÉ SUR CETTE INSTANCE.
+OK   registered then signed in 200
+OK   registration closed once bound, even with the code 403
+OK   protected route with the session 200
+OK   FREKCORE proof of holder verification {"frek_id": "FREK-JZ0D-X9C8", "proof": {"payload_id": "FREK-JZ0D-X9C8", "block": {"height": 13, "prev_hash": "8a25d3c851276de754257b670746a5b413bda07bf4dfa758802c8df083f3bd41", "payload_type": "identity_emit", "payload_id": "FREK-JZ0D-X9C8", "payload_hash": "3f4b704dcee21a38f387b2f2122b92383cde8005c
+OK   signed out 
+OK   signed in again with the passkey 
+OK   FREKCORE revoked the FREK-ID ': 'FREK-JZ0D-X9C8', 'revoked': True, 'revoked_at': '2026-10-11T21:56:07.065413+00:00', 'reason': 'test de revocation C1', 'message': 'Identite revoquee. Preuve historique conservee sur FREK-Chain.'}
+
+OK   open session closed after revocation {"detail": "FREK-ID r\u00e9voqu\u00e9 ou invalide dans FREKCORE : session ferm\u00e9e."}
+OK   sign-in refused after revocation FREKCORE : FREK-ID REVOQUE.
+OK   deactivated client refused by FREKCORE {"client_id":"cvl-brain","updated":{"active":false}} | REFUSED 401
+OK   no request outside the stack 
