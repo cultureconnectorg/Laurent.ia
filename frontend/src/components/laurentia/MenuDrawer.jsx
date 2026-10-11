@@ -30,6 +30,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
   const [frekInput, setFrekInput] = useState("");
   const [frekSubmitting, setFrekSubmitting] = useState(false);
   const [frekError, setFrekError] = useState(null);
+  const [enrollCode, setEnrollCode] = useState("");
   const [pricingOpen, setPricingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const frekRef = useRef(null);
@@ -91,7 +92,8 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
     setFrekError(null);
     try {
       if (kind === "register") {
-        await registerPasskey(code);
+        await registerPasskey(code, enrollCode.trim());
+        setEnrollCode("");
         toast("Passkey enregistrée et vérifiée par FREKCORE");
       }
       await loginWithPasskey(code);
@@ -190,10 +192,20 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
                       {frekError}
                     </div>
                   )}
+                  <input
+                    value={enrollCode}
+                    onChange={(e) => { setEnrollCode(e.target.value); setFrekError(null); }}
+                    placeholder="Code d'inscription (première fois)"
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={frekSubmitting}
+                    className="w-full rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 outline-none font-mono text-xs text-[#F1F4FA] placeholder:text-white/30"
+                    data-testid="menu-enroll-code"
+                  />
                   <button
                     type="button"
                     onClick={() => runPasskey("register")}
-                    disabled={!frekInput.trim() || frekSubmitting}
+                    disabled={!frekInput.trim() || !enrollCode.trim() || frekSubmitting}
                     className="w-full font-mono text-[10px] uppercase tracking-[0.22em] text-[#6BA8FF]/80 hover:text-[#6BA8FF] disabled:text-white/20 py-1"
                     data-testid="menu-passkey-register"
                   >

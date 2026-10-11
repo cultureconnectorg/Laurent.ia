@@ -8,6 +8,12 @@ Laurent.ia never reads FREKCORE's database and never sees a private key.
 
 Single principal (LIA-D1): only LAURENTIA_PRINCIPAL_FREK_ID may register or sign in.
 
+Enrollment (first passkey) is protected (security review, C1 fix): registration needs the
+one-time enrollment token issued by deploy/scripts/frekcore-setup.sh (only its SHA-256 is
+configured, LAURENTIA_ENROLLMENT_TOKEN_SHA256), and closes for good once the principal is
+bound (stored in laurentia_settings). Without a configured token, registration is closed.
+Nothing reaches FREKCORE before these checks.
+
   POST /api/auth/passkey/register/begin     {frek_id}             → WebAuthn creation options
   POST /api/auth/passkey/register/complete  {frek_id, credential} → holder verified (notarized by FREKCORE)
   POST /api/auth/passkey/login/begin        {frek_id}             → WebAuthn request options
@@ -16,6 +22,8 @@ Single principal (LIA-D1): only LAURENTIA_PRINCIPAL_FREK_ID may register or sign
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -38,6 +46,29 @@ class BeginRequest(BaseModel):
 class CompleteRequest(BaseModel):
     frek_id: str = Field(min_length=3, max_length=160)
     credential: dict
+
+
+class EnrollBeginRequest(BeginRequest):
+    enrollment_token: str = Field(default="", max_length=256)
+
+
+class EnrollCompleteRequest(CompleteRequest):
+    enrollment_token: str = Field(default="", max_length=256)
+
+
+ENROLLMENT_DOC = "principal_enrollment"
+_ENROLL_REFUSED = "Inscription fermée ou code d'inscription invalide."
+
+
+async def _check_enrollment(request: Request, token: str) -> None:
+    """Refuse unless enrollment is still open and the one-time token matches. Fails closed."""
+    expected = os.environ.get("LAURENTIA_ENROLLMENT_TOKEN_SHA256", "").strip().lower()
+    given = hashlib.sha256(token.encode("utf-8")).hexdigest() if token else ""
+    if not expected or not given or not hmac.compare_digest(given, expected):
+        raise HTTPException(403, _ENROLL_REFUSED)
+    done = await request.app.state.db.laurentia_settings.find_one({"_id": ENROLLMENT_DOC})
+    if done and done.get("completed"):
+        raise HTTPException(403, _ENROLL_REFUSED)
 
 
 def _principal() -> str:
@@ -71,15 +102,25 @@ def _secure_cookie(request: Request) -> bool:
 
 
 @router.post("/register/begin")
-async def register_begin(payload: BeginRequest):
+async def register_begin(payload: EnrollBeginRequest, request: Request):
     frek_id = _only_principal(payload.frek_id)
+    await _check_enrollment(request, payload.enrollment_token)
     return await _relay(fk.passkey_register_begin(frek_id, display_name="Laurent"))
 
 
 @router.post("/register/complete")
-async def register_complete(payload: CompleteRequest):
+async def register_complete(payload: EnrollCompleteRequest, request: Request):
     frek_id = _only_principal(payload.frek_id)
+    await _check_enrollment(request, payload.enrollment_token)
     result = await _relay(fk.passkey_register_complete(frek_id, payload.credential))
+    if result.get("ok"):
+        # Close enrollment for good; the token itself is never stored.
+        await request.app.state.db.laurentia_settings.update_one(
+            {"_id": ENROLLMENT_DOC},
+            {"$set": {"completed": True, "frek_id": frek_id,
+                      "completed_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
     return {"ok": bool(result.get("ok")), "holder_verified": bool(result.get("holder_verified"))}
 
 

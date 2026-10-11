@@ -27,8 +27,8 @@ async function post(path, body) {
 
 export const passkeySupported = () => typeof window !== "undefined" && !!window.PublicKeyCredential;
 
-export async function registerPasskey(frekId) {
-  const o = await post("/register/begin", { frek_id: frekId });
+export async function registerPasskey(frekId, enrollmentToken) {
+  const o = await post("/register/begin", { frek_id: frekId, enrollment_token: enrollmentToken });
   const cred = await navigator.credentials.create({
     publicKey: {
       ...o,
@@ -39,6 +39,7 @@ export async function registerPasskey(frekId) {
   });
   return post("/register/complete", {
     frek_id: frekId,
+    enrollment_token: enrollmentToken,
     credential: {
       id: cred.id,
       rawId: bufToB64url(cred.rawId),

@@ -8,7 +8,9 @@ Chromium with a virtual WebAuthn authenticator (DevTools protocol) uses the real
   5. no request leaves the stack.
   6. FREKCORE revokes the FREK-ID: the open session is closed and sign-in is refused;
   7. FREKCORE deactivates the cvl-brain client: Laurent.ia can no longer call FREKCORE.
-Usage (from deploy/): python verify/passkey_check.py <base http://localhost:8080> <principal FREK-ID> [chromium]
+  Enrollment (security review fix): without the one-time code, or with a wrong one, the
+  first passkey cannot be registered; once bound, registration is closed even with the code.
+Usage (from deploy/): python verify/passkey_check.py <base> <principal FREK-ID> <enrollment code> [chromium]
 """
 import json
 import subprocess
@@ -17,8 +19,8 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
-BASE, FREK_ID = sys.argv[1], sys.argv[2]
-CHROMIUM = (sys.argv[3] or None) if len(sys.argv) > 3 else None
+BASE, FREK_ID, CODE = sys.argv[1], sys.argv[2], sys.argv[3]
+CHROMIUM = (sys.argv[4] or None) if len(sys.argv) > 4 else None
 origin = urlparse(BASE).netloc
 foreign, results = [], {}
 
@@ -28,11 +30,12 @@ def step(name, ok, detail=""):
     print(f"{'OK  ' if ok else 'FAIL'} {name} {detail}")
 
 
-def api(page, method, path):
+def api(page, method, path, body=None):
     return page.evaluate(
-        """async ([m, p]) => { const r = await fetch(p, {method: m, credentials: 'include'});
-           let b = null; try { b = await r.json(); } catch (_) {} return {status: r.status, body: b}; }""",
-        [method, path])
+        """async ([m, p, b]) => { const r = await fetch(p, {method: m, credentials: 'include',
+             headers: b ? {'Content-Type': 'application/json'} : {}, body: b ? JSON.stringify(b) : undefined});
+           let j = null; try { j = await r.json(); } catch (_) {} return {status: r.status, body: j}; }""",
+        [method, path, body])
 
 
 def wait_signed_in(page, seconds=30):
@@ -43,9 +46,11 @@ def wait_signed_in(page, seconds=30):
     return False
 
 
-def use_menu(page, frek_id, test_id):
+def use_menu(page, frek_id, test_id, code=None):
     page.get_by_test_id("header-menu-btn").click()
     page.get_by_test_id("menu-frek-input").fill(frek_id)
+    if code is not None:
+        page.get_by_test_id("menu-enroll-code").fill(code)
     page.get_by_test_id(test_id).click()
 
 
@@ -62,18 +67,30 @@ with sync_playwright() as p:
         "hasUserVerification": True, "isUserVerified": True, "automaticPresenceSimulation": True}})
     page.goto(f"{BASE}/laurentia", wait_until="networkidle")
 
+    # 0. enrollment protection (the principal's FREK-ID is known to the attacker here)
+    r = api(page, "POST", "/api/auth/passkey/register/begin", {"frek_id": FREK_ID})
+    step("first passkey refused without the enrollment code", r["status"] == 403, str(r["status"]))
+    use_menu(page, FREK_ID, "menu-passkey-register", code="wrong-code-0000")
+    err = page.get_by_test_id("menu-frek-error")
+    err.wait_for(timeout=20000)
+    step("first passkey refused with a wrong code", "code d'inscription" in err.inner_text().lower(), err.inner_text())
+    page.keyboard.press("Escape")
+
     # 1. intruder
-    use_menu(page, "FREK-INTRUDER-0000", "menu-passkey-register")
+    use_menu(page, "FREK-INTRUDER-0000", "menu-passkey-register", code=CODE)
     err = page.get_by_test_id("menu-frek-error")
     err.wait_for(timeout=20000)
     step("intruder FREK-ID refused", "pas autorisé" in err.inner_text().lower(), err.inner_text())
     page.keyboard.press("Escape")
 
-    # 2. register + sign in
-    use_menu(page, FREK_ID, "menu-passkey-register")
+    # 2. register (with the one-time code) + sign in
+    use_menu(page, FREK_ID, "menu-passkey-register", code=CODE)
     wait_signed_in(page)
     me = api(page, "GET", "/api/auth/me")
     step("registered then signed in", me["status"] == 200 and me["body"]["frek_id"] == FREK_ID, str(me["status"]))
+
+    r = api(page, "POST", "/api/auth/passkey/register/begin", {"frek_id": FREK_ID, "enrollment_token": CODE})
+    step("registration closed once bound, even with the code", r["status"] == 403, str(r["status"]))
 
     # 3. protected route + proof
     s = api(page, "GET", "/api/laurentia/sessions/list")

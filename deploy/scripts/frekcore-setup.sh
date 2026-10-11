@@ -4,6 +4,8 @@
 #     "emit" covers identity, passkeys and notarization in FREKCORE's model. This goes
 #     through FREKCORE's admin API: Laurent.ia never touches FREKCORE's database.
 #  2. FREKCORE issues your FREK-ID; it becomes the only principal of this instance.
+#  3. A one-time enrollment code is generated for your FIRST passkey. Only its SHA-256
+#     is stored (.env); the code is shown once. Registration closes after first use.
 # Usage: scripts/frekcore-setup.sh <your e-mail>    (the e-mail is stored hashed by FREKCORE)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -23,7 +25,15 @@ if grep -q '^LAURENTIA_PRINCIPAL_FREK_ID=' .env; then
 else
   echo "LAURENTIA_PRINCIPAL_FREK_ID=$FREK_ID" >> .env
 fi
-# The variable loaded from the old .env would otherwise win over the updated file.
-export LAURENTIA_PRINCIPAL_FREK_ID="$FREK_ID"
+CODE=$(openssl rand -hex 16)
+HASH=$(printf '%s' "$CODE" | sha256sum | cut -d' ' -f1)
+if grep -q '^LAURENTIA_ENROLLMENT_TOKEN_SHA256=' .env; then
+  sed -i.bak "s|^LAURENTIA_ENROLLMENT_TOKEN_SHA256=.*|LAURENTIA_ENROLLMENT_TOKEN_SHA256=$HASH|" .env && rm -f .env.bak
+else
+  echo "LAURENTIA_ENROLLMENT_TOKEN_SHA256=$HASH" >> .env
+fi
+# The variables loaded from the old .env would otherwise win over the updated file.
+export LAURENTIA_PRINCIPAL_FREK_ID="$FREK_ID" LAURENTIA_ENROLLMENT_TOKEN_SHA256="$HASH"
 docker compose up -d backend >/dev/null
 echo "Done. Open Laurent.ia, menu > FREK-ID $FREK_ID > « créer ma passkey »."
+echo "One-time enrollment code (shown once, not stored): $CODE"

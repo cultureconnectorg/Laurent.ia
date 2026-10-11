@@ -1,0 +1,12 @@
+PASSED tests/test_c1_enrollment.py::test_sign_in_routes_are_unchanged_by_enrollment
+FAILED tests/test_c1_enrollment.py::test_registration_without_token_is_refused_before_frekcore
+FAILED tests/test_c1_enrollment.py::test_registration_with_a_wrong_token_is_refused_before_frekcore
+FAILED tests/test_c1_enrollment.py::test_registration_is_closed_when_no_enrollment_token_is_configured
+FAILED tests/test_c1_enrollment.py::test_valid_token_enrolls_once_then_registration_closes
+FAILED tests/test_c1_enrollment.py::test_closure_is_stored_in_the_database_not_in_memory
+5 failed, 1 passed, 5 warnings in 4.68s
+E       assert 200 == 403
+E       AssertionError: assert 200 == 403
+E       AssertionError: assert 200 == 403
+E       AssertionError: assert 200 == 403
+E       assert (None)
