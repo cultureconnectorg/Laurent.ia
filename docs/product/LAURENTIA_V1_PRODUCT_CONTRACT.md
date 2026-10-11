@@ -7,6 +7,7 @@
 > - la décision [D8 — Sovereign Local Intelligence](../decisions/D8-sovereign-local-intelligence.md).
 >
 > En cas de contradiction : **D8 prévaut**, puis ce contrat, puis le cadrage.
+> **Qui est quoi dans l'écosystème** (Brain, Laurent.ia, Agent Factory, Meta CVLN, entités métier, les trois mémoires, les deux interfaces) : voir [`docs/architecture/SEPARATIONS.md`](../architecture/SEPARATIONS.md), aligné sur l'arbre fondateur `Foundation-Cvln`.
 > Aucune ligne de code n'est écrite avant validation de ce contrat.
 
 ---
