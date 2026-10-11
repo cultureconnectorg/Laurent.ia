@@ -28,12 +28,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0
       - name: Install dependencies
         working-directory: backend
-        # emergentintegrations is not on PyPI and litellm is hosted by Emergent:
-        # the API starts with the fail-loud stub in tests/_harness/stub instead.
+        # emergentintegrations is not on PyPI; since S2 the application does not need it
+        # (sovereign engine path; legacy and billing imports are lazy).
         run: |
-          grep -vE '^(emergentintegrations|litellm)' requirements.txt > /tmp/req.txt
+          grep -vE '^emergentintegrations' requirements.txt > /tmp/req.txt
           pip install -r /tmp/req.txt -r requirements-test.txt
-      - name: Run the suite (red until the sovereign engine lands in S2)
+      - name: Run the suite (deterministic local engine)
         id: suite
         continue-on-error: true
         run: backend/tests/_harness/run_suite.sh out
@@ -49,5 +49,80 @@ jobs:
       - name: Report the honest suite result
         if: steps.suite.outcome != 'success'
         run: |
-          echo "::warning::The full suite is not green: see out/pytest.log (expected B1 failures until S2)"
+          echo "::error::The full suite is not green: see out/pytest.log"
           exit 1
+
+  real-inference:
+    # Real open-weight model (Qwen2.5-0.5B-Instruct, Apache-2.0) served locally by
+    # llama.cpp on the runner. Synthetic test data only. The application and the
+    # tests run under the network guard: the conversation must stay on loopback.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      mongo:
+        image: mongo:7.0
+        ports: ["27017:27017"]
+    env:
+      MODEL_FILE: qwen2.5-0.5b-instruct-q4_k_m.gguf
+      MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: System libraries for WeasyPrint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0
+      - name: Install dependencies and the local inference server
+        working-directory: backend
+        run: |
+          grep -vE '^emergentintegrations' requirements.txt > /tmp/req.txt
+          pip install -r /tmp/req.txt -r requirements-test.txt
+          pip install "llama-cpp-python[server]==0.3.16"
+      - name: Cache the model weights
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: ${{ env.MODEL_FILE }}
+      - name: Download the open-weight model (before any guarded process starts)
+        run: |
+          mkdir -p models
+          [ -f "models/$MODEL_FILE" ] || curl -sSfL "$MODEL_URL" -o "models/$MODEL_FILE"
+          sha256sum "models/$MODEL_FILE" | tee models.sha256
+      - name: Start the local engine on loopback
+        run: |
+          python -m llama_cpp.server --model "models/$MODEL_FILE" --model_alias qwen2.5-0.5b-instruct \
+            --host 127.0.0.1 --port 8080 --n_ctx 4096 > engine.log 2>&1 &
+          for i in $(seq 1 120); do curl -sf http://127.0.0.1:8080/v1/models >/dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8080/v1/models
+      - name: Run the suite against the real model
+        id: suite
+        continue-on-error: true
+        env:
+          REAL_ENGINE: "1"
+          BRAIN_ENGINE_URL: http://127.0.0.1:8080
+          BRAIN_ENGINE_MODEL: qwen2.5-0.5b-instruct
+          BRAIN_ENGINE_TIMEOUT: "300"
+        run: backend/tests/_harness/run_suite.sh out-real
+      - name: Real inference tests passed
+        run: |
+          python - <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          cases = [t for t in ET.parse("out-real/junit.xml").iter("testcase") if "test_s2_real_engine" in t.get("classname")]
+          bad = [t.get("name") for t in cases if t.find("failure") is not None or t.find("error") is not None or t.find("skipped") is not None]
+          print(f"real-engine tests: {len(cases)}, not passed: {bad}")
+          sys.exit(1 if (not cases or bad) else 0)
+          PY
+      - name: No network egress during the real conversation
+        run: test ! -s out-real/egress.jsonl || (cat out-real/egress.jsonl; exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-inference-results
+          path: |
+            out-real/
+            engine.log
+            models.sha256
+      - name: Report the full suite result with the real model
+        if: steps.suite.outcome != 'success'
+        run: |
+          echo "::warning::Some suite tests fail with the 0.5B model (answer quality or format): see out-real/pytest.log"
