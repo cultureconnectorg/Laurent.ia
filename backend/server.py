@@ -33,6 +33,11 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI(title="Laurent.ia API", version="0.1.0")
 app.state.db = db
 
+# C1/C2 — deployed instance: every /api route requires the principal's session (deny by default).
+from services.principal_gate import principal_gate  # noqa: E402
+
+app.middleware("http")(principal_gate)
+
 # Routes héritées /api/status (template)
 api_router = APIRouter(prefix="/api")
 
@@ -87,7 +92,8 @@ from routes.laurentia_gateway import router as laurentia_router  # noqa: E402
 from routes.laurentia_sessions import router as laurentia_sessions_router  # noqa: E402
 from routes.brain import router as brain_router  # noqa: E402
 from routes.omega import router as omega_router  # noqa: E402
-from routes.auth import router as auth_router  # noqa: E402
+from routes.auth import router as auth_router
+from routes.passkey_auth import router as passkey_auth_router  # noqa: E402
 from routes.billing import router as billing_router, webhook_router as billing_webhook  # noqa: E402
 from routes.pdf_export import router as pdf_export_router  # noqa: E402
 from routes.echo import (  # noqa: E402
@@ -111,6 +117,7 @@ app.include_router(laurentia_sessions_router)
 app.include_router(brain_router)
 app.include_router(omega_router)
 app.include_router(auth_router)
+app.include_router(passkey_auth_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook)
 app.include_router(pdf_export_router)

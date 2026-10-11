@@ -3,7 +3,8 @@ frekcore_bridge.py — Bridge vers le service frekcore (identité racine de l'é
 
 Architecture: SÉPARÉ de Laurent.ia, INTERCONNECTÉ via API.
 En dev: utilise les mocks de kiltikonet_bridge.
-En prod: bascule en mode HTTP via FREKCORE_API_URL + FREKCORE_API_KEY.
+En prod: API FREKCORE réelle via services/frekcore_client.py (OAuth client_credentials,
+permissions explicites accordées par FREKCORE ; jamais d'accès à sa base).
 
 Le swap se fait UNIQUEMENT via variables d'env, AUCUNE modification de code requise.
 """
@@ -13,7 +14,7 @@ import os
 
 import httpx
 
-from services import kiltikonet_bridge
+from services import frekcore_client, kiltikonet_bridge
 
 FREKCORE_API_URL = os.environ.get("FREKCORE_API_URL", "").strip()
 FREKCORE_API_KEY = os.environ.get("FREKCORE_API_KEY", "").strip()
@@ -44,6 +45,8 @@ async def validate_frek_id(frek_id: str) -> dict:
 
     # Dev / demo IDs — toujours validés via whitelist locale
     if key.startswith("DEMO-"):
+        if (os.environ.get("APP_ENV") or "production").strip().lower() not in ("development", "test"):
+            return {"valid": False, "frek_id": key}  # demo identities never exist on a deployed instance
         meta = _DEV_VALID_FREK_IDS.get(key)
         if not meta:
             return {"valid": False, "frek_id": key}
@@ -55,21 +58,18 @@ async def validate_frek_id(frek_id: str) -> dict:
             return {"valid": False, "frek_id": key}
         return {"valid": True, "frek_id": key, **meta}
 
+    # C1: real FREKCORE route, through the authenticated client (services/frekcore_client.py).
     try:
-        async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT, follow_redirects=True) as client:
-            r = await client.get(
-                f"{FREKCORE_API_URL.rstrip('/')}/api/frek/validate/{frek_id}",
-                headers={"X-API-Key": FREKCORE_API_KEY, "X-Client-ID": "cvl-brain"},
-            )
-            if r.status_code == 404:
-                return {"valid": False, "frek_id": frek_id}
-            if r.status_code >= 500:
-                # Frekcore down → ne fallback pas (sécurité), refuse
-                return {"valid": False, "frek_id": frek_id, "error": "frekcore unavailable"}
-            r.raise_for_status()
-            return r.json()
-    except (httpx.RequestError, httpx.HTTPStatusError):
-        return {"valid": False, "frek_id": frek_id, "error": "frekcore unreachable"}
+        st = await frekcore_client.identity_status(key)
+    except frekcore_client.FrekcoreError as e:
+        if e.status == 404:
+            return {"valid": False, "frek_id": key}
+        # FREKCORE down or refusing: never fall back to "valid" (security).
+        return {"valid": False, "frek_id": key, "error": "frekcore unavailable"}
+    except httpx.RequestError:
+        return {"valid": False, "frek_id": key, "error": "frekcore unreachable"}
+    valid = bool(st.get("active")) and not st.get("revoked") and not st.get("expired")
+    return {"valid": valid, "frek_id": key, "revoked": bool(st.get("revoked"))}
 
 
 async def get_profile(frek_id: str) -> dict:
@@ -79,13 +79,9 @@ async def get_profile(frek_id: str) -> dict:
         return await kiltikonet_bridge.get_frek_profile(frek_id)
 
     try:
-        async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT, follow_redirects=True) as client:
-            r = await client.get(
-                f"{FREKCORE_API_URL.rstrip('/')}/api/frek/{frek_id}/profile",
-                headers={"X-API-Key": FREKCORE_API_KEY, "X-Client-ID": "cvl-brain"},
-            )
-            r.raise_for_status()
-            return r.json()
-    except (httpx.RequestError, httpx.HTTPStatusError):
+        detail = await frekcore_client.identity_detail(key)
+        return {"frek_id": key, "first_name": detail.get("display_name") or key.split("-")[-1].capitalize(),
+                "role": detail.get("role") or "member", "cultural_profile": {}, "badges": [], "wallet": {}}
+    except (frekcore_client.FrekcoreError, httpx.RequestError):
         # Fallback profil minimal
         return {"frek_id": frek_id, "first_name": frek_id.split("-")[-1].capitalize(), "role": "member", "cultural_profile": {}, "badges": [], "wallet": {}}

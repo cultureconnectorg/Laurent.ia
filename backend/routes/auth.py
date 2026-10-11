@@ -23,6 +23,17 @@ EMERGENT_OAUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/se
 SESSION_TTL_DAYS = 7
 COOKIE_NAME = "session_token"
 
+
+def _deployed() -> bool:
+    return (os.environ.get("APP_ENV") or "production").strip().lower() not in ("development", "test")
+
+
+def _legacy_login_closed() -> None:
+    """S-C1: in a deployed instance the only sign-in is the FREK-ID passkey (routes/passkey_auth.py).
+    The FREK-ID-only login (no proof of possession) and the Emergent OAuth exchange are closed."""
+    if _deployed():
+        raise HTTPException(410, "Connexion fermée : utilisez votre passkey FREK-ID.")
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -103,6 +114,7 @@ async def require_user(request: Request) -> dict:
 @router.post("/session")
 async def exchange_session(payload: SessionExchangeRequest, request: Request, response: Response):
     """Exchange Emergent session_id for our own session_token cookie."""
+    _legacy_login_closed()
     db = request.app.state.db
     async with httpx.AsyncClient(timeout=15) as client:
         r = await client.get(EMERGENT_OAUTH_URL, headers={"X-Session-ID": payload.session_id})
@@ -231,6 +243,7 @@ async def login_with_frek_id(payload: FrekLoginRequest, request: Request, respon
     Connexion directe via un FREK-ID existant (membre de l'écosystème).
     Valide auprès du service frekcore (mocké en dev, HTTP en prod).
     """
+    _legacy_login_closed()
     db = request.app.state.db
     raw = (payload.frek_id or "").strip().upper()
     if not raw or len(raw) < 4:
