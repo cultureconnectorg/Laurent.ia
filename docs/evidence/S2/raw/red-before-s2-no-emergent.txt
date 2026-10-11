@@ -1,0 +1,4 @@
+E   ModuleNotFoundError: No module named 'emergentintegrations'
+ERROR tests/test_s2_inference_paths.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 warning, 1 error in 0.49s

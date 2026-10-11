@@ -1,0 +1,18 @@
+ERROR    routes.laurentia_gateway:laurentia_gateway.py:513 query_failed tenant=b9c7bc17a476abf3ea5417e33a0db484dde4e7dc6
+ERROR    routes.echo:echo.py:131 echo_generation_failed
+WARNING  jobs.social_agent:social_agent.py:128 social_agent.generate_content attempt=1 failed: S0 stub: external inferen
+ERROR    jobs.social_agent:social_agent.py:130 social_agent.generate_content gave up after 1 retries (last=S0 stub: exte
+FAILED tests/test_s2_inference_paths.py::test_p1_query_streams_from_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p2_briefing_uses_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p3_chat_enriched_uses_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p4_omega_streams_from_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p5_echo_uses_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p6_social_agent_uses_the_sovereign_engine
+FAILED tests/test_s2_inference_paths.py::test_p2_fails_visibly_when_engine_is_down
+FAILED tests/test_s2_inference_paths.py::test_unconfigured_engine_raises_without_trying_any_provider
+FAILED tests/test_s2_inference_paths.py::test_legacy_provider_path_is_refused_when_deployed
+FAILED tests/test_s2_inference_paths.py::test_health_reports_the_sovereign_engine[/api/health]
+FAILED tests/test_s2_inference_paths.py::test_health_reports_the_sovereign_engine[/api/brain/health]
+FAILED tests/test_s2_inference_paths.py::test_t1_no_provider_sdk_import_in_production_code
+FAILED tests/test_s2_inference_paths.py::test_t1_starting_the_server_loads_no_provider_sdk
+13 failed, 2 passed, 5 warnings in 6.89s

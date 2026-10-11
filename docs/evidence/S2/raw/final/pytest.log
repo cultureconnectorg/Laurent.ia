@@ -1,0 +1,831 @@
+........................................................................ [ 38%]
+........................................................................ [ 77%]
+.........................................                                [100%]
+=============================== warnings summary ===============================
+../../../../tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/starlette/formparsers.py:12
+  /tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+server.py:166
+  /home/user/lia-s1/backend/server.py:166: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../../../../tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/fastapi/applications.py:4495
+../../../../tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/fastapi/applications.py:4495
+  /tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+server.py:189
+  /home/user/lia-s1/backend/server.py:189: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+_______________ test_generate_visual_sd_unreachable_returns_none _______________
+------------------------------ Captured log call -------------------------------
+WARNING  services.image_generator:image_generator.py:84 image_generator: SD failed (fallback None): All connection attempts failed
+________________ test_generate_visual_empty_images_returns_none ________________
+------------------------------ Captured log call -------------------------------
+WARNING  services.image_generator:image_generator.py:80 image_generator: SD réponse sans images
+____________________ test_event_bus_isolates_handler_errors ____________________
+------------------------------ Captured log call -------------------------------
+WARNING  orchestrator.event_bus:event_bus.py:84 event_bus: agent handler raised <function test_event_bus_isolates_handler_errors.<locals>.bad at 0x7fb2a0a6cd60>: agent KO
+_____________ test_pdf_rendering_uses_local_fonts_without_network ______________
+------------------------------ Captured log call -------------------------------
+WARNING  weasyprint:__init__.py:188 Ignored `overflow-x: auto` at 116:3, unknown property.
+WARNING  weasyprint:__init__.py:188 Ignored `box-shadow: 0 0 24px rgba(201, 162, 75, 0.45)` at 167:3, unknown property.
+WARNING  weasyprint:__init__.py:188 Ignored `box-shadow: 0 6px 24px rgba(10, 15, 31, 0.08)` at 194:3, unknown property.
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'maxp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'maxp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'maxp'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'maxp'
+INFO     fontTools.subset:__init__.py:3595 maxp pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'cmap' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'cmap' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'post' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'post' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to load 'cmap'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'cmap'
+INFO     fontTools.subset:__init__.py:3595 cmap pruned
+INFO     fontTools.subset:__init__.py:3579 prep dropped
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'post'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'post'
+INFO     fontTools.subset:__init__.py:3595 post pruned
+INFO     fontTools.subset:__init__.py:3579 GPOS dropped
+INFO     fontTools.subset:__init__.py:3579 GSUB dropped
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'glyf' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'glyf' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'loca' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'loca' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'head' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'head' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'glyf'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3595 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'cmap'
+INFO     fontTools.subset:__init__.py:3635 Added gid0 to subset
+INFO     fontTools.subset:__init__.py:3708 Closing glyph list over 'glyf': 34 glyphs before
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'A', 'C', 'D', 'E', 'Eacute', 'G', 'I', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'colon', 'e', 'five', 'n', 'o', 'one', 'period', 'periodcentered', 'seven', 'six', 'slash', 'space', 't', 'two', 'u', 'zero']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 11, 13, 15, 16, 21, 23, 30, 31, 32, 34, 42, 45, 46, 47, 48, 53, 72, 91, 93, 107, 108, 123, 124, 125, 128, 129, 130, 153, 157, 159, 166, 170]
+INFO     fontTools.subset:__init__.py:3714 Closed glyph list over 'glyf': 35 glyphs after
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'A', 'C', 'D', 'E', 'Eacute', 'G', 'I', 'L', 'M', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'V', 'acutecomb', 'colon', 'e', 'five', 'n', 'o', 'one', 'period', 'periodcentered', 'seven', 'six', 'slash', 'space', 't', 'two', 'u', 'zero']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 11, 13, 15, 16, 21, 23, 30, 31, 32, 34, 42, 45, 46, 47, 48, 53, 72, 91, 93, 107, 108, 123, 124, 125, 128, 129, 130, 153, 157, 159, 166, 170, 230]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'glyf'
+INFO     fontTools.subset:__init__.py:3767 Retaining 35 glyphs
+INFO     fontTools.subset:__init__.py:3777 head subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 hhea subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 maxp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 OS/2 subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hmtx' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hmtx' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hhea' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hhea' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'hmtx'
+INFO     fontTools.subset:__init__.py:3788 hmtx subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'cmap'
+INFO     fontTools.subset:__init__.py:3788 cmap subsetted
+INFO     fontTools.subset:__init__.py:3777 loca subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'post'
+INFO     fontTools.subset:__init__.py:3788 post subsetted
+INFO     fontTools.subset:__init__.py:3777 gasp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 STAT subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'GDEF' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'GDEF' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'GDEF'
+INFO     fontTools.subset:__init__.py:3788 GDEF subsetted
+INFO     fontTools.subset:__init__.py:3777 name subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'glyf'
+INFO     fontTools.subset:__init__.py:3788 glyf subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset GlyphOrder
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'head'
+INFO     fontTools.subset:__init__.py:3847 head pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'OS/2' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'OS/2' table
+INFO     fontTools.subset:__init__.py:3814 OS/2 Unicode ranges pruned: [0, 1]
+INFO     fontTools.subset:__init__.py:3823 OS/2 CodePage ranges pruned: [0]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3847 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'GDEF'
+INFO     fontTools.subset:__init__.py:3847 GDEF pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'name' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'name' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'gasp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'gasp' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'STAT' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'STAT' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to prune 'name'
+INFO     fontTools.subset:__init__.py:3847 name pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'maxp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'maxp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'maxp'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'maxp'
+INFO     fontTools.subset:__init__.py:3595 maxp pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'cmap' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'cmap' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'post' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'post' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'cmap'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'cmap'
+INFO     fontTools.subset:__init__.py:3595 cmap pruned
+INFO     fontTools.subset:__init__.py:3579 prep dropped
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'post'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'post'
+INFO     fontTools.subset:__init__.py:3595 post pruned
+INFO     fontTools.subset:__init__.py:3579 GPOS dropped
+INFO     fontTools.subset:__init__.py:3579 GSUB dropped
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'glyf' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'glyf' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'loca' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'loca' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'head' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'head' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to load 'glyf'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3595 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'cmap'
+INFO     fontTools.subset:__init__.py:3635 Added gid0 to subset
+INFO     fontTools.subset:__init__.py:3708 Closing glyph list over 'glyf': 22 glyphs before
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'C', 'I', 'L', 'T', 'a', 'c', 'e', 'eacute', 'f', 'f.short', 'i', 'l', 'n', 'p', 'period', 'quotesingle', 'r', 's', 'space', 't', 'u']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 12, 24, 31, 49, 75, 84, 88, 89, 93, 96, 105, 108, 118, 121, 122, 124, 125, 147, 243, 283]
+INFO     fontTools.subset:__init__.py:3714 Closed glyph list over 'glyf': 22 glyphs after
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'C', 'I', 'L', 'T', 'a', 'c', 'e', 'eacute', 'f', 'f.short', 'i', 'l', 'n', 'p', 'period', 'quotesingle', 'r', 's', 'space', 't', 'u']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 12, 24, 31, 49, 75, 84, 88, 89, 93, 96, 105, 108, 118, 121, 122, 124, 125, 147, 243, 283]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'glyf'
+INFO     fontTools.subset:__init__.py:3767 Retaining 22 glyphs
+INFO     fontTools.subset:__init__.py:3777 head subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 hhea subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 maxp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 OS/2 subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hmtx' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hmtx' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hhea' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hhea' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'hmtx'
+INFO     fontTools.subset:__init__.py:3788 hmtx subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'cmap'
+INFO     fontTools.subset:__init__.py:3788 cmap subsetted
+INFO     fontTools.subset:__init__.py:3777 loca subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'post'
+INFO     fontTools.subset:__init__.py:3788 post subsetted
+INFO     fontTools.subset:__init__.py:3777 gasp subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'GDEF' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'GDEF' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to subset 'GDEF'
+INFO     fontTools.subset:__init__.py:3788 GDEF subsetted
+INFO     fontTools.subset:__init__.py:3777 name subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'glyf'
+INFO     fontTools.subset:__init__.py:3788 glyf subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset GlyphOrder
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'head'
+INFO     fontTools.subset:__init__.py:3847 head pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'OS/2' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'OS/2' table
+INFO     fontTools.subset:__init__.py:3814 OS/2 Unicode ranges pruned: [0, 1]
+INFO     fontTools.subset:__init__.py:3823 OS/2 CodePage ranges pruned: [0]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3847 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'GDEF'
+INFO     fontTools.subset:__init__.py:3847 GDEF pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'name' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'name' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'gasp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'gasp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'name'
+INFO     fontTools.subset:__init__.py:3847 name pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'maxp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'maxp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'maxp'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'maxp'
+INFO     fontTools.subset:__init__.py:3595 maxp pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'cmap' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'cmap' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'post' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'post' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'cmap'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'cmap'
+INFO     fontTools.subset:__init__.py:3595 cmap pruned
+INFO     fontTools.subset:__init__.py:3579 prep dropped
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'post'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'post'
+INFO     fontTools.subset:__init__.py:3595 post pruned
+INFO     fontTools.subset:__init__.py:3579 GPOS dropped
+INFO     fontTools.subset:__init__.py:3579 GSUB dropped
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'glyf' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'glyf' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'loca' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'loca' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'head' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'head' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'glyf'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3595 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'cmap'
+INFO     fontTools.subset:__init__.py:3635 Added gid0 to subset
+INFO     fontTools.subset:__init__.py:3708 Closing glyph list over 'glyf': 5 glyphs before
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'a', 'g', 'r', 's']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 59, 78, 104, 105]
+INFO     fontTools.subset:__init__.py:3714 Closed glyph list over 'glyf': 5 glyphs after
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'a', 'g', 'r', 's']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 59, 78, 104, 105]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'glyf'
+INFO     fontTools.subset:__init__.py:3767 Retaining 5 glyphs
+INFO     fontTools.subset:__init__.py:3777 head subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 hhea subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 maxp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 OS/2 subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hmtx' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hmtx' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hhea' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hhea' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'hmtx'
+INFO     fontTools.subset:__init__.py:3788 hmtx subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'cmap'
+INFO     fontTools.subset:__init__.py:3788 cmap subsetted
+INFO     fontTools.subset:__init__.py:3777 loca subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'post'
+INFO     fontTools.subset:__init__.py:3788 post subsetted
+INFO     fontTools.subset:__init__.py:3777 gasp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 STAT subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'GDEF' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'GDEF' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'GDEF'
+INFO     fontTools.subset:__init__.py:3788 GDEF subsetted
+INFO     fontTools.subset:__init__.py:3777 name subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'glyf'
+INFO     fontTools.subset:__init__.py:3788 glyf subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset GlyphOrder
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'head'
+INFO     fontTools.subset:__init__.py:3847 head pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'OS/2' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'OS/2' table
+INFO     fontTools.subset:__init__.py:3814 OS/2 Unicode ranges pruned: [0]
+INFO     fontTools.subset:__init__.py:3823 OS/2 CodePage ranges pruned: [0]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3847 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'GDEF'
+INFO     fontTools.subset:__init__.py:3847 GDEF pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'name' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'name' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'gasp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'gasp' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'STAT' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'STAT' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to prune 'name'
+INFO     fontTools.subset:__init__.py:3847 name pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'maxp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'maxp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'maxp'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'maxp'
+INFO     fontTools.subset:__init__.py:3595 maxp pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'cmap' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'cmap' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'post' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'post' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'cmap'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'cmap'
+INFO     fontTools.subset:__init__.py:3595 cmap pruned
+INFO     fontTools.subset:__init__.py:3579 fpgm dropped
+INFO     fontTools.subset:__init__.py:3579 prep dropped
+INFO     fontTools.subset:__init__.py:3579 cvt  dropped
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'post'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'post'
+INFO     fontTools.subset:__init__.py:3595 post pruned
+INFO     fontTools.subset:__init__.py:3579 GPOS dropped
+INFO     fontTools.subset:__init__.py:3579 GSUB dropped
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'glyf' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'glyf' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'loca' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'loca' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'head' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'head' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to load 'glyf'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3595 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'cmap'
+INFO     fontTools.subset:__init__.py:3635 Added gid0 to subset
+INFO     fontTools.subset:__init__.py:3708 Closing glyph list over 'glyf': 32 glyphs before
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'A', 'C', 'E', 'Eacute', 'F', 'H', 'I', 'L', 'N', 'R', 'S', 'T', 'U', 'V', 'a', 'c', 'colon', 'e', 'eight', 'emdash', 'h', 'l', 'o', 'one', 'p', 'quotesingle', 's', 'slash', 'space', 't', 'zero']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 4, 6, 9, 13, 16, 17, 20, 21, 28, 30, 32, 33, 35, 36, 39, 41, 45, 46, 47, 48, 49, 54, 55, 62, 69, 73, 76, 98, 181, 277]
+INFO     fontTools.subset:__init__.py:3714 Closed glyph list over 'glyf': 34 glyphs after
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'A', 'C', 'E', 'Eacute', 'F', 'H', 'I', 'L', 'N', 'R', 'S', 'T', 'U', 'V', 'a', 'acute.case', 'c', 'colon', 'e', 'eight', 'emdash', 'h', 'l', 'o', 'one', 'p', 'period', 'quotesingle', 's', 'slash', 'space', 't', 'zero']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 1, 4, 6, 9, 13, 16, 17, 20, 21, 28, 30, 32, 33, 35, 36, 39, 41, 45, 46, 47, 48, 49, 54, 55, 62, 69, 71, 73, 76, 98, 181, 269, 277]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'glyf'
+INFO     fontTools.subset:__init__.py:3767 Retaining 34 glyphs
+INFO     fontTools.subset:__init__.py:3777 head subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 hhea subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 maxp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 OS/2 subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hmtx' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hmtx' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hhea' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hhea' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'hmtx'
+INFO     fontTools.subset:__init__.py:3788 hmtx subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'cmap'
+INFO     fontTools.subset:__init__.py:3788 cmap subsetted
+INFO     fontTools.subset:__init__.py:3777 loca subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'post'
+INFO     fontTools.subset:__init__.py:3788 post subsetted
+INFO     fontTools.subset:__init__.py:3777 gasp subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'GDEF' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'GDEF' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'GDEF'
+INFO     fontTools.subset:__init__.py:3788 GDEF subsetted
+INFO     fontTools.subset:__init__.py:3777 name subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'glyf'
+INFO     fontTools.subset:__init__.py:3788 glyf subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset GlyphOrder
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'head'
+INFO     fontTools.subset:__init__.py:3847 head pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'OS/2' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'OS/2' table
+INFO     fontTools.subset:__init__.py:3814 OS/2 Unicode ranges pruned: [0, 1, 31]
+INFO     fontTools.subset:__init__.py:3823 OS/2 CodePage ranges pruned: [0]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3847 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'GDEF'
+INFO     fontTools.subset:__init__.py:3847 GDEF pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'name' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'name' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'gasp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'gasp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'name'
+INFO     fontTools.subset:__init__.py:3847 name pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'maxp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'maxp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'maxp'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'maxp'
+INFO     fontTools.subset:__init__.py:3595 maxp pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'cmap' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'cmap' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'post' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'post' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'cmap'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'cmap'
+INFO     fontTools.subset:__init__.py:3595 cmap pruned
+INFO     fontTools.subset:__init__.py:3579 prep dropped
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'post'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'post'
+INFO     fontTools.subset:__init__.py:3595 post pruned
+INFO     fontTools.subset:__init__.py:3579 GPOS dropped
+INFO     fontTools.subset:__init__.py:3579 GSUB dropped
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'glyf' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'glyf' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'loca' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'loca' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'head' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'head' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to load 'glyf'
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3595 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'cmap'
+INFO     fontTools.subset:__init__.py:3635 Added gid0 to subset
+INFO     fontTools.subset:__init__.py:3708 Closing glyph list over 'glyf': 20 glyphs before
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'L', 'a', 'c', 'd', 'e', 'guillemotleft', 'guillemotright', 'i', 'l', 'n', 'o', 'p', 'period', 'r', 's', 'space', 't', 'u', 'v']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 3, 32, 65, 74, 76, 78, 86, 94, 96, 98, 106, 109, 110, 112, 113, 118, 231, 266, 267]
+INFO     fontTools.subset:__init__.py:3714 Closed glyph list over 'glyf': 20 glyphs after
+INFO     fontTools.subset:__init__.py:460 Glyph names: ['.notdef', 'L', 'a', 'c', 'd', 'e', 'guillemotleft', 'guillemotright', 'i', 'l', 'n', 'o', 'p', 'period', 'r', 's', 'space', 't', 'u', 'v']
+INFO     fontTools.subset:__init__.py:463 Glyph IDs:   [0, 3, 32, 65, 74, 76, 78, 86, 94, 96, 98, 106, 109, 110, 112, 113, 118, 231, 266, 267]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to close glyph list over 'glyf'
+INFO     fontTools.subset:__init__.py:3767 Retaining 20 glyphs
+INFO     fontTools.subset:__init__.py:3777 head subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 hhea subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 maxp subsetting not needed
+INFO     fontTools.subset:__init__.py:3777 OS/2 subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hmtx' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hmtx' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'hhea' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'hhea' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'hmtx'
+INFO     fontTools.subset:__init__.py:3788 hmtx subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'cmap'
+INFO     fontTools.subset:__init__.py:3788 cmap subsetted
+INFO     fontTools.subset:__init__.py:3777 loca subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'post'
+INFO     fontTools.subset:__init__.py:3788 post subsetted
+INFO     fontTools.subset:__init__.py:3777 gasp subsetting not needed
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'GDEF' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'GDEF' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.001s to subset 'GDEF'
+INFO     fontTools.subset:__init__.py:3788 GDEF subsetted
+INFO     fontTools.subset:__init__.py:3777 name subsetting not needed
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset 'glyf'
+INFO     fontTools.subset:__init__.py:3788 glyf subsetted
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to subset GlyphOrder
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'head'
+INFO     fontTools.subset:__init__.py:3847 head pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'OS/2' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'OS/2' table
+INFO     fontTools.subset:__init__.py:3814 OS/2 Unicode ranges pruned: [0, 1]
+INFO     fontTools.subset:__init__.py:3823 OS/2 CodePage ranges pruned: [0]
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'glyf'
+INFO     fontTools.subset:__init__.py:3847 glyf pruned
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'GDEF'
+INFO     fontTools.subset:__init__.py:3847 GDEF pruned
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'name' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'name' table
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:811 Reading 'gasp' table from disk
+DEBUG    fontTools.ttLib.ttFont:ttFont.py:821 Decompiling 'gasp' table
+DEBUG    fontTools.subset.timer:loggingTools.py:357 Took 0.000s to prune 'name'
+INFO     fontTools.subset:__init__.py:3847 name pruned
+________________ test_p6_social_agent_uses_the_sovereign_engine ________________
+------------------------------ Captured log call -------------------------------
+ERROR    jobs.social_agent:social_agent.py:130 social_agent.generate_content gave up after 1 retries (last=None)
+__________________ test_p1_fails_visibly_when_engine_is_down ___________________
+------------------------------ Captured log call -------------------------------
+ERROR    routes.laurentia_gateway:laurentia_gateway.py:513 query_failed tenant=407fe970c0337fedf35cb3af5c949a011af07cc6dbcedaefdee3f3ec467c214b
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/usr/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/lia-s1/backend/services/cvl_brain.py", line 156, in chat_stream
+    async with client.stream("POST", f"{url}/v1/chat/completions", json=payload, headers=_headers()) as r:
+               ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1583, in stream
+    response = await self.send(
+               ^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/lia-s1/backend/routes/laurentia_gateway.py", line 396, in event_stream
+    async for chunk in cvl_brain.chat_stream(
+    ...<11 lines>...
+        yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
+  File "/home/user/lia-s1/backend/services/cvl_brain.py", line 168, in chat_stream
+    raise BrainEngineError(f"moteur d'inférence indisponible : {type(e).__name__}") from e
+services.cvl_brain.BrainEngineError: moteur d'inférence indisponible : ConnectError
+__________________ test_p5_fails_visibly_when_engine_is_down ___________________
+------------------------------ Captured log call -------------------------------
+ERROR    routes.echo:echo.py:131 echo_generation_failed
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_async/connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/usr/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/lia-s1/backend/services/cvl_brain.py", line 156, in chat_stream
+    async with client.stream("POST", f"{url}/v1/chat/completions", json=payload, headers=_headers()) as r:
+               ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1583, in stream
+    response = await self.send(
+               ^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/tmp/claude-0/-home-user/6461df0d-0a90-57ee-af5d-173146d1c26f/scratchpad/s1/venv-ci/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/lia-s1/backend/routes/echo.py", line 123, in generate_echo
+    async for chunk in cvl_brain.chat_stream(
+    ...<4 lines>...
+        full += chunk
+  File "/home/user/lia-s1/backend/services/cvl_brain.py", line 168, in chat_stream
+    raise BrainEngineError(f"moteur d'inférence indisponible : {type(e).__name__}") from e
+services.cvl_brain.BrainEngineError: moteur d'inférence indisponible : ConnectError
+__________________ test_generate_content_skips_after_retries ___________________
+------------------------------ Captured log call -------------------------------
+WARNING  jobs.social_agent:social_agent.py:128 social_agent.generate_content attempt=1 failed: claude down
+WARNING  jobs.social_agent:social_agent.py:128 social_agent.generate_content attempt=2 failed: claude down
+ERROR    jobs.social_agent:social_agent.py:130 social_agent.generate_content gave up after 2 retries (last=claude down)
+=========================== short test summary info ============================
+PASSED tests/test_briefing_contract.py::test_briefing_contract
+PASSED tests/test_briefing_contract.py::test_briefing_rejects_missing_api_key
+PASSED tests/test_briefing_contract.py::test_briefing_rejects_user_style_laurentia_key
+PASSED tests/test_chantier10.py::test_value_estimator_defaults
+PASSED tests/test_chantier10.py::test_value_estimator_env_override
+PASSED tests/test_chantier10.py::test_value_estimator_with_weight
+PASSED tests/test_chantier10.py::test_allocations_have_proper_sizes
+PASSED tests/test_chantier10.py::test_tenant_allows_strict_pyramid
+PASSED tests/test_chantier10.py::test_allocation_for_unknown_tier_defaults_to_free
+PASSED tests/test_chantier10.py::test_tenant_log_activity_persists_with_estimation
+PASSED tests/test_chantier10.py::test_tenant_factory_resolves_tier_from_instances
+PASSED tests/test_chantier10.py::test_tenant_factory_default_tier_for_unknown_user
+PASSED tests/test_chantier10.py::test_api_key_create_validate_revoke_roundtrip
+PASSED tests/test_chantier10.py::test_api_key_rejects_other_tenants_keys
+PASSED tests/test_chantier10.py::test_api_key_invalid_format_returns_none
+PASSED tests/test_chantier10.py::test_compute_user_daily_empty_returns_zero_stats
+PASSED tests/test_chantier10.py::test_compute_user_daily_aggregates_correctly
+PASSED tests/test_chantier10.py::test_compute_founder_daily_aggregates_tenants_and_tiers
+PASSED tests/test_chantier10.py::test_snapshot_daily_persists_reports
+PASSED tests/test_chantier10.py::test_compute_founder_weekly_includes_paid_subscribers
+PASSED tests/test_corpus_pipeline.py::test_score_interaction_high_caribbean_creole
+PASSED tests/test_corpus_pipeline.py::test_score_interaction_low_neutral
+PASSED tests/test_corpus_pipeline.py::test_format_jsonl_scrubs_pii
+PASSED tests/test_corpus_pipeline.py::test_run_corpus_pipeline_empty_collection_returns_clean_report
+PASSED tests/test_corpus_pipeline.py::test_run_corpus_pipeline_with_mixed_interactions
+PASSED tests/test_image_generator.py::test_style_prefix_known_and_unknown
+PASSED tests/test_image_generator.py::test_generate_visual_no_sd_url_returns_none
+PASSED tests/test_image_generator.py::test_generate_visual_sd_unreachable_returns_none
+PASSED tests/test_image_generator.py::test_generate_visual_mock_success
+PASSED tests/test_image_generator.py::test_generate_visual_empty_images_returns_none
+PASSED tests/test_laurentia_backend.py::TestHealth::test_root_health
+PASSED tests/test_laurentia_backend.py::TestHealth::test_brain_health
+PASSED tests/test_laurentia_backend.py::TestInstances::test_init_instance_sayd
+PASSED tests/test_laurentia_backend.py::TestInstances::test_get_instance_sayd
+PASSED tests/test_laurentia_backend.py::TestInstances::test_get_instance_artist
+PASSED tests/test_laurentia_backend.py::TestInstances::test_get_memory_safe_shape
+PASSED tests/test_laurentia_backend.py::TestQuerySSE::test_sse_query_sayd
+PASSED tests/test_laurentia_backend.py::TestQuerySSE::test_multi_tenant_isolation
+PASSED tests/test_laurentia_backend.py::TestPersistencePrivacy::test_query_persists_and_anonymizes
+PASSED tests/test_orchestrator.py::test_registry_has_20_agents_across_4_departments
+PASSED tests/test_orchestrator.py::test_detect_souverainete_breach_finds_leaks
+PASSED tests/test_orchestrator.py::test_detect_jailbreak_basic
+PASSED tests/test_orchestrator.py::test_agent_snapshot_and_touch
+PASSED tests/test_orchestrator.py::test_event_bus_publish_and_dispatch
+PASSED tests/test_orchestrator.py::test_event_bus_isolates_handler_errors
+PASSED tests/test_orchestrator.py::test_circuit_breaker_shadow_mode_does_not_block
+PASSED tests/test_orchestrator.py::test_circuit_breaker_active_mode_blocks
+PASSED tests/test_orchestrator.py::test_circuit_breaker_decide_unknown_returns_none
+PASSED tests/test_orchestrator.py::test_sms_format_alert_body
+PASSED tests/test_orchestrator.py::test_sms_signature_deterministic
+PASSED tests/test_orchestrator.py::test_sms_not_configured_skips_silently
+PASSED tests/test_orchestrator.py::test_orchestrator_starts_with_20_agents
+PASSED tests/test_orchestrator.py::test_orchestrator_dispatch_logs_souverainete_breach_to_db
+PASSED tests/test_orchestrator.py::test_orchestrator_intake_does_not_break_on_clean_input
+PASSED tests/test_orchestrator.py::test_orchestrator_dispatches_done_to_memorialiste_and_latence
+PASSED tests/test_phase1_integration_http.py::test_memory_sessions_are_encrypted_at_rest
+PASSED tests/test_phase1_integration_http.py::test_get_session_decrypts_blobs
+PASSED tests/test_phase1_integration_http.py::test_query_multipart_pdf
+PASSED tests/test_phase1_integration_http.py::test_query_multipart_docx
+PASSED tests/test_phase1_integration_http.py::test_query_multipart_png_rejected_415
+PASSED tests/test_phase1_integration_http.py::test_query_multipart_oversize_413
+PASSED tests/test_phase1_security_uploads.py::test_encrypt_decrypt_round_trip
+PASSED tests/test_phase1_security_uploads.py::test_encrypt_text_none
+PASSED tests/test_phase1_security_uploads.py::test_decrypt_legacy_plaintext
+PASSED tests/test_phase1_security_uploads.py::test_encrypt_each_call_uses_unique_nonce
+PASSED tests/test_phase1_security_uploads.py::test_parse_text_file
+PASSED tests/test_phase1_security_uploads.py::test_parse_md_file
+PASSED tests/test_phase1_security_uploads.py::test_parse_empty_file_rejected
+PASSED tests/test_phase1_security_uploads.py::test_parse_unsupported_format
+PASSED tests/test_phase1_security_uploads.py::test_parse_oversize_file
+PASSED tests/test_phase1_security_uploads.py::test_parse_pdf
+PASSED tests/test_phase1_security_uploads.py::test_parse_docx
+PASSED tests/test_phase1_security_uploads.py::test_build_context_block_format
+PASSED tests/test_phase1_security_uploads.py::test_parse_many_aggregate_limit
+PASSED tests/test_phase1_security_uploads.py::test_upload_limits_endpoint
+PASSED tests/test_phase1_security_uploads.py::test_query_multipart_free_tier_rejected
+PASSED tests/test_phase1_security_uploads.py::test_query_multipart_creator_ok_and_encrypted_at_rest
+PASSED tests/test_phase1_security_uploads.py::test_query_json_path_still_works
+PASSED tests/test_phase2_policiere_export.py::test_device_id_deterministic
+PASSED tests/test_phase2_policiere_export.py::test_device_id_different_inputs
+PASSED tests/test_phase2_policiere_export.py::test_device_id_none_when_empty
+PASSED tests/test_phase2_policiere_export.py::test_resolve_limit_key_priority
+PASSED tests/test_phase2_policiere_export.py::test_ttl_index_present
+PASSED tests/test_phase2_policiere_export.py::test_rate_limit_quotas_loaded
+PASSED tests/test_phase2_policiere_export.py::test_rate_limit_triggers_429_with_noble_message
+PASSED tests/test_phase2_policiere_export.py::test_pdf_pages_count
+PASSED tests/test_phase2_policiere_export.py::test_txt_pages_count
+PASSED tests/test_phase2_policiere_export.py::test_summary_exposes_pages
+PASSED tests/test_phase2_policiere_export.py::test_export_pdf_minimal
+PASSED tests/test_phase2_policiere_export.py::test_export_pdf_with_subtitle_and_footer
+PASSED tests/test_phase2_policiere_export.py::test_export_pdf_rejects_oversize_payload
+PASSED tests/test_phase2_policiere_export.py::test_export_pdf_sanitizes_html
+PASSED tests/test_phase3_ghost_signature.py::test_qr_data_uri_is_valid_png
+PASSED tests/test_phase3_ghost_signature.py::test_signature_section_html_includes_branding
+PASSED tests/test_phase3_ghost_signature.py::test_signature_section_html_no_session_falls_back_to_root
+PASSED tests/test_phase3_ghost_signature.py::test_resolve_returns_null_without_fingerprint
+PASSED tests/test_phase3_ghost_signature.py::test_resolve_returns_device_id_with_fingerprint
+PASSED tests/test_phase3_ghost_signature.py::test_resolve_returns_frek_when_device_linked
+PASSED tests/test_phase3_ghost_signature.py::test_pdf_quota_initial_state
+PASSED tests/test_phase3_ghost_signature.py::test_pdf_export_increments_counter
+PASSED tests/test_phase3_ghost_signature.py::test_pdf_signature_only_for_free_tier
+PASSED tests/test_phase3_ghost_signature.py::test_pdf_pages_includes_signature_for_free
+PASSED tests/test_phase4_echo_rgpd.py::test_persona_contains_anti_jailbreak_rules
+PASSED tests/test_phase4_echo_rgpd.py::test_persona_protects_secret_keys_in_text
+PASSED tests/test_phase4_echo_rgpd.py::test_echo_404_when_missing
+PASSED tests/test_phase4_echo_rgpd.py::test_echo_generate_with_raw_text_and_public_get
+PASSED tests/test_phase4_echo_rgpd.py::test_echo_conversion_attribution
+PASSED tests/test_phase4_echo_rgpd.py::test_rgpd_purge_anonymizes_old_instances
+PASSED tests/test_phase4_echo_rgpd.py::test_rgpd_purge_anonymizes_old_attributions
+PASSED tests/test_phase4_echo_rgpd.py::test_rgpd_endpoint_idempotent
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_infinite_returns_none
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_pro_returns_none
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_account_too_young_returns_none
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_low_usage_returns_none
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_free_meets_thresholds
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_free_high_time_saved_only
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_creator_to_infinite_thresholds
+PASSED tests/test_reports_upsell_timeline.py::test_upsell_hint_unknown_creation_date_treated_as_old
+PASSED tests/test_reports_upsell_timeline.py::test_timeline_empty_returns_zeros_for_all_days
+PASSED tests/test_reports_upsell_timeline.py::test_timeline_aggregates_minutes_per_day
+PASSED tests/test_reports_upsell_timeline.py::test_compute_user_daily_includes_timeline_and_upsell_fields
+PASSED tests/test_s1_legacy_routes_auth.py::test_anonymous_call_is_refused_before_the_engine[/api/brain/chat-enriched-body0]
+PASSED tests/test_s1_legacy_routes_auth.py::test_anonymous_call_is_refused_before_the_engine[/api/omega/chat-enriched-body1]
+PASSED tests/test_s1_legacy_routes_auth.py::test_unknown_token_is_refused_before_the_engine[/api/brain/chat-enriched-body0]
+PASSED tests/test_s1_legacy_routes_auth.py::test_unknown_token_is_refused_before_the_engine[/api/omega/chat-enriched-body1]
+PASSED tests/test_s1_legacy_routes_auth.py::test_authenticated_call_reaches_the_engine[/api/brain/chat-enriched-body0]
+PASSED tests/test_s1_legacy_routes_auth.py::test_authenticated_call_reaches_the_engine[/api/omega/chat-enriched-body1]
+PASSED tests/test_s1_network_guard.py::test_external_dns_is_refused_and_recorded
+PASSED tests/test_s1_network_guard.py::test_external_ip_connect_is_refused_and_recorded
+PASSED tests/test_s1_network_guard.py::test_swallowed_http_error_is_still_recorded
+PASSED tests/test_s1_network_guard.py::test_loopback_is_allowed
+PASSED tests/test_s1_no_third_party.py::test_index_html_loads_no_external_script_or_stylesheet
+PASSED tests/test_s1_no_third_party.py::test_index_html_has_no_analytics_or_session_recording
+PASSED tests/test_s1_no_third_party.py::test_frontend_sources_and_dependencies_have_no_analytics_sdk
+PASSED tests/test_s1_no_third_party.py::test_self_hosted_fonts_referenced_by_the_page_exist
+PASSED tests/test_s1_no_third_party.py::test_pdf_rendering_uses_local_fonts_without_network
+PASSED tests/test_s1_startup_checks.py::test_defaults_match_the_modules_that_use_them
+PASSED tests/test_s1_startup_checks.py::test_non_deployed_environments_are_not_checked[development]
+PASSED tests/test_s1_startup_checks.py::test_non_deployed_environments_are_not_checked[test]
+PASSED tests/test_s1_startup_checks.py::test_safe_production_has_no_problem
+PASSED tests/test_s1_startup_checks.py::test_missing_app_env_is_treated_as_production
+PASSED tests/test_s1_startup_checks.py::test_unknown_app_env_is_refused
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override0-EMERGENT_LLM_KEY]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override1-BRAIN_ENGINE_URL]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override2-OPENAI_API_KEY]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override3-ANTHROPIC_API_KEY]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override4-SD_API_URL]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override5-CVLN_MODEL_ROUTER_URL]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override6-BRAIN_ENGINE_URL]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override7-CORS_ORIGINS]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override8-CORS_ORIGINS]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override9-LAURENTIA_ENCRYPTION_KEY]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override10-LAURENTIA_ENCRYPTION_KEY]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override11-LAURENTIA_SECRET_SALT]
+PASSED tests/test_s1_startup_checks.py::test_each_unsafe_setting_is_reported[override12-LAURENTIA_SECRET_SALT]
+PASSED tests/test_s1_startup_checks.py::test_staging_is_checked_like_production
+PASSED tests/test_s1_startup_checks.py::test_server_refuses_to_start_with_external_llm_key_in_production
+PASSED tests/test_s1_startup_checks.py::test_server_refuses_to_start_without_app_env_and_with_public_defaults
+PASSED tests/test_s1_startup_checks.py::test_server_starts_with_a_safe_production_configuration
+PASSED tests/test_s1_startup_checks.py::test_server_starts_in_test_environment
+PASSED tests/test_s2_inference_paths.py::test_p1_query_streams_from_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p2_briefing_uses_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p3_chat_enriched_uses_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p4_omega_streams_from_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p5_echo_uses_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p6_social_agent_uses_the_sovereign_engine
+PASSED tests/test_s2_inference_paths.py::test_p1_fails_visibly_when_engine_is_down
+PASSED tests/test_s2_inference_paths.py::test_p2_fails_visibly_when_engine_is_down
+PASSED tests/test_s2_inference_paths.py::test_p5_fails_visibly_when_engine_is_down
+PASSED tests/test_s2_inference_paths.py::test_unconfigured_engine_raises_without_trying_any_provider
+PASSED tests/test_s2_inference_paths.py::test_legacy_provider_path_is_refused_when_deployed
+PASSED tests/test_s2_inference_paths.py::test_health_reports_the_sovereign_engine[/api/health]
+PASSED tests/test_s2_inference_paths.py::test_health_reports_the_sovereign_engine[/api/brain/health]
+PASSED tests/test_s2_inference_paths.py::test_t1_no_provider_sdk_import_in_production_code
+PASSED tests/test_s2_inference_paths.py::test_t1_starting_the_server_loads_no_provider_sdk
+PASSED tests/test_social_agent.py::test_theme_for_today_returns_valid_theme
+PASSED tests/test_social_agent.py::test_extract_json_clean_response
+PASSED tests/test_social_agent.py::test_extract_json_with_code_fence
+PASSED tests/test_social_agent.py::test_extract_json_invalid_returns_empty
+PASSED tests/test_social_agent.py::test_generate_content_skips_after_retries
+PASSED tests/test_social_agent.py::test_generate_content_success
+PASSED tests/test_social_agent.py::test_generate_and_publish_manual_approval_pending
+PASSED tests/test_social_agent.py::test_generate_and_publish_all_networks_down
+PASSED tests/test_social_agent.py::test_generate_and_publish_partial_success
+PASSED tests/test_social_agent.py::test_generate_and_publish_skips_when_paused
+185 passed, 5 warnings in 24.05s
+pytest_exit=0
