@@ -18,6 +18,11 @@ from datetime import datetime, timezone
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# S1.4 — refuse to start a deployed instance with an unsafe configuration.
+from services.startup_checks import enforce as _enforce_startup_checks  # noqa: E402
+
+_enforce_startup_checks()
+
 # MongoDB
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
