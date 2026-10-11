@@ -249,3 +249,48 @@ Aucune ne touche aujourd'hui une mémoire personnelle de Laurent : le contrat de
 4. Les conversations de Laurent avec CVL Brain dans Meta CVLN doivent-elles rester dans Meta CVLN, ou ce rôle d'assistant de Laurent revient-il à Laurent.ia ?
 5. Les points de sécurité de KORA (§2.9) et d'Agent Factory (§3.2) doivent être traités dans ces dépôts. Ils ne l'ont pas été ici, conformément à la consigne de lecture seule.
 6. **Partage des rôles Laurent.ia ↔ Agent Factory** (§3.2 bis) : qui est l'interface de Laurent, où vivent ses conversations, son briefing et ses validations ? Décision D18.
+
+---
+
+## 9. Relecture à partir de Meta CVLN, référence de l'écosystème (11 octobre 2026)
+
+**Consigne de Laurent** : *« Meta CVLN dit ce qu'il faut. Agent Factory, ce sont des agents de mon écosystème. »* Les rôles sont donc ceux que définit Meta CVLN (`Metacvln-Sept2026`, commit `7673bfc`). Cette section corrige les lectures précédentes qui traitaient la fiche de Laurent.ia dans Meta CVLN comme simplement « obsolète ».
+
+### 9.1 Ce que Meta CVLN définit
+
+Meta CVLN est le **système d'exploitation méta** du groupe. Il tient :
+- le registre des systèmes et leur plan ;
+- les 5 contrats versionnés : `Event`, `Capability`, `RoutingDecision`, `SystemState`, `ExecutionPlan` (`backend/contracts.py`) — *« Every cross-entity call, every routing decision, every emitted event MUST conform to one of these contracts »* ;
+- le routage des capacités, le notariat Ed25519, le journal de preuves, les validations humaines, et les registres d'organisation (décisions, projets, personnes).
+
+Il attend de chaque système qu'il expose `GET /api/capabilities` (`server.py:663-701`).
+
+| Plan (registre, `registry_data.py`) | Systèmes | Rôle déclaré |
+|---|---|---|
+| Trust Layer | FREKCORE, FREKANSLA | Identité, provenance, notariat, certification |
+| **Control Plane** | **Agent Factory**, Command Center | **Création, composition, réutilisation et cycle de vie des agents** ; classification, routage, alerte |
+| **Learning Plane** | **Laurent.ia** | **Cognition, mémoire, évaluation, confiance** |
+| Product / Operating | KORA (*« plateforme culturelle »*, entité Operating dans `seed_data.py`), Kiltikonet, CVL Academy, FMS, Gala, Factory Ops | Produits métier |
+| Infrastructure | CVLN Wallet, Production Vault | Valeur, stockage souverain |
+
+CVL Brain apparaît comme la **couche cognitive interne de Meta CVLN** (`server.py:1487` : *« Tu ne prends jamais de décision opérationnelle : tu prépares la décision humaine »*), classée elle aussi « Learning » dans les entités.
+
+### 9.2 Ce que cela change dans mes conclusions
+
+| Conclusion antérieure | Lecture corrigée |
+|---|---|
+| La fiche de Laurent.ia dans Meta CVLN est « obsolète » | **Le plan est juste** : Laurent.ia est le Learning Plane (cognition, mémoire, évaluation, confiance). Seule la **liste de capacités** de la fiche (tiers payants, persistance fantôme, échos) décrit l'ancien produit |
+| Agent Factory recouvre Laurent.ia ; proposition d'en faire une interface de Laurent.ia (D18) | Agent Factory est le **Control Plane** : la fabrique et le cycle de vie des agents de l'écosystème. Ses fonctions de mémoire, de chat avec Laurent et de « système cognitif » sortent de ce plan ; la cognition, la mémoire, l'évaluation et la confiance relèvent du Learning Plane, c'est-à-dire de Laurent.ia |
+| Le contrat `laurentia.briefing` met l'intelligence de Laurent au service des produits : à restreindre (D13 v1) | C'est **la capacité prévue par Meta CVLN** (`cap-laurentia-briefing`, routée par `RoutingDecision` et `ExecutionPlan`, `contracts.py:170-190`). L'usage par Kiltikonet Code comme moteur LLM générique (I2) reste, lui, hors de ce cadre |
+
+### 9.3 Écarts entre Laurent.ia et ce que Meta CVLN attend
+
+1. Laurent.ia n'expose pas `GET /api/capabilities` : Meta CVLN ne peut pas le découvrir.
+2. Laurent.ia ne publie aucun descripteur conforme au contrat `Capability` v1.0 (schémas d'entrée et de sortie, acteurs autorisés, approbation requise).
+3. La fiche du registre liste des capacités de l'ancien produit B2C.
+4. L'évaluation et la confiance, explicitement attribuées au Learning Plane, n'ont aucune implémentation dans Laurent.ia.
+
+### 9.4 Points à confirmer par Laurent
+
+- **Périmètre du Learning Plane** : Laurent.ia sert Laurent d'abord ; ses capacités (briefing, évaluation, confiance) sont offertes aux autres systèmes **uniquement via les contrats de Meta CVLN**, sa mémoire personnelle n'étant jamais exposée brute. Est-ce la bonne lecture ?
+- **CVL Brain et Laurent.ia**, tous deux « Learning » : CVL Brain reste-t-il la couche cognitive propre à Meta CVLN, ou doit-il à terme s'appuyer sur Laurent.ia ?
