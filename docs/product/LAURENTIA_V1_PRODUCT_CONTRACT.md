@@ -391,7 +391,7 @@ Laurent.ia est la couche personnelle qui comprend et pilote les autres systèmes
 | Système | Mission | Données qu'il possède | Intelligence | Utilisateurs | Relation avec Laurent.ia |
 |---|---|---|---|---|---|
 | **Laurent.ia** | Intelligence personnelle de Laurent | **Mémoire personnelle de Laurent** | Modèle open-weight local | Laurent seul | — |
-| **KORA** (`kora2024/Kora-app`) | DSP culturel souverain (musique + audiovisuel) | Catalogue, abonnés, écoutes, droits, royalties | Aucun LLM dans le code ; recommandation heuristique ; moteur CVE | Abonnés, créateurs, partenaires | **Aucune dans le code** ; son architecture cible prévoit « Laurentia » comme assistant de ses abonnés (D16) |
+| **KORA** (`kora2024/Kora-app` = `cultureconnectorg/KORA`) | DSP culturel souverain (musique + audiovisuel) | Catalogue, abonnés, écoutes, droits, royalties | Aucun LLM dans le code ; recommandation heuristique ; moteur CVE | Abonnés, créateurs, partenaires | **Aucune dans le code** ; son architecture cible prévoit « Laurentia » comme assistant de ses abonnés (D16) |
 | **CVL Brain** | Nom des modules d'IA de plusieurs produits (Kiltikonet, Meta CVLN) | `brain_messages` (Meta CVLN) | Claude via Anthropic ou Emergent | Équipes des produits hôtes | Pas d'API propre ; confusion de nom (D5) |
 | **Agent Factory** (`frekcore/CVLNAgentfactory`) | Création et orchestration d'agents (selon ses consommateurs) | **Non vérifié** | **Non vérifié** | Produits du groupe, CI | **Aucune dans le code observé** ; dépôt inaccessible |
 | **Meta CVLN** | Système d'exploitation interne du groupe | Décisions, projets, personnes, objectifs, preuves **du groupe** | CVL Brain (Claude) | Équipe CVLN | Consomme `laurentia.briefing@1.0` (I1) ; registre obsolète (I8) |
@@ -428,7 +428,7 @@ Constat : **aucune interface ne touche aujourd'hui une mémoire personnelle de L
 ### 9.5 Contraintes d'accès ouvertes
 
 - `frekcore/CVLNAgentfactory` : **inaccessible** depuis la session. Les frontières avec Agent Factory ne sont pas fixées ; rien n'est supposé à la place.
-- `cultureconnectorg/KORA` : **inaccessible**. S'il diffère de `kora2024/Kora-app`, il n'est pas couvert.
+- KORA : **entièrement couvert**. `cultureconnectorg/KORA` et `kora2024/Kora-app` désignent le même système (déclaration de Laurent, 11 oct. 2026).
 
 ## 10. Critères DONE / NOT DONE
 

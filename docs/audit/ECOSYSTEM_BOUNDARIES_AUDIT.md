@@ -18,13 +18,13 @@ Le Product Contract (version du commit `1f353e0`) affirmait : *« KORA : aucun d
 |---|---|---|---|---|
 | Laurent.ia | `cultureconnectorg/Laurent.ia` | Lecture et écriture | `de32e56` | 6 oct. 2026 |
 | **KORA** | `kora2024/Kora-app` (**public**) | Lecture git anonyme | `c2da615` (branche `main`) | 7 sept. 2026 |
-| KORA (second nom donné) | `cultureconnectorg/KORA` | ❌ **Refusé** : « introuvable ou pas d'accès » (outil d'attachement) ; `git ls-remote` demande une authentification | — | — |
+| KORA (autre nom) | `cultureconnectorg/KORA` | Même système que `kora2024/Kora-app` (**déclaration de Laurent, 11 oct. 2026**) ; ce nom n'est pas lisible depuis la session | — | — |
 | **Agent Factory** | `frekcore/CVLNAgentfactory` (branche `CVLN-AGENT-FACTORY`) | ❌ **Refusé** : même réponse ; `git ls-remote` demande une authentification | — | — |
 | Meta CVLN | `cultureconnectorg/Metacvln-Sept2026` | Lecture | `7673bfc` | 25 sept. 2026 |
 | Kiltikonet | `cultureconnectorg/Kiltikonet-Aout2026` | Lecture | `4645777` | 6 oct. 2026 |
 | CVL Brain | Pas de dépôt dédié identifié | — | — | — |
 
-**Contraintes d'accès ouvertes** : `cultureconnectorg/KORA` et `frekcore/CVLNAgentfactory`. Ce qui est dit d'Agent Factory ci-dessous vient **uniquement de ses consommateurs** (Meta CVLN, KORA, Kiltikonet) et n'est pas vérifié sur son code. Si `cultureconnectorg/KORA` est un dépôt distinct de `kora2024/Kora-app`, il n'est pas couvert par cet audit.
+**Contrainte d'accès ouverte** : `frekcore/CVLNAgentfactory`. Ce qui est dit d'Agent Factory ci-dessous vient **uniquement de ses consommateurs** (Meta CVLN, KORA, Kiltikonet) et n'est pas vérifié sur son code. KORA est **entièrement couvert** : `cultureconnectorg/KORA` et `kora2024/Kora-app` désignent le même système (déclaration de Laurent).
 
 Pour lever ces contraintes : connecter ou reconnecter le compte GitHub sur https://claude.ai/connect-github et, si l'application GitHub Claude n'est pas installée sur l'organisation `frekcore`, l'installer (ou demander à un propriétaire de l'organisation de le faire) depuis la même page. Le dépôt pourra ensuite être attaché à une session.
 
@@ -198,7 +198,7 @@ Aucune ne touche aujourd'hui une mémoire personnelle de Laurent : le contrat de
 
 ## 8. Questions ouvertes (aucune hypothèse à leur place)
 
-1. `cultureconnectorg/KORA` est-il un dépôt distinct de `kora2024/Kora-app` (autre version, autre brique) ? Accès nécessaire pour l'auditer.
+1. ~~`cultureconnectorg/KORA` est-il distinct de `kora2024/Kora-app` ?~~ **Résolu** le 11 oct. 2026 : même système (déclaration de Laurent).
 2. Code réel d'Agent Factory (`frekcore/CVLNAgentfactory`) : accès nécessaire.
 3. Le « Laurentia » de l'architecture de KORA (assistant d'abonnés) doit-il garder ce nom, devenir une capacité d'un autre système (CVL Brain, Agent Factory), ou être un produit distinct de Laurent.ia ?
 4. Les conversations de Laurent avec CVL Brain dans Meta CVLN doivent-elles rester dans Meta CVLN, ou ce rôle d'assistant de Laurent revient-il à Laurent.ia ?
