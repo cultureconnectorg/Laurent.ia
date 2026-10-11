@@ -3,18 +3,18 @@
 > Statut : **document de travail, non canonique**. Corrigé le 11 octobre 2026 (correctif E1) après l'[audit de réconciliation](../audit/RECONCILIATION_2026-10-11.md).
 > Les règles canoniques sont dans le [registre des décisions](../decisions/REGISTER.md) (LIA-D19 à LIA-D23). En cas d'écart, **le registre prévaut** sur ce document.
 >
-> Statuts : **[RC]** règle canonique · **[DH]** décision historique écrite · **[F]** fait vérifié dans le code · **[H]** hypothèse · **[NV]** non vérifié.
+> Statuts : **[RC]** règle canonique · **[AR]** arbitrage récent (oct. 2026), qui fait foi comme décision mais pas comme preuve historique · **[DH]** décision historique écrite · **[DL]** formulation antérieure rapportée par Laurent, absente des dépôts · **[F]** fait vérifié dans le code · **[H]** hypothèse · **[NV]** non vérifié.
 >
 > Sources, **sans ordre d'autorité implicite** : arbre fondateur `Foundation-Cvln` (`886ac8c`, déclaré `DECIDED` / `UNVERIFIED`) ; Meta CVLN (`7673bfc`) ; corpus CVLN iOS (`1cedf8a`), **référentiel de cohérence et de preuves, pas une autorité d'implémentation** [DH, Kiltikonet 9-10 sept.] ; code des dépôts audités ; décisions de Laurent.
 
 ---
 
-## 1. Règles de Laurent (11 octobre 2026)
+## 1. Règles de Laurent (11 octobre 2026) [AR]
 
-1. **Laurent.ia est la réalisation de CVLN Brain pour Laurent.** [RC] — conforme à la décision historique du 30 mai : « Nom technique interne : CVL Brain » [DH].
+1. **Laurent.ia est la réalisation de CVLN Brain pour Laurent.** [RC][AR] — cohérent avec, mais **non établi par**, la décision du 30 mai, qui ne porte que sur le nom du moteur : « Nom technique interne : CVL Brain » [DH].
 2. **CVLN Brain est le cœur silencieux du groupe** : il n'a pas d'interface propre. [RC]
 3. **Laurent doit avoir son propre LLM**, avec une interface publique et une interface interne. [RC] — précisé par LIA-D20 : le moteur souverain est celui du service Brain.
-4. **Les agents de CVLN Agent Factory sont les agents du groupe, et donc aussi les enfants de Laurentia.** [RC] — **interprétée fonctionnellement** par LIA-D22 : Laurentia fait circuler l'intelligence et l'action vers ces agents. **Aucune relation d'autorité ni hiérarchie n'en découle.**
+4. **Les agents de CVLN Agent Factory sont les agents du groupe, et donc aussi les enfants de Laurentia.** [RC] — **interprétée fonctionnellement** par LIA-D22 [AR], qui reprend la formulation du 8 sept. [DL] : Laurentia fait circuler l'intelligence et l'action vers ces agents. **Aucune relation d'autorité ni hiérarchie n'en découle.**
 5. **Meta CVLN dit ce qu'il faut** pour les rôles institutionnels, les contrats et les registres. [RC] — précisé par LIA-D19 : Meta gouverne, Brain détient la doctrine.
 
 ---
@@ -43,7 +43,7 @@ CVLN Foundation ─ gouvernance · vision · racine
 
 ### 3.1 Fonctions et responsabilités
 
-| Système | Fonction (LIA-D22) | Détient (cible) | Ne détient pas | État réel |
+| Système | Fonction (LIA-D22 [AR]) | Détient (cible) | Ne détient pas | État réel |
 |---|---|---|---|---|
 | **CVLN Brain** | **Cognition** : cœur silencieux, sans interface | Doctrine de référence [RC LIA-D19] ; moteur souverain [RC LIA-D20] ; mémoire cognitive et conversations personnelles, avec un **espace personnel de Laurent strictement cloisonné** [RC LIA-D21] | Interface utilisateur ; gouvernance ; données métier ; état d'exécution des agents | [F] Aucun service Brain. Fragments dans Kiltikonet (origine, avril), Laurent.ia (`cvl_brain*.py`), Meta (`/brain/ask`), Agent Factory (entité « CVLN Brain », `provider_layer.py`) |
 | **Laurent.ia / `laurentia`** | **Un système, deux rôles** [RC LIA-D23] : (1) instance personnelle de Laurent, par l'interface interne ; (2) **Laurentia, opérateur métier** : fait circuler l'intelligence et l'action | Interfaces interne et publique ; sessions, artefacts, rapports ; capacités publiques déclarées dans Meta | La mémoire cognitive (relève de Brain) ; la doctrine ; l'exécution des agents ; la gouvernance ; les données métier | [F] Un seul code (branche `public`) ; inférence externe ; mémoire limitée à 50 échanges |
@@ -54,7 +54,7 @@ CVLN Foundation ─ gouvernance · vision · racine
 | **KORA, Kiltikonet, Academy, FMS, LabelOS** | Entités métier | Leurs **données métier** [RC LIA-D21] | La cognition du groupe | [F] Kiltikonet consomme le briefing ; [NV] KORA n'a aucune intégration |
 | **FREKCORE, Proof Layer, Wallet** | Infrastructures | Identité, provenance, JCC | — | Hors V1 |
 
-### 3.2 Les mémoires — frontières [RC LIA-D21]
+### 3.2 Les mémoires — frontières [RC LIA-D21, AR 11 oct.]
 
 | Mémoire | Détenteur | Contenu | Accès |
 |---|---|---|---|
@@ -80,7 +80,7 @@ CVLN Foundation ─ gouvernance · vision · racine
 - **Cible** [RC LIA-D8, LIA-D20] : un moteur souverain, celui du service Brain, sur l'infrastructure contrôlée par Laurent. Aucun fournisseur externe pour l'inférence de production.
 - **État réel** [F] : aucun moteur souverain dans aucun dépôt. Laurent.ia, Meta, Kiltikonet et Agent Factory appellent chacun des fournisseurs externes (Emergent, Anthropic, OpenAI, Gemini). Voir le rapport de réconciliation §4.
 
-### 3.5 Relations entre systèmes [RC LIA-D22]
+### 3.5 Relations entre systèmes [RC LIA-D22, AR 11 oct.]
 
 Relations **fonctionnelles et contractuelles**, sans hiérarchie ni autorité implicite :
 - Laurentia → Brain : demandes de cognition ;

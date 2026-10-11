@@ -9,7 +9,7 @@
 > En cas de contradiction : **D8 prévaut**, puis ce contrat, puis le cadrage.
 > **Qui est quoi dans l'écosystème** : voir le [registre des décisions](../decisions/REGISTER.md) (règles canoniques LIA-D19 à LIA-D23) et le [rapport de réconciliation](../audit/RECONCILIATION_2026-10-11.md) (**référence en cours de validation**). [`SEPARATIONS.md`](../architecture/SEPARATIONS.md) est un document de travail non canonique.
 >
-> **Notice E1 (11 oct. 2026) — passages remplacés par le registre.** Jusqu'à la révision E2, les passages suivants se lisent selon le registre, qui prévaut :
+> **Notice E1 (11 oct. 2026) — passages remplacés par le registre.** Jusqu'à la révision E2, les passages suivants se lisent selon le registre, qui prévaut. LIA-D19 à LIA-D23 sont des **arbitrages de Laurent du 11 octobre 2026**, et non des décisions historiques :
 > - « la mémoire appartient à Laurent » (§0, principe fondateur ; §3, garantie d'export) : la **propriété** reste à Laurent ; la **détention technique** de la mémoire cognitive et des conversations personnelles relève de **CVLN Brain**, dans un espace personnel strictement cloisonné (LIA-D21) ;
 > - couche **L2 Memory** et **Model Gateway** (§2) : décrivent la cible fonctionnelle ; le moteur et la mémoire cognitive sont ceux du service Brain souverain (LIA-D20, LIA-D21) ; Laurent.ia y accède par l'interface interne ;
 > - §9.2 et §9.4 (« Laurent.ia, propriétaire unique de la mémoire personnelle ») : remplacés par LIA-D21 ;

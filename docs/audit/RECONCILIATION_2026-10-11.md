@@ -1,7 +1,7 @@
 # Rapport de réconciliation — Architecture souveraine Laurent.ia / CVLN
 
 > 11 octobre 2026 · Audit **en lecture seule** : aucun dépôt, aucune branche, aucune PR modifiés pendant cette phase.
-> **Versé dans le dépôt par le correctif E1.** Les arbitrages A1, A2 et A3 du §6 ont depuis été tranchés par Laurent et sont enregistrés comme règles canoniques **LIA-D19, LIA-D20 et LIA-D21** dans le [registre des décisions](../decisions/REGISTER.md), qui prévaut sur ce rapport. Le corps du rapport est conservé tel qu'audité.
+> **Versé dans le dépôt par le correctif E1.** Les arbitrages A1, A2 et A3 du §6 ont depuis été tranchés par Laurent **le 11 octobre 2026** — ce sont des arbitrages récents [AR], non des preuves historiques — et sont enregistrés comme règles canoniques **LIA-D19, LIA-D20 et LIA-D21** dans le [registre des décisions](../decisions/REGISTER.md), qui prévaut sur ce rapport. Le corps du rapport est conservé tel qu'audité.
 > Légende : **[F]** fait vérifié dans le code ou l'historique git · **[DH]** décision historique écrite (source citée) · **[DL]** décision ou formulation donnée par Laurent, absente des dépôts · **[C]** conclusion tirée des preuves · **[H]** hypothèse · **[P]** proposition nouvelle.
 
 ## Sources auditées
