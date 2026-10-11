@@ -1,0 +1,2 @@
+{"t": "2026-10-11T16:28:16.093+00:00", "id": 20436, "msg": "Checking authorization failed", "code": 13, "errmsg": "not authorized on probe to execute command { find: \"laurentia_memory\", filter: {}, lsid: { id: UUID(\"422842fe-f782-45b3-"}
+{"t": "2026-10-11T16:31:27.629+00:00", "id": 20436, "msg": "Checking authorization failed", "code": 13, "errmsg": "not authorized on probe to execute command { find: \"laurentia_memory\", filter: {}, limit: 1, lsid: { id: UUID(\"8bbe2f21-"}

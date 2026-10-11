@@ -1,0 +1,11 @@
+[
+  {
+    resource: {
+      db: 'probe',
+      collection: 'laurentia_instances'
+    },
+    actions: [
+      'find'
+    ]
+  }
+]

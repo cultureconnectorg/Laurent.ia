@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="10" skipped="0" tests="131" time="12.525" timestamp="2026-10-11T16:23:59.587875+00:00" hostname="vm"><testcase classname="tests.test_briefing_contract" name="test_briefing_contract" time="0.007" /><testcase classname="tests.test_briefing_contract" name="test_briefing_rejects_missing_api_key" time="0.005" /><testcase classname="tests.test_briefing_contract" name="test_briefing_rejects_user_style_laurentia_key" time="0.004" /><testcase classname="tests.test_chantier10" name="test_value_estimator_defaults" time="0.000" /><testcase classname="tests.test_chantier10" name="test_value_estimator_env_override" time="0.000" /><testcase classname="tests.test_chantier10" name="test_value_estimator_with_weight" time="0.000" /><testcase classname="tests.test_chantier10" name="test_allocations_have_proper_sizes" time="0.000" /><testcase classname="tests.test_chantier10" name="test_tenant_allows_strict_pyramid" time="0.000" /><testcase classname="tests.test_chantier10" name="test_allocation_for_unknown_tier_defaults_to_free" time="0.000" /><testcase classname="tests.test_chantier10" name="test_tenant_log_activity_persists_with_estimation" time="0.026" /><testcase classname="tests.test_chantier10" name="test_tenant_factory_resolves_tier_from_instances" time="0.018" /><testcase classname="tests.test_chantier10" name="test_tenant_factory_default_tier_for_unknown_user" time="0.011" /><testcase classname="tests.test_chantier10" name="test_api_key_create_validate_revoke_roundtrip" time="0.028" /><testcase classname="tests.test_chantier10" name="test_api_key_rejects_other_tenants_keys" time="0.022" /><testcase classname="tests.test_chantier10" name="test_api_key_invalid_format_returns_none" time="0.007" /><testcase classname="tests.test_chantier10" name="test_compute_user_daily_empty_returns_zero_stats" time="0.015" /><testcase classname="tests.test_chantier10" name="test_compute_user_daily_aggregates_correctly" time="0.030" /><testcase classname="tests.test_chantier10" name="test_compute_founder_daily_aggregates_tenants_and_tiers" time="0.021" /><testcase classname="tests.test_chantier10" name="test_snapshot_daily_persists_reports" time="0.067" /><testcase classname="tests.test_chantier10" name="test_compute_founder_weekly_includes_paid_subscribers" time="0.025" /><testcase classname="tests.test_corpus_pipeline" name="test_score_interaction_high_caribbean_creole" time="0.000" /><testcase classname="tests.test_corpus_pipeline" name="test_score_interaction_low_neutral" time="0.000" /><testcase classname="tests.test_corpus_pipeline" name="test_format_jsonl_scrubs_pii" time="0.000" /><testcase classname="tests.test_corpus_pipeline" name="test_run_corpus_pipeline_empty_collection_returns_clean_report" time="0.020" /><testcase classname="tests.test_corpus_pipeline" name="test_run_corpus_pipeline_with_mixed_interactions" time="0.038" /><testcase classname="tests.test_image_generator" name="test_style_prefix_known_and_unknown" time="0.001" /><testcase classname="tests.test_image_generator" name="test_generate_visual_no_sd_url_returns_none" time="0.001" /><testcase classname="tests.test_image_generator" name="test_generate_visual_sd_unreachable_returns_none" time="0.035" /><testcase classname="tests.test_image_generator" name="test_generate_visual_mock_success" time="0.001" /><testcase classname="tests.test_image_generator" name="test_generate_visual_empty_images_returns_none" time="0.001" /><testcase classname="tests.test_laurentia_backend.TestHealth" name="test_root_health" time="0.004" /><testcase classname="tests.test_laurentia_backend.TestHealth" name="test_brain_health" time="0.003" /><testcase classname="tests.test_laurentia_backend.TestInstances" name="test_init_instance_sayd" time="0.029" /><testcase classname="tests.test_laurentia_backend.TestInstances" name="test_get_instance_sayd" time="0.004" /><testcase classname="tests.test_laurentia_backend.TestInstances" name="test_get_instance_artist" time="0.008" /><testcase classname="tests.test_laurentia_backend.TestInstances" name="test_get_memory_safe_shape" time="0.004" /><testcase classname="tests.test_laurentia_backend.TestQuerySSE" name="test_sse_query_sayd" time="0.019"><failure message="AssertionError: missing token: ['meta', 'error']&#10;assert 'token' in ['meta', 'error']">self = &lt;test_laurentia_backend.TestQuerySSE object at 0x7f0071439090&gt;
+api = &lt;requests.sessions.Session object at 0x7f006a1c5590&gt;
+
+    def test_sse_query_sayd(self, api):
+        events, ctype = _consume_sse(
+            f"{BASE_URL}/api/laurentia/query",
+            {"frek_id": "DEMO-SAYD", "input": "Salut, qui es-tu en une phrase?"},
+            timeout=60,
+        )
+        assert ctype.startswith("text/event-stream")
+        kinds = [e["event"] for e in events]
+        assert "meta" in kinds, f"missing meta: {kinds}"
+&gt;       assert "token" in kinds, f"missing token: {kinds}"
+E       AssertionError: missing token: ['meta', 'error']
+E       assert 'token' in ['meta', 'error']
+
+tests/test_laurentia_backend.py:134: AssertionError</failure></testcase><testcase classname="tests.test_laurentia_backend.TestQuerySSE" name="test_multi_tenant_isolation" time="0.029" /><testcase classname="tests.test_laurentia_backend.TestPersistencePrivacy" name="test_query_persists_and_anonymizes" time="0.524"><failure message="AssertionError: no interactions persisted&#10;assert 0 &gt;= 1&#10; +  where 0 = len([])">self = &lt;test_laurentia_backend.TestPersistencePrivacy object at 0x7f0071438cd0&gt;
+api = &lt;requests.sessions.Session object at 0x7f006b21f2f0&gt;
+mongo_db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_query_persists_and_anonymizes(self, api, mongo_db):
+        # Trigger a fresh query
+        _consume_sse(
+            f"{BASE_URL}/api/laurentia/query",
+            {"frek_id": "DEMO-SAYD", "input": "Présente-toi brièvement."},
+            timeout=60,
+        )
+        # Give a moment for fire-and-forget writes
+        time.sleep(0.5)
+    
+        t_id = _tenant_id("DEMO-SAYD")
+        inst = mongo_db.laurentia_instances.find_one({"frek_id": "DEMO-SAYD"})
+        assert inst is not None
+        interactions = list(mongo_db.laurentia_interactions.find({"tenant_id": t_id}).limit(5))
+&gt;       assert len(interactions) &gt;= 1, "no interactions persisted"
+E       AssertionError: no interactions persisted
+E       assert 0 &gt;= 1
+E        +  where 0 = len([])
+
+tests/test_laurentia_backend.py:189: AssertionError</failure></testcase><testcase classname="tests.test_orchestrator" name="test_registry_has_20_agents_across_4_departments" time="0.000" /><testcase classname="tests.test_orchestrator" name="test_detect_souverainete_breach_finds_leaks" time="0.000" /><testcase classname="tests.test_orchestrator" name="test_detect_jailbreak_basic" time="0.000" /><testcase classname="tests.test_orchestrator" name="test_agent_snapshot_and_touch" time="0.000" /><testcase classname="tests.test_orchestrator" name="test_event_bus_publish_and_dispatch" time="0.102" /><testcase classname="tests.test_orchestrator" name="test_event_bus_isolates_handler_errors" time="0.102" /><testcase classname="tests.test_orchestrator" name="test_circuit_breaker_shadow_mode_does_not_block" time="0.001" /><testcase classname="tests.test_orchestrator" name="test_circuit_breaker_active_mode_blocks" time="0.001" /><testcase classname="tests.test_orchestrator" name="test_circuit_breaker_decide_unknown_returns_none" time="0.000" /><testcase classname="tests.test_orchestrator" name="test_sms_format_alert_body" time="0.001" /><testcase classname="tests.test_orchestrator" name="test_sms_signature_deterministic" time="0.001" /><testcase classname="tests.test_orchestrator" name="test_sms_not_configured_skips_silently" time="0.001" /><testcase classname="tests.test_orchestrator" name="test_orchestrator_starts_with_20_agents" time="0.015" /><testcase classname="tests.test_orchestrator" name="test_orchestrator_dispatch_logs_souverainete_breach_to_db" time="0.310" /><testcase classname="tests.test_orchestrator" name="test_orchestrator_intake_does_not_break_on_clean_input" time="0.208" /><testcase classname="tests.test_orchestrator" name="test_orchestrator_dispatches_done_to_memorialiste_and_latence" time="0.210" /><testcase classname="tests.test_phase1_integration_http" name="test_memory_sessions_are_encrypted_at_rest" time="0.033"><failure message="assert 0 &gt;= 1&#10; +  where 0 = len([])">http_client = &lt;httpx.Client object at 0x7f006b35ef90&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_memory_sessions_are_encrypted_at_rest(http_client, db):
+        """Après une query JSON, la dernière session en mémoire doit être chiffrée."""
+        _set_free(db)
+        r = http_client.post(
+            "/api/laurentia/query",
+            json={"frek_id": DEMO_FREK, "input": "Memo encryption check",
+                  "context": {"app": "direct"}},
+        )
+        assert r.status_code == 200
+        mem = db.laurentia_memory.find_one({"frek_id": DEMO_FREK})
+        assert mem is not None
+        sessions = mem.get("sessions", [])
+&gt;       assert len(sessions) &gt;= 1
+E       assert 0 &gt;= 1
+E        +  where 0 = len([])
+
+tests/test_phase1_integration_http.py:92: AssertionError</failure></testcase><testcase classname="tests.test_phase1_integration_http" name="test_get_session_decrypts_blobs" time="0.013"><failure message="AssertionError: assert 'RoundTrip-MARKER-2026' in ''">http_client = &lt;httpx.Client object at 0x7f006b35ef90&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_get_session_decrypts_blobs(http_client, db):
+        _set_free(db)
+        r = http_client.post(
+            "/api/laurentia/query",
+            json={"frek_id": DEMO_FREK, "input": "RoundTrip-MARKER-2026",
+                  "context": {"app": "direct"}},
+        )
+        assert r.status_code == 200
+        meta = _extract_meta(r.text)
+        sid = meta.get("session_id")
+        assert sid, "session_id absent du SSE meta"
+    
+        rg = http_client.get(f"/api/laurentia/sessions/{sid}", params={"frek_id": DEMO_FREK})
+        assert rg.status_code == 200
+        body = rg.json()
+        assert body["session_id"] == sid
+        texts = " ".join(m["text"] for m in body["messages"])
+&gt;       assert "RoundTrip-MARKER-2026" in texts
+E       AssertionError: assert 'RoundTrip-MARKER-2026' in ''
+
+tests/test_phase1_integration_http.py:121: AssertionError</failure></testcase><testcase classname="tests.test_phase1_integration_http" name="test_query_multipart_pdf" time="0.032"><failure message="TypeError: 'NoneType' object is not subscriptable">http_client = &lt;httpx.Client object at 0x7f006b35ef90&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_query_multipart_pdf(http_client, db):
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            pytest.skip("reportlab non installé")
+        _set_creator(db)
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf)
+        c.drawString(100, 750, "Token-PDF-MARKER-ALPHA-2026")
+        c.drawString(100, 730, "Souverainete caribeenne.")
+        c.save()
+        pdf_bytes = buf.getvalue()
+        payload = json.dumps({"frek_id": DEMO_FREK,
+                              "input": "Cite la chaine entre guillemets du PDF.",
+                              "context": {"app": "direct"}})
+        files = [("files", ("doc.pdf", pdf_bytes, "application/pdf"))]
+        r = http_client.post("/api/laurentia/query", data={"payload": payload}, files=files)
+        assert r.status_code == 200, r.text[:300]
+        assert "event: meta" in r.text
+        assert "doc.pdf" in r.text
+        assert "\"kind\": \"pdf\"" in r.text or '"kind":"pdf"' in r.text
+        # input_text stocké doit contenir le texte PDF déchiffré
+        rec = db.laurentia_interactions.find_one(
+            {"context_app": "direct"}, sort=[("timestamp", -1)],
+        )
+&gt;       plain = decrypt_text(rec["input_text"])
+                             ^^^^^^^^^^^^^^^^^
+E       TypeError: 'NoneType' object is not subscriptable
+
+tests/test_phase1_integration_http.py:151: TypeError</failure></testcase><testcase classname="tests.test_phase1_integration_http" name="test_query_multipart_docx" time="0.043"><failure message="TypeError: 'NoneType' object is not subscriptable">http_client = &lt;httpx.Client object at 0x7f006b35ef90&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_query_multipart_docx(http_client, db):
+        try:
+            from docx import Document as DocxDocument
+        except ImportError:
+            pytest.skip("python-docx non installé")
+        _set_creator(db)
+        doc = DocxDocument()
+        doc.add_paragraph("DocxMarkerOmega2026 — phrase test.")
+        buf = io.BytesIO()
+        doc.save(buf)
+        payload = json.dumps({"frek_id": DEMO_FREK,
+                              "input": "Cite le marker du DOCX",
+                              "context": {"app": "direct"}})
+        files = [("files", ("brief.docx", buf.getvalue(),
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))]
+        r = http_client.post("/api/laurentia/query", data={"payload": payload}, files=files)
+        assert r.status_code == 200, r.text[:300]
+        assert "brief.docx" in r.text
+        assert '"kind": "docx"' in r.text or '"kind":"docx"' in r.text
+        rec = db.laurentia_interactions.find_one(
+            {"context_app": "direct"}, sort=[("timestamp", -1)],
+        )
+&gt;       plain = decrypt_text(rec["input_text"])
+                             ^^^^^^^^^^^^^^^^^
+E       TypeError: 'NoneType' object is not subscriptable
+
+tests/test_phase1_integration_http.py:179: TypeError</failure></testcase><testcase classname="tests.test_phase1_integration_http" name="test_query_multipart_png_rejected_415" time="0.005" /><testcase classname="tests.test_phase1_integration_http" name="test_query_multipart_oversize_413" time="0.040" /><testcase classname="tests.test_phase1_security_uploads" name="test_encrypt_decrypt_round_trip" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_encrypt_text_none" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_decrypt_legacy_plaintext" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_encrypt_each_call_uses_unique_nonce" time="0.001" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_text_file" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_md_file" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_empty_file_rejected" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_unsupported_format" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_oversize_file" time="0.004" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_pdf" time="0.002" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_docx" time="0.027" /><testcase classname="tests.test_phase1_security_uploads" name="test_build_context_block_format" time="0.000" /><testcase classname="tests.test_phase1_security_uploads" name="test_parse_many_aggregate_limit" time="0.020" /><testcase classname="tests.test_phase1_security_uploads" name="test_upload_limits_endpoint" time="0.017" /><testcase classname="tests.test_phase1_security_uploads" name="test_query_multipart_free_tier_rejected" time="0.010" /><testcase classname="tests.test_phase1_security_uploads" name="test_query_multipart_creator_ok_and_encrypted_at_rest" time="0.013"><failure message="assert 'event: done' in 'event: meta\ndata: {&quot;interaction_id&quot;: &quot;int-9ec595ad-1791735843277&quot;, &quot;session_id&quot;: &quot;sess-9ec595adb04b-1791735843&quot;, &quot;te...nevent: error\ndata: {&quot;message&quot;: &quot;S0 stub: external inference unavailable (emergentintegrations not installable)&quot;}\n\n'">http_client = &lt;httpx.Client object at 0x7f006a8f6210&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_query_multipart_creator_ok_and_encrypted_at_rest(http_client, db):
+        _set_tier(db, DEMO_FREK, "creator")
+        payload = json.dumps({"frek_id": DEMO_FREK, "input": "Cite la phrase exacte", "context": {"app": "direct"}})
+        files = [("files", ("doc.txt", b"Mot-clef secret: AZALEA-2026.", "text/plain"))]
+        r = http_client.post("/api/laurentia/query", data={"payload": payload}, files=files)
+        assert r.status_code == 200
+        body = r.text
+        # SSE meta annonce le fichier
+        assert "event: meta" in body
+        assert "doc.txt" in body
+&gt;       assert "event: done" in body
+E       assert 'event: done' in 'event: meta\ndata: {"interaction_id": "int-9ec595ad-1791735843277", "session_id": "sess-9ec595adb04b-1791735843", "te...nevent: error\ndata: {"message": "S0 stub: external inference unavailable (emergentintegrations not installable)"}\n\n'
+
+tests/test_phase1_security_uploads.py:206: AssertionError</failure></testcase><testcase classname="tests.test_phase1_security_uploads" name="test_query_json_path_still_works" time="0.014"><failure message="assert 'event: done' in 'event: meta\ndata: {&quot;interaction_id&quot;: &quot;int-9ec595ad-1791735843303&quot;, &quot;session_id&quot;: &quot;sess-9ec595adb04b-1791735843&quot;, &quot;te...nevent: error\ndata: {&quot;message&quot;: &quot;S0 stub: external inference unavailable (emergentintegrations not installable)&quot;}\n\n'&#10; +  where 'event: meta\ndata: {&quot;interaction_id&quot;: &quot;int-9ec595ad-1791735843303&quot;, &quot;session_id&quot;: &quot;sess-9ec595adb04b-1791735843&quot;, &quot;te...nevent: error\ndata: {&quot;message&quot;: &quot;S0 stub: external inference unavailable (emergentintegrations not installable)&quot;}\n\n' = &lt;Response [200 OK]&gt;.text">http_client = &lt;httpx.Client object at 0x7f006a8f6210&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_query_json_path_still_works(http_client, db):
+        _set_tier(db, DEMO_FREK, "free")
+        r = http_client.post(
+            "/api/laurentia/query",
+            json={"frek_id": DEMO_FREK, "input": "Réponds OK", "context": {"app": "direct"}},
+        )
+        assert r.status_code == 200
+        assert "event: meta" in r.text
+&gt;       assert "event: done" in r.text
+E       assert 'event: done' in 'event: meta\ndata: {"interaction_id": "int-9ec595ad-1791735843303", "session_id": "sess-9ec595adb04b-1791735843", "te...nevent: error\ndata: {"message": "S0 stub: external inference unavailable (emergentintegrations not installable)"}\n\n'
+E        +  where 'event: meta\ndata: {"interaction_id": "int-9ec595ad-1791735843303", "session_id": "sess-9ec595adb04b-1791735843", "te...nevent: error\ndata: {"message": "S0 stub: external inference unavailable (emergentintegrations not installable)"}\n\n' = &lt;Response [200 OK]&gt;.text
+
+tests/test_phase1_security_uploads.py:230: AssertionError</failure></testcase><testcase classname="tests.test_phase2_policiere_export" name="test_device_id_deterministic" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_device_id_different_inputs" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_device_id_none_when_empty" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_resolve_limit_key_priority" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_ttl_index_present" time="0.008" /><testcase classname="tests.test_phase2_policiere_export" name="test_rate_limit_quotas_loaded" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_rate_limit_triggers_429_with_noble_message" time="0.043" /><testcase classname="tests.test_phase2_policiere_export" name="test_pdf_pages_count" time="0.002" /><testcase classname="tests.test_phase2_policiere_export" name="test_txt_pages_count" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_summary_exposes_pages" time="0.000" /><testcase classname="tests.test_phase2_policiere_export" name="test_export_pdf_minimal" time="0.605" /><testcase classname="tests.test_phase2_policiere_export" name="test_export_pdf_with_subtitle_and_footer" time="0.427" /><testcase classname="tests.test_phase2_policiere_export" name="test_export_pdf_rejects_oversize_payload" time="0.003" /><testcase classname="tests.test_phase2_policiere_export" name="test_export_pdf_sanitizes_html" time="0.029" /><testcase classname="tests.test_phase3_ghost_signature" name="test_qr_data_uri_is_valid_png" time="0.015" /><testcase classname="tests.test_phase3_ghost_signature" name="test_signature_section_html_includes_branding" time="0.007" /><testcase classname="tests.test_phase3_ghost_signature" name="test_signature_section_html_no_session_falls_back_to_root" time="0.005" /><testcase classname="tests.test_phase3_ghost_signature" name="test_resolve_returns_null_without_fingerprint" time="0.021" /><testcase classname="tests.test_phase3_ghost_signature" name="test_resolve_returns_device_id_with_fingerprint" time="0.005" /><testcase classname="tests.test_phase3_ghost_signature" name="test_resolve_returns_frek_when_device_linked" time="0.011" /><testcase classname="tests.test_phase3_ghost_signature" name="test_pdf_quota_initial_state" time="0.005" /><testcase classname="tests.test_phase3_ghost_signature" name="test_pdf_export_increments_counter" time="0.651" /><testcase classname="tests.test_phase3_ghost_signature" name="test_pdf_signature_only_for_free_tier" time="0.209" /><testcase classname="tests.test_phase3_ghost_signature" name="test_pdf_pages_includes_signature_for_free" time="0.461"><failure message="assert &quot;Certifié par l'Infrastructure&quot; in &quot;Certifié par\nl'Infrastructure\nLaurent.iaC O N N A I S S A N C E  S O U V E R A I N E  D E  L A  D I A S P O R A  · ...llation\nveille. »\nDOCUMENT SCELLÉ · 11 OCT 2026 · 16:24 UTC\nLAURENT.IA · INTELLIGENCE SOUVERAINE · CVLN GROUP 2 / 2&quot;">http_client = &lt;httpx.Client object at 0x7f006a927360&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+
+    def test_pdf_pages_includes_signature_for_free(http_client, db):
+        """PDF Free tier doit avoir au moins 2 pages (cover + content + signature)."""
+        fp = "pages-check-" + os.urandom(6).hex()
+        did = device_id_from_fingerprint(fp)
+        _purge_exports(db, did)
+    
+        r = http_client.post(
+            "/api/export/pdf",
+            headers={"X-Device-Fingerprint": fp, "Content-Type": "application/json"},
+            json={"title": "Sealed Doc", "content_md": "## Hello", "session_id": "sealed-sess-1"},
+        )
+        assert r.status_code == 200
+        reader = pypdf.PdfReader(io.BytesIO(r.content))
+        assert len(reader.pages) &gt;= 2
+        last_text = reader.pages[-1].extract_text()
+&gt;       assert "Certifié par l'Infrastructure" in last_text
+E       assert "Certifié par l'Infrastructure" in "Certifié par\nl'Infrastructure\nLaurent.iaC O N N A I S S A N C E  S O U V E R A I N E  D E  L A  D I A S P O R A  · ...llation\nveille. »\nDOCUMENT SCELLÉ · 11 OCT 2026 · 16:24 UTC\nLAURENT.IA · INTELLIGENCE SOUVERAINE · CVLN GROUP 2 / 2"
+
+tests/test_phase3_ghost_signature.py:226: AssertionError</failure></testcase><testcase classname="tests.test_phase4_echo_rgpd" name="test_persona_contains_anti_jailbreak_rules" time="0.000" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_persona_protects_secret_keys_in_text" time="0.000" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_echo_404_when_missing" time="0.036" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_echo_generate_with_raw_text_and_public_get" time="0.009"><failure message="AssertionError: {&quot;detail&quot;:&quot;Génération d'écho échouée : S0 stub: external inference unavailable (emergentintegrations not installable)&quot;}&#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502 Bad Gateway]&gt;.status_code">http_client = &lt;httpx.Client object at 0x7f006a924640&gt;
+db = Database(MongoClient(host=['127.0.0.1:27017'], document_class=dict, tz_aware=False, connect=True), 's0_p3')
+cleanup_echo = ['echo-pytest-1791735845']
+
+    def test_echo_generate_with_raw_text_and_public_get(http_client, db, cleanup_echo):
+        sid = f"echo-pytest-{int(time.time())}"
+        cleanup_echo.append(sid)
+        raw = (
+            "La Diaspora caribéenne représente 37% du PIB régional via remittances. "
+            "Top: Haïti 3.8B, Jamaïque 3.2B, RD 9.4B. Opportunité fintech décarbonée."
+        )
+        r = http_client.post("/api/laurentia/echo", json={"session_id": sid, "raw_text": raw})
+&gt;       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":"Génération d'écho échouée : S0 stub: external inference unavailable (emergentintegrations not installable)"}
+E       assert 502 == 200
+E        +  where 502 = &lt;Response [502 Bad Gateway]&gt;.status_code
+
+tests/test_phase4_echo_rgpd.py:76: AssertionError</failure></testcase><testcase classname="tests.test_phase4_echo_rgpd" name="test_echo_conversion_attribution" time="0.023" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_rgpd_purge_anonymizes_old_instances" time="0.014" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_rgpd_purge_anonymizes_old_attributions" time="0.013" /><testcase classname="tests.test_phase4_echo_rgpd" name="test_rgpd_endpoint_idempotent" time="0.013" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_infinite_returns_none" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_pro_returns_none" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_account_too_young_returns_none" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_low_usage_returns_none" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_free_meets_thresholds" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_free_high_time_saved_only" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_creator_to_infinite_thresholds" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_upsell_hint_unknown_creation_date_treated_as_old" time="0.000" /><testcase classname="tests.test_reports_upsell_timeline" name="test_timeline_empty_returns_zeros_for_all_days" time="0.011" /><testcase classname="tests.test_reports_upsell_timeline" name="test_timeline_aggregates_minutes_per_day" time="0.021" /><testcase classname="tests.test_reports_upsell_timeline" name="test_compute_user_daily_includes_timeline_and_upsell_fields" time="0.017" /><testcase classname="tests.test_social_agent" name="test_theme_for_today_returns_valid_theme" time="0.000" /><testcase classname="tests.test_social_agent" name="test_extract_json_clean_response" time="0.001" /><testcase classname="tests.test_social_agent" name="test_extract_json_with_code_fence" time="0.000" /><testcase classname="tests.test_social_agent" name="test_extract_json_invalid_returns_empty" time="0.001" /><testcase classname="tests.test_social_agent" name="test_generate_content_skips_after_retries" time="6.009" /><testcase classname="tests.test_social_agent" name="test_generate_content_success" time="0.001" /><testcase classname="tests.test_social_agent" name="test_generate_and_publish_manual_approval_pending" time="0.021" /><testcase classname="tests.test_social_agent" name="test_generate_and_publish_all_networks_down" time="0.020" /><testcase classname="tests.test_social_agent" name="test_generate_and_publish_partial_success" time="0.020" /><testcase classname="tests.test_social_agent" name="test_generate_and_publish_skips_when_paused" time="0.018" /></testsuite></testsuites>

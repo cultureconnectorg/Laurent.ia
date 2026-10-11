@@ -1,0 +1,7 @@
+{"t": 1791735808.9032807, "pid": 3224, "kind": "connect", "target": "127.0.0.1:1", "origin": "backend/tests/test_image_generator.py:43 (test_generate_visual_sd_unreachable_returns_none)", "test": "tests/test_image_generator.py::test_generate_visual_sd_unreachable_returns_none (call)"}
+{"t": 1791735811.123395, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
+{"t": 1791735811.6990087, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
+{"t": 1791735812.2064211, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
+{"t": 1791735812.5542505, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
+{"t": 1791735812.8777204, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
+{"t": 1791735813.138114, "pid": 3130, "kind": "dns", "target": "fonts.googleapis.com", "origin": "backend/routes/pdf_export.py:501 (export_pdf)", "test": ""}
