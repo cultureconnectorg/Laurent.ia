@@ -57,7 +57,7 @@ scripts/init-secrets.sh                       # accès local : https://localhost
 scripts/fetch-model.sh desktop                # Qwen2.5-7B (ou « laptop » : 1,5B, plus léger)
 
 # 4. Démarrage
-docker compose --profile engine up -d --build
+docker compose up -d --build
 
 # 5. Contrôle de souveraineté (doit tout afficher en OK)
 scripts/verify-sovereignty.sh
@@ -69,7 +69,7 @@ Ouvre ensuite **https://localhost:8443/laurentia**. Le navigateur signale un cer
 docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./laurentia-root.crt
 ```
 
-**Garde une copie hors ligne** de `LAURENTIA_ENCRYPTION_KEY` (dans `.env`). Sans elle, la mémoire ne peut pas être déchiffrée.
+**Garde une copie hors ligne de tout le fichier `.env`.** Il contient la clé de chiffrement de la mémoire (`LAURENTIA_ENCRYPTION_KEY`) et les mots de passe des bases. **Ne régénère jamais `.env` sur des données existantes** : les bases refuseraient la connexion (« Authentication failed ») et la mémoire deviendrait illisible. `init-secrets.sh` refuse d'ailleurs d'écraser un `.env` existant.
 
 ## 4. Le portable
 
@@ -84,8 +84,9 @@ scripts/wireguard-setup.sh ton-adresse-publique:51820
 ```
 
 1. Importe `wg/computer.conf` dans WireGuard sur l'ordinateur, et `wg/laptop.conf` sur le portable.
-2. Dans `.env`, règle `BIND_ADDRESS=10.77.0.1`, `PUBLIC_ORIGIN=https://10.77.0.1:8443` et `SITE_ADDRESSES="localhost, 10.77.0.1"`, puis lance `docker compose --profile engine up -d`.
-3. Sur le portable, ouvre **https://10.77.0.1:8443/laurentia**.
+2. **Nom privé obligatoire** : les passkeys (WebAuthn) refusent une adresse IP. Sur **les deux machines**, ajoute au fichier `hosts` la ligne `10.77.0.1  laurentia.home.arpa`. Le suffixe `home.arpa` est réservé aux réseaux domestiques (RFC 8375) et n'est jamais résolu sur Internet. Le fichier est `/etc/hosts` sur macOS et Linux, `C:\Windows\System32\drivers\etc\hosts` sous Windows.
+3. Dans `.env`, règle `BIND_ADDRESS=10.77.0.1`, `PUBLIC_ORIGIN=https://laurentia.home.arpa:8443` et `SITE_ADDRESSES="localhost, laurentia.home.arpa"`, puis lance `docker compose up -d`.
+4. Sur le portable, ouvre **https://laurentia.home.arpa:8443/laurentia**.
 
 Le tunnel ne transporte que le trafic du portable vers l'ordinateur. Aucun service tiers n'intervient : pas de relais, pas de compte en ligne.
 

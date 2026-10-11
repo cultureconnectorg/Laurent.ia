@@ -38,6 +38,8 @@ AllowedIPs = 10.77.0.1/32
 PersistentKeepalive = 25
 CONF
 rm -f wg/computer.key wg/laptop.key
-echo "Created wg/computer.conf and wg/laptop.conf. Then in .env set:"
-echo "  BIND_ADDRESS=10.77.0.1  PUBLIC_ORIGIN=https://10.77.0.1:8443  SITE_ADDRESSES=\"localhost, 10.77.0.1\""
+echo "Created wg/computer.conf and wg/laptop.conf."
+echo "Passkeys (WebAuthn) refuse IP addresses: use the private name laurentia.home.arpa (RFC 8375)."
+echo "1) On BOTH machines, add to the hosts file:   10.77.0.1  laurentia.home.arpa"
+echo "2) In .env:  BIND_ADDRESS=10.77.0.1  PUBLIC_ORIGIN=https://laurentia.home.arpa:8443  SITE_ADDRESSES=\"localhost, laurentia.home.arpa\""
 echo "Only the laptop's traffic to 10.77.0.1 goes through the tunnel; nothing else is routed."

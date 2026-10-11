@@ -1,0 +1,4 @@
+# CI only, when the private FREKCORE repository cannot be checked out: leaves FREKCORE out.
+services:
+  frekcore:
+    profiles: ["frekcore-unavailable"]

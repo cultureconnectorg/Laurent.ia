@@ -134,3 +134,86 @@ jobs:
         run: |
           grep -E "^(FAILED|ERROR)" out-real/pytest.log || true
           echo "::warning::Some suite tests fail with the 1.5B model (answer quality or format): see out-real/pytest.log"
+
+  deploy-offline:
+    # G1 + offline proof: build the self-hosted stack and fetch the model, then cut every
+    # container off the Internet at the host firewall and start the stack with no build
+    # and no pull. Sovereignty and a real browser conversation are then checked.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      FREKCORE_READ_TOKEN: ${{ secrets.FREKCORE_READ_TOKEN }}
+      BROWSER_CHECK_TIMEOUT_MS: "300000"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: Laurent.ia
+      - name: FREKCORE source (private repository, needs the FREKCORE_READ_TOKEN secret)
+        if: env.FREKCORE_READ_TOKEN != ''
+        uses: actions/checkout@v4
+        with:
+          repository: cultureconnectorg/frekcoreAout2026
+          token: ${{ secrets.FREKCORE_READ_TOKEN }}
+          path: frekcoreAout2026
+      - name: Secrets generated on the machine
+        working-directory: Laurent.ia/deploy
+        run: |
+          scripts/init-secrets.sh https://localhost:8443 localhost
+          if [ -d ../../frekcoreAout2026 ]; then echo "COMPOSE_FILE=docker-compose.yml" >> .env;
+          else echo "COMPOSE_FILE=docker-compose.yml:docker-compose.no-frekcore.yml" >> .env;
+               echo "::warning::FREKCORE not checked out (no FREKCORE_READ_TOKEN secret): stack started without it"; fi
+      - name: Model download (the only Internet use, before the cut)
+        working-directory: Laurent.ia/deploy
+        run: scripts/fetch-model.sh laptop
+      - name: Build and pull everything (still online)
+        working-directory: Laurent.ia/deploy
+        run: |
+          docker compose --profile engine build
+          docker compose --profile engine pull --ignore-buildable
+          docker images --digests --format '{{.Repository}}:{{.Tag}} {{.Digest}}' | tee ../../images-before.txt
+          pip install playwright==1.55.0 && python -m playwright install chromium
+      - name: Cut the Internet for every container (host firewall)
+        run: |
+          sudo iptables -I DOCKER-USER 1 -j DROP
+          sudo iptables -I DOCKER-USER 1 -d 10.0.0.0/8 -j RETURN
+          sudo iptables -I DOCKER-USER 1 -d 172.16.0.0/12 -j RETURN
+          sudo iptables -I DOCKER-USER 1 -d 192.168.0.0/16 -j RETURN
+          sudo iptables -I DOCKER-USER 1 -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+          sudo iptables -S DOCKER-USER
+      - name: Start the stack offline (no build, no pull)
+        working-directory: Laurent.ia/deploy
+        run: |
+          docker compose --profile engine up -d --no-build --pull never
+          for i in $(seq 1 120); do curl -sk https://localhost:8443/api/health | grep -q sovereign && break; sleep 2; done
+          curl -sk https://localhost:8443/api/health
+          docker images --digests --format '{{.Repository}}:{{.Tag}} {{.Digest}}' > ../../images-after.txt
+          diff ../../images-before.txt ../../images-after.txt && echo "no image downloaded at runtime"
+      - name: Even the proxy (edge network) cannot reach the Internet
+        working-directory: Laurent.ia/deploy
+        run: |
+          if docker compose exec -T proxy wget -q -T 5 -O /dev/null https://example.org 2>/dev/null; then
+            echo "proxy reached the Internet"; exit 1; fi
+          echo "proxy: no Internet"
+      - name: Sovereignty checks
+        working-directory: Laurent.ia/deploy
+        run: scripts/verify-sovereignty.sh
+      - name: Real browser conversation with the real model, offline
+        working-directory: Laurent.ia/deploy
+        run: python verify/browser_check.py https://localhost:8443 "" ../../browser_check.png
+      - name: Logs and versions
+        if: always()
+        working-directory: Laurent.ia/deploy
+        run: |
+          docker compose --profile engine ps
+          docker compose --profile engine logs --no-color > ../../stack.log 2>&1 || true
+          cp models/SHA256SUMS.* ../../ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-offline-evidence
+          path: |
+            images-before.txt
+            images-after.txt
+            browser_check.png
+            stack.log
+            SHA256SUMS.*

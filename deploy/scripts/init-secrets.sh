@@ -16,6 +16,8 @@ cat > .env <<ENV
 PUBLIC_ORIGIN=$ORIGIN
 SITE_ADDRESSES=$SITES
 BIND_ADDRESS=127.0.0.1
+# Start the inference engine with the stack.
+COMPOSE_PROFILES=engine
 HTTPS_PORT=8443
 
 MONGO_ROOT_PASSWORD=$(rnd)

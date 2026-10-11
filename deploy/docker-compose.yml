@@ -23,7 +23,7 @@ volumes:
 
 services:
   mongo:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:1f995ad6fdb93244a1addab1b58f934a0bc2f5643c38e02f5e9d7f0c7d227a7b
     restart: unless-stopped
     command: ["--auth", "--bind_ip_all"]
     environment:
@@ -43,7 +43,7 @@ services:
   engine:
     # llama.cpp server (CPU). Weights are downloaded once by scripts/fetch-model.sh;
     # the container itself has no network access.
-    image: ghcr.io/ggml-org/llama.cpp:server-b5350
+    image: ghcr.io/ggml-org/llama.cpp:server-b5350@sha256:8a0a31d0b342f96b2c5453eedadbb0544d6d426bd43c9ea6f62b2bd2489be676
     restart: unless-stopped
     command: ["-m", "/models/${MODEL_FILE:-model-not-fetched.gguf}", "--alias", "${MODEL_ALIAS:-local}",
               "--host", "0.0.0.0", "--port", "8080", "-c", "${MODEL_CONTEXT:-8192}",
@@ -58,7 +58,7 @@ services:
       context: ${FREKCORE_SRC:-../../frekcoreAout2026}
       dockerfile_inline: |
         # syntax=docker/dockerfile:1.7
-        FROM python:3.12-slim
+        FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
         WORKDIR /app/backend
         COPY backend/requirements.txt ./requirements.txt
         RUN --mount=type=secret,id=extra_ca,required=false \
@@ -135,4 +135,4 @@ services:
 secrets:
   extra_ca:
     # Build-time only, for a TLS-intercepting proxy. Empty file on a normal network.
-    file: ${EXTRA_CA_FILE:-./empty-ca.pem}
+    file: ${EXTRA_CA_FILE:-./no-extra-ca}

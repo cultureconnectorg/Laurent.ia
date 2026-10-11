@@ -11,9 +11,11 @@ from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "https://localhost:8443"
-CHROMIUM = sys.argv[2] if len(sys.argv) > 2 else None
+CHROMIUM = (sys.argv[2] or None) if len(sys.argv) > 2 else None
 SHOT = sys.argv[3] if len(sys.argv) > 3 else "browser_check.png"
 origin = urlparse(BASE).netloc
+# A real model on a CPU can take minutes for the first answer.
+TIMEOUT_MS = int(__import__("os").environ.get("BROWSER_CHECK_TIMEOUT_MS", "60000"))
 requests, foreign = [], []
 
 with sync_playwright() as p:
@@ -32,10 +34,10 @@ with sync_playwright() as p:
     page.get_by_test_id("composer-input").fill("Bonjour, réponds-moi en une phrase.")
     page.get_by_test_id("composer-submit").click()
     bubble = page.get_by_test_id("assistant-bubble").last
-    bubble.wait_for(timeout=60000)
+    bubble.wait_for(timeout=TIMEOUT_MS)
     page.wait_for_function(
         "() => { const b=[...document.querySelectorAll('[data-testid=assistant-bubble]')].pop();"
-        " return b && b.innerText.trim().length > 20; }", timeout=60000)
+        " return b && b.innerText.trim().length > 20; }", timeout=TIMEOUT_MS)
     answer = bubble.inner_text()
     page.screenshot(path=SHOT, full_page=True)
     browser.close()
