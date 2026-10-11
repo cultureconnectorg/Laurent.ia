@@ -43,7 +43,7 @@ P7 (génération d'images) n'a pas de test de chemin dédié. Il est couvert par
 
 ## 4. Vraie inférence (job CI `real-inference`)
 
-- **Modèle** : Qwen2.5-0.5B-Instruct (open-weight, Apache-2.0), servi par llama.cpp sur le runner, en local (`127.0.0.1`). L'empreinte SHA-256 des poids est archivée.
+- **Modèle** : Qwen2.5-0.5B-Instruct au premier passage, puis Qwen2.5-1.5B-Instruct (open-weight, Apache-2.0), servi par llama.cpp sur le runner, en local (`127.0.0.1`). L'empreinte SHA-256 des poids est archivée.
 - **`test_s2_real_engine.py`** (3 tests) :
   1. réponse directe, avec un **contrôle de qualité** (« Paris ») qu'une réponse fixe ne passe pas : vérifié, le moteur déterministe y échoue ;
   2. conversation complète diffusée en flux, puis **stockée chiffrée** ;
@@ -67,4 +67,7 @@ Aucun test supprimé, désactivé ni marqué « échec attendu ». Les 3 tests d
 - **[NV] Matériel de production** : non connu. Le modèle et le serveur d'inférence réels sont choisis en S5.
 - **Persona B2C** : le prompt système envoyé au moteur (`cvl_brain_knowledge`) décrit encore le persona grand public « Laurent.ia v0.8 … Diaspora ». C'est contraire à LIA-D6 (pas de persona) et à LIA-D1. **À traiter dans la voie D** (Identity, Context).
 - **`emergentintegrations` reste listé** dans `requirements.txt` (transition, LIA-D20). Il n'est plus nécessaire au fonctionnement. Son retrait sera décidé avec le chemin historique.
-- **Premier passage de la CI** : *(complété après exécution)*.
+- **Passages de la CI GitHub (vraie inférence)** :
+  - job `suite` (moteur déterministe) : **vert**, sans `emergentintegrations`, 0 régression, 0 sortie réseau ;
+  - job `real-inference` avec **Qwen2.5-0.5B** (llama.cpp sur le runner, SHA-256 des poids `74a4da8c…a9db`) : **187 tests sur 188**, et **0 sortie réseau pendant une vraie conversation**. Conversation en flux stockée chiffrée : OK. Contrat de briefing : OK ;
+  - **le seul échec est un vrai défaut de qualité du modèle** : à « quelle est la capitale de la France ? », le 0,5B répond « L'Île de France, capitale de la France. » Le contrôle n'est **pas** assoupli : le job passe à **Qwen2.5-1.5B** (Apache-2.0). Le choix du modèle de production reste l'affaire du benchmark S5.
