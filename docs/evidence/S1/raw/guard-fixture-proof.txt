@@ -1,0 +1,4 @@
+network egress attempted: dns api.example.org from tests/test_zz_tmp_guard_proof.py:4 (test_code_that_swallows_egress)
+=========================== short test summary info ============================
+ERROR tests/test_zz_tmp_guard_proof.py::test_code_that_swallows_egress - Fail...
+1 passed, 1 error in 0.11s

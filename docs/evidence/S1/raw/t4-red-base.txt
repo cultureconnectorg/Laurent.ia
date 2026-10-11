@@ -1,0 +1,5 @@
+FAILED tests/zz_tmp_red_t4.py::test_index_html_loads_no_external_script_or_stylesheet
+FAILED tests/zz_tmp_red_t4.py::test_index_html_has_no_analytics_or_session_recording
+FAILED tests/zz_tmp_red_t4.py::test_self_hosted_fonts_referenced_by_the_page_exist
+FAILED tests/zz_tmp_red_t4.py::test_pdf_rendering_uses_local_fonts_without_network
+4 failed, 1 passed, 1 warning in 0.85s

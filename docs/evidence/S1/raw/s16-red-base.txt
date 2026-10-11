@@ -1,0 +1,5 @@
+FAILED tests/zz_tmp_red_s16.py::test_anonymous_call_is_refused_before_the_engine[/api/brain/chat-enriched-body0]
+FAILED tests/zz_tmp_red_s16.py::test_anonymous_call_is_refused_before_the_engine[/api/omega/chat-enriched-body1]
+FAILED tests/zz_tmp_red_s16.py::test_unknown_token_is_refused_before_the_engine[/api/brain/chat-enriched-body0]
+FAILED tests/zz_tmp_red_s16.py::test_unknown_token_is_refused_before_the_engine[/api/omega/chat-enriched-body1]
+4 failed, 2 passed, 5 warnings in 1.30s
