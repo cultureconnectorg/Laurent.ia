@@ -393,7 +393,7 @@ Laurent.ia est la couche personnelle qui comprend et pilote les autres systèmes
 | **Laurent.ia** | Intelligence personnelle de Laurent | **Mémoire personnelle de Laurent** | Modèle open-weight local | Laurent seul | — |
 | **KORA** (`kora2024/Kora-app` = `cultureconnectorg/KORA`) | DSP culturel souverain (musique + audiovisuel) | Catalogue, abonnés, écoutes, droits, royalties | Aucun LLM dans le code ; recommandation heuristique ; moteur CVE | Abonnés, créateurs, partenaires | **Aucune dans le code** ; son architecture cible prévoit « Laurentia » comme assistant de ses abonnés (D16) |
 | **CVL Brain** | Nom des modules d'IA de plusieurs produits (Kiltikonet, Meta CVLN) | `brain_messages` (Meta CVLN) | Claude via Anthropic ou Emergent | Équipes des produits hôtes | Pas d'API propre ; confusion de nom (D5) |
-| **Agent Factory** (`frekcore/CVLNAgentfactory`) | Création et orchestration d'agents (selon ses consommateurs) | **Non vérifié** | **Non vérifié** | Produits du groupe, CI | **Aucune dans le code observé** ; dépôt inaccessible |
+| **Agent Factory** (`cultureconnectorg/Cvlnagentfactory`, export du 15 sept. 2026) | Système d'exploitation cognitif des agents et des entités du groupe | Agents, missions, entités, doctrine et constitution du groupe, objectifs, mémoire du groupe et des agents, conversations cognitives avec Laurent | Anthropic / OpenAI / Gemini via Emergent par défaut ; repli déterministe non-LLM | Laurent, administrateurs, opérateurs, services, CI de KORA | Route `/api/laurent-ia` réservée (501) ; doctrine : système séparé sous contrat ; **fort recouvrement fonctionnel** (audit §3.2 bis, D18) |
 | **Meta CVLN** | Système d'exploitation interne du groupe | Décisions, projets, personnes, objectifs, preuves **du groupe** | CVL Brain (Claude) | Équipe CVLN | Consomme `laurentia.briefing@1.0` (I1) ; registre obsolète (I8) |
 | **Kiltikonet** | Réseau culturel (FREK-ID, badges, jetons, territoires) | Membres, profils culturels | CVL Brain (Claude) | Membres, opérateurs | Interfaces I2, I3, I4 |
 
@@ -409,6 +409,7 @@ Laurent.ia est la couche personnelle qui comprend et pilote les autres systèmes
 | I6 | Laurent.ia → LabelOS | Contexte artiste | Enrichissement B2C | Stub |
 | I7 | KORA → Laurent.ia | — | Aucune | Prévue dans un document seulement |
 | I8 | Registre Meta CVLN | Fiche de Laurent.ia | Décrit l'ancien produit B2C | Obsolète |
+| I9 | Laurent.ia → Agent Factory | `/api/laurent-ia` | Point d'entrée réservé par Agent Factory, contrat « à définir en V2 » | Répond 501 |
 
 Constat : **aucune interface ne touche aujourd'hui une mémoire personnelle de Laurent**, et aucune ne correspond au rôle d'intelligence personnelle. Elles relèvent de trois rôles différents : service LLM partagé (I1, I2), produit par membre (I3–I6), assistant d'abonnés envisagé (I7).
 
@@ -421,13 +422,19 @@ Constat : **aucune interface ne touche aujourd'hui une mémoire personnelle de L
 | Catalogue, abonnés, écoutes, droits | **KORA** | Lecture d'agrégats via l'API de KORA sous contrat ; aucune copie |
 | Membres et profils culturels | **Kiltikonet** | Pas d'import de données de membres dans la V1 personnelle |
 | Identité, preuve d'existence, `.fk` | **FrekCore** | Hors V1 |
-| Agents, missions, capacités | **Agent Factory** | À établir après lecture de son code |
+| Agents, missions, capacités, cycles autonomes | **Agent Factory** | Agent Factory reste propriétaire ; Laurent.ia pilote par contrat |
+| Doctrine, constitution, objectifs et mémoire **du groupe et des agents** | **Agent Factory** | Canonique dans Agent Factory ; Laurent.ia garde la vue de Laurent et référence par identifiant |
+| Demandes de validation adressées à Laurent par les agents | **Agent Factory** | La demande reste dans Agent Factory ; Laurent.ia peut être l'endroit où Laurent la voit et décide (D18) |
 
 **Doublon réel identifié** : le Decision Engine et les fiches projet de Laurent.ia recouvrent les collections `decisions` et `projects` de Meta CVLN. La règle ci-dessus l'évite : une décision **du groupe** vit dans Meta CVLN ; une décision **de Laurent** (personnelle, ou sa position avant arbitrage du groupe) vit dans Laurent.ia, avec un lien vers l'objet du groupe s'il existe.
 
-### 9.5 Contraintes d'accès ouvertes
+**Recouvrement majeur avec Agent Factory** (audit §3.2 bis) : mémoire avec provenance, doctrine, objectifs, porte de permissions à 6 niveaux, journal, briefing quotidien et **chat cognitif avec Laurent** existent déjà dans Agent Factory, pour le groupe et ses agents. Le partage des rôles est l'objet de **D18** ; aucune de ces briques ne sera reconstruite dans Laurent.ia avant cette décision.
 
-- `frekcore/CVLNAgentfactory` : **inaccessible** depuis la session. Les frontières avec Agent Factory ne sont pas fixées ; rien n'est supposé à la place.
+**Garde-fou de souveraineté** : la stratégie d'inférence par défaut d'Agent Factory envoie les prompts à des fournisseurs externes. Tant que ce n'est pas changé, **aucune donnée de la mémoire personnelle de Laurent n'est transmise à Agent Factory** ; les contrats ne portent que les données minimales de la tâche.
+
+### 9.5 Couverture de l'audit
+
+- Agent Factory : **couvert** via l'export `cultureconnectorg/Cvlnagentfactory` (instantané du 15 sept. 2026, sans historique). Ce qui a changé depuis dans `frekcore/CVLNAgentfactory` n'est pas couvert.
 - KORA : **entièrement couvert**. `cultureconnectorg/KORA` et `kora2024/Kora-app` désignent le même système (déclaration de Laurent, 11 oct. 2026).
 
 ## 10. Critères DONE / NOT DONE
@@ -494,7 +501,8 @@ Non pilotés : nombre de conversations, tokens, nombre d'agents, nombre de fonct
 | **D11** | Les modèles open-weight de **toutes origines** sont autorisés lorsqu'ils tournent localement pour enrichir le système de Laurent ; ils restent soumis au benchmark D8 | **Validée** (6 oct. 2026) |
 | **D12** | Recherche web : SearXNG sur l'infrastructure de Laurent ; seule la requête sort, jamais la mémoire ni les documents ; approbation de chaque requête au départ (T0), puis évolution sur l'**échelle de confiance** du §7.3 bis | **Validée** (11 oct. 2026) |
 | **D13** | Interfaces existantes (I1–I8, §9.3) : **rien n'est retiré**. Cartographie faite ; décision à prendre interface par interface (maintenir, adapter, remplacer ou supprimer). Garde-fou immédiat : aucune ne doit jamais accéder à la mémoire personnelle de Laurent | **Cartographie faite — décision à prendre** |
-| **D14** | Laurent.ia possède la mémoire personnelle de Laurent ; chaque système métier garde ses données ; pas de duplication arbitraire (règles §9.4) | **Validée sur le principe** ; frontières vérifiées sauf Agent Factory (accès) |
-| **D15** | Ce Product Contract devient la spécification V1 canonique ; aucun code avant sa validation | **En attente** : audit d'Agent Factory requis |
+| **D14** | Laurent.ia possède la mémoire personnelle de Laurent ; chaque système métier garde ses données ; pas de duplication arbitraire (règles §9.4) | **Validée sur le principe** ; frontières vérifiées pour tous les systèmes ; recouvrement avec Agent Factory à trancher en D18 |
+| **D15** | Ce Product Contract devient la spécification V1 canonique ; aucun code avant sa validation | **En attente** : audit complet ; dépend de D18 |
 | **D16** | Le « Laurentia » prévu par l'architecture de KORA (assistant de ses abonnés) n'est pas Laurent.ia : renommer ce rôle, le confier à un autre système, ou en faire un produit distinct | **À trancher** |
-| **D17** | Les conversations de Laurent avec CVL Brain dans Meta CVLN restent-elles dans Meta CVLN, ou ce rôle d'assistant de Laurent revient-il à Laurent.ia ? | **À trancher** |
+| **D17** | Les conversations de Laurent avec les assistants d'autres systèmes (CVL Brain dans Meta CVLN, `/api/cognitive/chat` d'Agent Factory) y restent-elles, ou ce rôle d'assistant personnel revient-il à Laurent.ia ? | **À trancher** |
+| **D18** | Partage des rôles Laurent.ia ↔ Agent Factory. **Proposition** : Agent Factory reste la source de vérité des agents, missions, entités, doctrine et objectifs **du groupe**, et des demandes de validation de ses agents ; Laurent.ia reste la source de vérité de la **mémoire personnelle**, des **décisions personnelles** et du **contexte** de Laurent, et devient son **interface personnelle** : il affiche les demandes de validation et le briefing d'Agent Factory et renvoie les décisions de Laurent, **par contrat** (route `/api/laurent-ia` déjà réservée). Pas de fusion, pas de reconstruction dans Laurent.ia de ce qui existe dans Agent Factory | **À trancher** |

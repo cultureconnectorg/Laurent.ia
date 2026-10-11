@@ -1,6 +1,6 @@
 # Audit des frontières — Laurent.ia et les systèmes de l'écosystème CVLN
 
-> Statut : **audit en lecture seule**, 6 octobre 2026. Aucun dépôt audité n'a été modifié.
+> Statut : **audit en lecture seule**, 6 octobre 2026, complété le 11 octobre 2026 (Agent Factory). Aucun dépôt audité n'a été modifié.
 > Méthode : Audit → cartographie → frontières → contrats → décisions → exécution. Cet audit couvre les trois premières étapes.
 > Règle de preuve : chaque constat cite un fichier et une ligne au commit indiqué. **Un dépôt inaccessible est une contrainte d'accès, jamais une preuve que le système n'existe pas.**
 
@@ -19,12 +19,13 @@ Le Product Contract (version du commit `1f353e0`) affirmait : *« KORA : aucun d
 | Laurent.ia | `cultureconnectorg/Laurent.ia` | Lecture et écriture | `de32e56` | 6 oct. 2026 |
 | **KORA** | `kora2024/Kora-app` (**public**) | Lecture git anonyme | `c2da615` (branche `main`) | 7 sept. 2026 |
 | KORA (autre nom) | `cultureconnectorg/KORA` | Même système que `kora2024/Kora-app` (**déclaration de Laurent, 11 oct. 2026**) ; ce nom n'est pas lisible depuis la session | — | — |
-| **Agent Factory** | `frekcore/CVLNAgentfactory` (branche `CVLN-AGENT-FACTORY`) | ❌ **Refusé** : même réponse ; `git ls-remote` demande une authentification | — | — |
+| **Agent Factory** | `cultureconnectorg/Cvlnagentfactory` (**public**) — archive `CVLNAgentfactory-CVLN-AGENT-FACTORY.zip`, export de la branche `CVLN-AGENT-FACTORY` | Lecture git anonyme ; archive extraite sans exécution | `ceb5349` (dépôt) ; **contenu de l'archive daté du 15 sept. 2026** | 11 oct. 2026 (dépôt) |
+| Agent Factory (dépôt d'origine) | `frekcore/CVLNAgentfactory` | ❌ Inaccessible depuis la session ; non nécessaire, l'export ci-dessus a été fourni par Laurent | — | — |
 | Meta CVLN | `cultureconnectorg/Metacvln-Sept2026` | Lecture | `7673bfc` | 25 sept. 2026 |
 | Kiltikonet | `cultureconnectorg/Kiltikonet-Aout2026` | Lecture | `4645777` | 6 oct. 2026 |
 | CVL Brain | Pas de dépôt dédié identifié | — | — | — |
 
-**Contrainte d'accès ouverte** : `frekcore/CVLNAgentfactory`. Ce qui est dit d'Agent Factory ci-dessous vient **uniquement de ses consommateurs** (Meta CVLN, KORA, Kiltikonet) et n'est pas vérifié sur son code. KORA est **entièrement couvert** : `cultureconnectorg/KORA` et `kora2024/Kora-app` désignent le même système (déclaration de Laurent).
+**Plus aucune contrainte d'accès.** KORA est entièrement couvert (`cultureconnectorg/KORA` et `kora2024/Kora-app` désignent le même système, déclaration de Laurent). Agent Factory est couvert par l'export fourni par Laurent. **Limite** : cet export est un instantané du 15 septembre 2026, sans historique git ; ce qui a pu changer depuis dans `frekcore/CVLNAgentfactory` n'est pas couvert.
 
 Pour lever ces contraintes : connecter ou reconnecter le compte GitHub sur https://claude.ai/connect-github et, si l'application GitHub Claude n'est pas installée sur l'organisation `frekcore`, l'installer (ou demander à un propriétaire de l'organisation de le faire) depuis la même page. Le dépôt pourra ensuite être attaché à une session.
 
@@ -102,26 +103,66 @@ Le dépôt est **public** :
 
 ## 3. Les autres systèmes
 
-### 3.1 CVL Brain — un nom, trois implémentations
+### 3.1 CVL Brain — un nom, quatre usages
 
 | Où | Ce que c'est | Modèle | Preuve |
 |---|---|---|---|
 | Kiltikonet | Client LLM unique pour toutes les surfaces « BRAIN » (chat, analyses, agents, assistant, recommandations), routes d'administration `/api/brain/*` | `claude-sonnet-4-5`, via Anthropic ou Emergent | `Kiltikonet-Aout2026/backend/services/brain_llm.py:1-20`, `backend/routes/brain.py:61-104` |
 | Meta CVLN | Assistant du système d'exploitation du groupe, `/api/brain/ask`, historique par utilisateur (`brain_messages`) | `claude-sonnet-4-6` via Emergent | `Metacvln-Sept2026/backend/server.py:1478-1533` |
 | Laurent.ia | Wrapper LLM (sans lien fonctionnel avec les deux autres) | `claude-sonnet-4-5` via Emergent | `Laurent.ia/backend/services/cvl_brain.py` |
+| Agent Factory | **Une entité** du registre (pôle « Infrastructure IA ») qui regroupe des agents (AGT-002, AGT-005, AGT-006) ; les mémoires stratégiques de l'agent AGT-000 lui sont rattachées. Le blueprint d'intégration la désigne comme « couche cognitive commune » du groupe | — | `seed_data.py:22-42`, `cognitive_routes.py:110`, `memory/artifacts/INTEGRATION_ECOSYSTEME.md` |
 
 **Constat** : CVL Brain n'est pas aujourd'hui un système avec une API propre ; c'est un nom porté par des modules d'IA de plusieurs produits. Kiltikonet décrit même son pont Laurent.ia comme « Laurent.ia (CVL Brain externalisé) » (`backend/routes/laurentia_bridge.py:2`), ce qui confond les deux identités.
 
-### 3.2 Agent Factory — connu seulement par ses consommateurs
+### 3.2 Agent Factory (`cultureconnectorg/Cvlnagentfactory`, export du 15 sept. 2026)
 
-| Source | Ce qu'elle déclare | Preuve |
+Chemins relatifs à la racine de l'archive. Le dépôt ne contient que l'archive et un README d'une ligne.
+
+**Mission déclarée** (`memory/PRD.md`) : *« Sovereign Cognitive Operating System — infrastructure cognitive opérationnelle souveraine du groupe CVLN (Laurent, fondateur) : mémoire, doctrine, gouvernance, orchestration, agents, objectifs, journaux, runtime et continuité propriétaires. Les LLM sont des accélérateurs interchangeables, jamais le cœur. Capable de piloter plusieurs entités : Factory Maker Studio, KORA, FREKCORE. »*
+
+| Élément | Constat | Preuve |
 |---|---|---|
-| Meta CVLN (registre) | « Control Plane », création / composition / cycle de vie des agents ; 4 points d'entrée dits « vérifiés » : `/api/monitoring/health`, `/api/runtime/status`, `/api/missions/orchestrate`, `/api/frek-workforce/capabilities` ; adaptateur « NOT_CONNECTED » | `Metacvln-Sept2026/backend/registry_data.py:128-162` |
-| KORA (CI) | `GET /api/autonomous/mode`, `POST /api/autonomous/cycle`, jeton Bearer | `.github/workflows/cvln-agent-factory-autonomous.yml` |
-| KORA (architecture) | « 284 agents », bus d'événements, registre d'entités, audit, supervision ; 6 capacités consommées | `memory/KORA_Master_Prompt_Architecture.md:28, 344-363` |
-| Kiltikonet | Pont qualité avec un « runner » et un webhook GitHub | `backend/.env.example:192-198`, `backend/routes/quality_agent_factory.py` |
+| Stack | FastAPI + MongoDB (Motor), React, JWT (admin / operator / reader), identités de service `svc_`, PWA, Telegram | `memory/PRD.md` |
+| API | **157 routes** dans 29 modules | `backend/server.py:99-127` |
+| Points d'entrée annoncés par ses consommateurs | **Tous présents** : `/api/monitoring/health`, `/api/runtime/status`, `/api/missions/orchestrate`, `/api/frek-workforce/capabilities` (Meta CVLN), `/api/autonomous/mode`, `/api/autonomous/cycle` (KORA) | Recensement des décorateurs de routes |
+| Agents | Registre `AGT-000` → `AGT-175` (« 176 agents » dans le PRD : 14 en production, 20 en bêta, 135 en brouillon) ; le chiffre de « 284 agents » cité par KORA n'apparaît pas | `memory/PRD.md`, `backend/seed_*.py`, `frek_workforce_catalog.py` |
+| Cycle de vie | Brouillon → Prototype → Bêta → Production, agent par agent ; **la mise en production est réservée à Laurent** | `memory/PRD.md` |
+| Runtime | États actif / sommeil / attente de validation / erreur / suspendu / terminé, points de reprise, cycle autonome en 9 étapes, `dry_run` par défaut | `memory/PRD.md`, `backend/runtime_routes.py`, `backend/autonomous_routes.py` |
+| Porte de permissions | 6 niveaux : observer, analyser, proposer, préparer, exécuter après validation humaine, interdit ; actions critiques (dépense, publication externe, changement de gouvernance…) toujours soumises à Laurent | `backend/gate_routes.py:14-30` |
+| Validations de Laurent | Demandes de validation, décision par API, alerte Telegram | `/api/gate/validation-requests`, `/api/gate/validation-requests/{id}/decide` |
+| Mémoire | `memory_entries` avec 6 portées (session, persistante, opérationnelle, stratégique, doctrinale, apprentissage), `confidence`, `provenance`, validation humaine | `backend/core_routes.py:52-110` |
+| Connaissances | `knowledge_sources` + recherche lexicale MongoDB ; interface prévue vers Qdrant | `backend/knowledge_sources_routes.py`, ADR-005 |
+| Doctrine et constitution | Registre de doctrine versionné, constitution de 21 articles, amendements | `backend/doctrine_registry_routes.py`, `backend/constitution_routes.py` |
+| Objectifs | Objectifs (OBJ-NNN), objectifs stratégiques par entité, moteur d'alignement | `backend/objectives_routes.py`, `backend/mission_os_routes.py` |
+| Briefing et clôture | `GET /api/daily/briefing`, `/api/daily/closings` | `backend/daily_closing_routes.py` |
+| **Chat cognitif avec Laurent** | `/api/cognitive/chat`, conversations persistées (`cognitive_conversations`, `cognitive_messages`) | `backend/cognitive_routes.py` |
+| **Moteur LLM** | Couche d'adaptation : Anthropic (`claude-sonnet-4-6`), OpenAI (`gpt-5.4`), Gemini (`gemini-3.1-pro-preview`) via `emergentintegrations`. **Stratégie par défaut : `quality`**, qui essaie d'abord les fournisseurs externes. Le moteur « souverain » est un **repli déterministe à base de modèles de réponse, pas un LLM** | `backend/provider_layer.py:17-25, 42-81` |
+| Export complet des données | Prévu (« mode souverain complet », P1), **non réalisé** : seul un export par agent existe | `memory/PRD.md`, `/api/registry/agents/{id}/export` |
+| Tests | 268 fonctions de test déclarées (le PRD annonce 282) ; **non exécutés** dans cet audit | `backend/tests/` |
 
-**Non vérifié** : le code d'Agent Factory lui-même. Aucune frontière avec Laurent.ia n'est fixée tant que ce dépôt n'est pas lu.
+**Ce qu'Agent Factory dit de Laurent.ia — deux positions différentes**
+- **Code et doctrine** : Laurent.ia est un **système séparé**. Une route `/api/laurent-ia` est réservée et répond `501` : *« Reserved entry point for Laurent.ia (separate system). Interface contract to be defined in V2. »* (`backend/core_routes.py:272-277`). Règle `DOC-COM-03` : *« Les systèmes externes (Laurent.ia, KORA, FREK…) restent indépendants et communiquent uniquement via contrats d'API »* (`backend/doctrine.py:23`).
+- **Documents d'architecture** : « Laurentia » est la **couche de présentation** de la Factory (« interface conversationnelle & dashboard », « interface utilisateur unique vers la Factory ») (`memory/artifacts/SYNTHESE_4_COUCHES_Architecture_v2.md:11, 83`, `RAPPORT_AUDIT.md:194`, `MISSION_OS_Specification.md:174`).
+- Blueprint d'intégration : *« Core = source de vérité (mémoire / gouvernance / objectifs / connaissances / identités / finances), entités autonomes en exécution, zéro duplication »* (`memory/artifacts/INTEGRATION_ECOSYSTEME.md`).
+
+**Points de sécurité (à traiter dans Agent Factory, non modifiés)** : le dépôt est **public**, et `memory/PRD.md` contient **en clair l'identifiant et le mot de passe du compte administrateur ainsi qu'un jeton de service** (valeurs non reproduites ici). Ils doivent être considérés comme compromis et renouvelés.
+
+### 3.2 bis Recouvrement Agent Factory ↔ Laurent.ia
+
+C'est le constat le plus structurant de l'audit : **une grande partie de ce que le Product Contract prévoit pour Laurent.ia existe déjà, au moins partiellement, dans Agent Factory**, avec Laurent comme utilisateur principal.
+
+| Capacité prévue pour Laurent.ia | Équivalent existant dans Agent Factory | Nature du recouvrement |
+|---|---|---|
+| Mémoire avec provenance, confiance, validation | `memory_entries` (6 portées, `confidence`, `provenance`, validation humaine) | Fort — mais c'est la mémoire **du groupe et de ses agents**, pas la mémoire personnelle de Laurent |
+| Identity / doctrine / principes | Registre de doctrine, constitution, règles | Fort pour la doctrine **du groupe** |
+| Projets et objectifs | Objectifs, objectifs stratégiques par entité, alignement | Fort pour les entités **du groupe** |
+| Action Layer (READ / PROPOSE / EXECUTE, approbation) | Porte à 6 niveaux, actions critiques réservées à Laurent | Fort pour les actions **des agents** |
+| Evidence & journal | Journal d'activité unifié, audit, journal des appels aux modèles | Fort |
+| Briefing quotidien | `/api/daily/briefing`, clôtures | Fort |
+| Chat contextuel avec Laurent | `/api/cognitive/chat` | **Doublon direct** d'interface et de conversations |
+| Souveraineté de l'inférence (D8) | Fournisseurs externes par défaut ; repli non-LLM | **Incompatible** avec D8 en l'état |
+
+**Lecture** : Agent Factory est le système d'exploitation des **agents et des entités du groupe** ; Laurent.ia est l'intelligence **personnelle** de Laurent. Les deux se recouvrent là où Laurent est l'utilisateur d'Agent Factory (chat, briefing, validations). Sans règle explicite, on construirait deux « cerveaux » pour la même personne — exactement la duplication que la règle « une entité = une seule source de vérité » d'Agent Factory interdit aussi.
 
 ### 3.3 Meta CVLN
 
@@ -141,7 +182,7 @@ Plateforme du réseau culturel (FREK-ID, badges NFC, jetons, association, territ
 | **Laurent.ia (code actuel)** | SaaS grand public diaspora (ancien produit) | Utilisateurs anonymes et FREK-ID, abonnements | 50 derniers échanges par utilisateur, chiffrés | Claude via Emergent | 20 « agents » regex en observation | Chat, PDF, échos, publication sociale | Public | — |
 | **KORA** | DSP culturel souverain (musique + audiovisuel) pour la diaspora | Catalogue, lecture, créateurs, abonnements, publicités, podcasts, live, royalties (CVE), API partenaires | **Données métier** : œuvres, abonnés, écoutes, droits, royalties (`kora_db`) | Aucun LLM dans le code ; recommandation heuristique ; moteur CVE mathématique | Aucun à l'exécution ; Codex + Agent Factory pour le développement, cycle autonome toutes les 2 h | Streaming, paiements Stripe, publication, ingestion | Abonnés, créateurs, partenaires, administrateurs | **Aucune dans le code.** L'architecture cible prévoit « Laurentia » comme assistant de ses abonnés |
 | **CVL Brain** | Nom des modules d'IA de produits du groupe | Variable selon le produit hôte | `brain_messages` (Meta CVLN) ; non identifiée ailleurs | Claude via Anthropic ou Emergent | Analyses, assistant, recommandations (Kiltikonet) | Lecture et génération | Équipes et administrateurs des produits hôtes | Confusion de nom ; décrit comme « Laurent.ia externalisé » dans Kiltikonet. Pas d'API propre |
-| **Agent Factory** | Création, composition, cycle de vie et orchestration d'agents (selon ses consommateurs) | Agents mutualisés du groupe | **Non vérifiée** (dépôt inaccessible) | **Non vérifiée** | « 284 agents » (déclaratif, non vérifié) | Missions, cycles autonomes | Produits du groupe, CI | **Aucune dans le code observé** |
+| **Agent Factory** | Système d'exploitation cognitif des agents et des entités du groupe (« Sovereign Cognitive OS ») | Agents, missions, entités, doctrine, constitution, objectifs, finances, gouvernance | **Mémoire du groupe et des agents** (6 portées, provenance, confiance) ; connaissances ; conversations cognitives avec Laurent | Anthropic / OpenAI / Gemini via Emergent par défaut ; repli déterministe non-LLM | 176 agents enregistrés (14 en production) ; cycle autonome gouverné | Porte à 6 niveaux ; actions critiques validées par Laurent ; Telegram | Laurent (fondateur), administrateurs, opérateurs, identités de service, CI de KORA | **Route `/api/laurent-ia` réservée (501)** ; doctrine : système séparé sous contrat ; documents : Laurentia = couche de présentation de la Factory. **Fort recouvrement** fonctionnel (§3.2 bis) |
 | **Meta CVLN** | Système d'exploitation interne du groupe | Registre, contrats, notariat, décisions et projets du groupe, finances, personnes | **Registres d'organisation** : décisions, projets, personnes, objectifs, preuves | CVL Brain (Claude Sonnet 4.6 via Emergent) | « Executive Briefing Agent » (données de démonstration) | Adaptateurs typés, notarisation | Équipe CVLN (RBAC) | Consomme `laurentia.briefing@1.0` ; son registre décrit Laurent.ia comme « Learning Plane » B2C |
 | **Kiltikonet** | Réseau culturel : identité FREK, badges, jetons, territoires | Membres, territoires, association, outils internes | **Données métier** des membres (profils, profils culturels 7D) | CVL Brain (Claude Sonnet 4.5) | Smart engine, agents d'analyse | Nombreuses (paiements, badges, code) | Membres, opérateurs, administrateurs | 3 interfaces actives ou déclarées (§5) |
 
@@ -161,6 +202,7 @@ Aucune ne touche aujourd'hui une mémoire personnelle de Laurent : le contrat de
 | **I6** | Laurent.ia → LabelOS | Contexte artiste | `LABELOS_API_KEY` | Contexte d'artistes | Repli silencieux sur un stub | `Laurent.ia/backend/services/labelos_bridge.py` |
 | **I7** | KORA → Laurent.ia | — | — | — | **Aucune dans le code** ; prévue dans l'architecture cible comme assistant des abonnés | `kora-app/memory/KORA_Master_Prompt_Architecture.md:333-340` |
 | **I8** | Registre Meta CVLN | Fiche descriptive de Laurent.ia | — | — | Décrit l'ancien produit (tiers payants, persistance fantôme, échos) | `Metacvln-Sept2026/backend/registry_data.py:164-200` |
+| **I9** | Agent Factory ← Laurent.ia | `GET/POST /api/laurent-ia` | — | — | **Réservée, répond 501** ; contrat « à définir en V2 » | `Cvlnagentfactory/…/backend/core_routes.py:272-277` |
 
 **Lecture** : dans l'existant, Laurent.ia est utilisé comme **service partagé du groupe** (I1, I2), comme **produit grand public par membre** (I3, I4, I5) et il est **prévu** comme **assistant d'abonnés** de KORA (I7). Aucun de ces trois rôles n'est celui d'une intelligence personnelle de Laurent. Conformément à ta consigne, **rien n'est retiré** : la décision (maintenir, adapter, remplacer, supprimer) est à prendre interface par interface.
 
@@ -176,7 +218,10 @@ Aucune ne touche aujourd'hui une mémoire personnelle de Laurent : le contrat de
 | Catalogue, abonnés, écoutes, droits, royalties | **KORA** | Faible si lecture d'agrégats uniquement | Lecture via l'API de KORA (`/api/v1`, `/api/developers`) sous contrat ; aucune copie |
 | Membres, profils culturels, jetons | **Kiltikonet** | **Existant** : I4 fait entrer des profils de membres dans Laurent.ia | Ne pas étendre cette logique à la V1 personnelle |
 | Identité et preuve d'existence, format `.fk` | **FrekCore** | Faible | Hors périmètre de la V1 |
-| Agents, missions, capacités | **Agent Factory** (non vérifié) | Inconnu | À établir après accès au dépôt |
+| Agents, missions, capacités, cycles autonomes | **Agent Factory** | Faible | Agent Factory reste propriétaire ; Laurent.ia pilote par contrat |
+| Doctrine, constitution, objectifs et mémoire **du groupe et des agents** | **Agent Factory** (et Meta CVLN pour décisions et projets) | **Élevé** avec Identity, Memory, Projects | Canonique dans Agent Factory ; Laurent.ia en garde la vue de Laurent et référence par identifiant |
+| Demandes de validation adressées à Laurent | **Agent Factory** (`validation_requests`) | **Élevé** avec la surface Actions | La demande reste dans Agent Factory ; Laurent.ia peut être l'endroit où Laurent la voit et décide, par contrat |
+| Conversations de Laurent avec AGT-000 | **Agent Factory** (`cognitive_conversations`) | **Doublon direct** avec le Chat de Laurent.ia | À trancher (D17 étendue) |
 
 ---
 
@@ -199,7 +244,8 @@ Aucune ne touche aujourd'hui une mémoire personnelle de Laurent : le contrat de
 ## 8. Questions ouvertes (aucune hypothèse à leur place)
 
 1. ~~`cultureconnectorg/KORA` est-il distinct de `kora2024/Kora-app` ?~~ **Résolu** le 11 oct. 2026 : même système (déclaration de Laurent).
-2. Code réel d'Agent Factory (`frekcore/CVLNAgentfactory`) : accès nécessaire.
+2. ~~Code réel d'Agent Factory~~ **Résolu** le 11 oct. 2026 (export fourni). Reste ouvert : l'export du 15 sept. est-il à jour par rapport à `frekcore/CVLNAgentfactory` ?
 3. Le « Laurentia » de l'architecture de KORA (assistant d'abonnés) doit-il garder ce nom, devenir une capacité d'un autre système (CVL Brain, Agent Factory), ou être un produit distinct de Laurent.ia ?
 4. Les conversations de Laurent avec CVL Brain dans Meta CVLN doivent-elles rester dans Meta CVLN, ou ce rôle d'assistant de Laurent revient-il à Laurent.ia ?
-5. Les points de sécurité de KORA (§2.9) doivent être traités dans KORA. Ils ne l'ont pas été ici, conformément à la consigne de lecture seule.
+5. Les points de sécurité de KORA (§2.9) et d'Agent Factory (§3.2) doivent être traités dans ces dépôts. Ils ne l'ont pas été ici, conformément à la consigne de lecture seule.
+6. **Partage des rôles Laurent.ia ↔ Agent Factory** (§3.2 bis) : qui est l'interface de Laurent, où vivent ses conversations, son briefing et ses validations ? Décision D18.
