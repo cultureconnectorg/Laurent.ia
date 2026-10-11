@@ -64,11 +64,9 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-  const login = useCallback(() => {
-    const redirectUrl = window.location.origin + "/";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  }, []);
+  // C1 — sovereign sign-in only: FREK-ID passkey from the menu (lib/passkey.js).
+  // The former redirect to the Emergent OAuth service is removed (third party).
+  const login = useCallback(() => {}, []);
 
   const logout = useCallback(async () => {
     try {

@@ -1,0 +1,12 @@
+OK   intruder FREK-ID refused CE FREK-ID N'EST PAS AUTORISÉ SUR CETTE INSTANCE.
+OK   registered then signed in 200
+OK   protected route with the session 200
+OK   FREKCORE proof of holder verification {"frek_id": "FREK-1MU5-EBT1", "proof": {"payload_id": "FREK-1MU5-EBT1", "block": {"height": 7, "prev_hash": "b68e65b1eeb0828c9486c7ceafe7e2f0d148eae4ea8fe82c008a43879fe527c6", "payload_ty
+OK   signed out 
+OK   signed in again with the passkey 
+OK   FREKCORE revoked the FREK-ID ': 'FREK-1MU5-EBT1', 'revoked': True, 'revoked_at': '2026-10-11T21:35:25.984753+00:00', 'reason': 'test de revocation C1', 'message': 'Identite revoquee. Preuve historique conservee sur FREK-Chain
+
+OK   open session closed after revocation {"detail": "FREK-ID r\u00e9voqu\u00e9 ou invalide dans FREKCORE : session ferm\u00e9e."}
+OK   sign-in refused after revocation FREKCORE : FREK-ID REVOQUE.
+OK   deactivated client refused by FREKCORE {"client_id":"cvl-brain","updated":{"active":false}} | REFUSED 401
+OK   no request outside the stack 

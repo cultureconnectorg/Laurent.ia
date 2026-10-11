@@ -12,8 +12,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, LogOut, LogIn, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles, BarChart3, Cpu, ShieldCheck } from "lucide-react";
+import { Plus, LogOut, MessageSquare, Settings, Trash2, Loader2, Fingerprint, ArrowRight, Sparkles, BarChart3, Cpu, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { loginWithPasskey, passkeySupported, registerPasskey } from "@/lib/passkey";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PricingModal from "@/components/laurentia/PricingModal";
@@ -22,7 +23,7 @@ import SettingsModal from "@/components/laurentia/SettingsModal";
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, currentSessionId = null }) => {
-  const { user, isAuthenticated, login, loginWithFrekId, logout, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, refresh, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,21 +79,36 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
     }
   };
 
-  const handleFrekSubmit = async (e) => {
-    e?.preventDefault?.();
+  // C1 — sign-in with the FREK-ID passkey (verified by FREKCORE through Laurent.ia).
+  const runPasskey = async (kind) => {
     const code = frekInput.trim();
     if (!code) return;
+    if (!passkeySupported()) {
+      setFrekError("Ce navigateur ne prend pas en charge les passkeys");
+      return;
+    }
     setFrekSubmitting(true);
     setFrekError(null);
-    const res = await loginWithFrekId(code);
-    setFrekSubmitting(false);
-    if (res.ok) {
+    try {
+      if (kind === "register") {
+        await registerPasskey(code);
+        toast("Passkey enregistrée et vérifiée par FREKCORE");
+      }
+      await loginWithPasskey(code);
+      await refresh();
       setFrekInput("");
-      toast(`Bienvenue ${res.user.name}`);
+      toast("Connecté par passkey");
       onOpenChange(false);
-    } else {
-      setFrekError(res.error || "Erreur");
+    } catch (err) {
+      setFrekError(err?.message || "Erreur passkey");
+    } finally {
+      setFrekSubmitting(false);
     }
+  };
+
+  const handleFrekSubmit = async (e) => {
+    e?.preventDefault?.();
+    await runPasskey("login");
   };
 
   const initials = (user?.name || user?.email || "H").slice(0, 2).toUpperCase();
@@ -140,26 +156,6 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
               </div>
             ) : (
               <div className="space-y-3">
-                {/* CTA Google */}
-                <button
-                  type="button"
-                  onClick={login}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full
-                    bg-gradient-to-br from-[#2D6FE0] to-[#5BA0FF] text-white font-sans text-sm font-medium
-                    shadow-[0_4px_18px_rgba(45,111,224,0.4)] hover:shadow-[0_4px_22px_rgba(45,111,224,0.55)] transition-shadow"
-                  data-testid="menu-login-btn"
-                >
-                  <LogIn className="w-4 h-4" strokeWidth={2} />
-                  Continuer avec Google
-                </button>
-
-                {/* Séparateur */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                  <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-white/30">ou</span>
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                </div>
-
                 {/* CTA FREK-ID */}
                 <form onSubmit={handleFrekSubmit} className="space-y-2" data-testid="menu-frek-form">
                   <div className="composer-ring flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2">
@@ -168,7 +164,7 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
                       ref={frekRef}
                       value={frekInput}
                       onChange={(e) => { setFrekInput(e.target.value); setFrekError(null); }}
-                      placeholder="Mon identifiant"
+                      placeholder="Mon FREK-ID"
                       autoCapitalize="characters"
                       autoCorrect="off"
                       spellCheck={false}
@@ -194,8 +190,17 @@ export const MenuDrawer = ({ open, onOpenChange, onPickSession, onNewSession, cu
                       {frekError}
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => runPasskey("register")}
+                    disabled={!frekInput.trim() || frekSubmitting}
+                    className="w-full font-mono text-[10px] uppercase tracking-[0.22em] text-[#6BA8FF]/80 hover:text-[#6BA8FF] disabled:text-white/20 py-1"
+                    data-testid="menu-passkey-register"
+                  >
+                    Première fois : créer ma passkey
+                  </button>
                   <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/30 px-2">
-                    Membres de l'écosystème uniquement
+                    Connexion par passkey FREK-ID · titulaire uniquement
                   </div>
                 </form>
               </div>

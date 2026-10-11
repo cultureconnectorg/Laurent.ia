@@ -103,3 +103,20 @@ def test_passkey_routes_refuse_any_other_frek_id(app_client, deployed, monkeypat
 def test_dev_mode_is_unchanged(app_client):
     # Without APP_ENV=production (suite default "test"), existing behaviour is preserved.
     assert app_client.get("/api/status").status_code == 200
+
+
+def test_passkey_session_is_refused_when_frekcore_cannot_confirm_the_frek_id(app_client, deployed, db, monkeypatch):
+    # Fail closed: without FREKCORE's confirmation, a passkey session opens nothing.
+    from services import principal_gate
+    monkeypatch.setenv("FREKCORE_API_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("FREKCORE_API_KEY", "x")
+    principal_gate._status_cache.clear()
+    token = _session(db, "principal")
+    db.users.update_one({"user_id": "principal"}, {"$set": {"auth_method": "passkey"}})
+    try:
+        r = app_client.get("/api/laurentia/sessions/list", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 401 and "FREKCORE" in r.json()["detail"]
+        assert db.user_sessions.count_documents({"session_token": token}) == 0  # session deleted
+    finally:
+        db.users.update_one({"user_id": "principal"}, {"$unset": {"auth_method": ""}})
+        principal_gate._status_cache.clear()

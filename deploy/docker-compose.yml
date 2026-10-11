@@ -73,7 +73,9 @@ services:
     depends_on:
       mongo: {condition: service_healthy}
     environment:
-      MONGO_URL: mongodb://frekcore:${FREKCORE_DB_PASSWORD}@mongo:27017/frekcore?authSource=frekcore
+      # tz_aware=true: FREKCORE compares stored dates with timezone-aware "now" (passkey challenges);
+      # with naive dates from a real MongoDB its passkey ceremony fails (FREKCORE defect, reported).
+      MONGO_URL: mongodb://frekcore:${FREKCORE_DB_PASSWORD}@mongo:27017/frekcore?authSource=frekcore&tz_aware=true
       DB_NAME: frekcore
       FREK_ENV: production
       SECRET_KEY: ${FREK_SECRET_KEY:?}
@@ -109,6 +111,9 @@ services:
       # FREKCORE on this machine (identity, passkeys, proofs).
       FREKCORE_API_URL: http://frekcore:8001
       FREKCORE_API_KEY: ${FREK_CLIENT_CVLBRAIN_SECRET}
+      FREKCORE_CLIENT_ID: cvl-brain
+      # The only FREK-ID allowed to sign in (LIA-D1), set by scripts/frekcore-setup.sh.
+      LAURENTIA_PRINCIPAL_FREK_ID: ${LAURENTIA_PRINCIPAL_FREK_ID:-}
       # B2C and outbound jobs off (LIA-D2; no silent copy of the corpus, R1).
       CHANTIER7_SCHEDULERS_DISABLED: "1"
       CHANTIER10_REPORTS_DISABLED: "1"

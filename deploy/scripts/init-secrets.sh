@@ -14,7 +14,7 @@ umask 077
 cat > .env <<ENV
 # Generated $(date -u +%Y-%m-%dT%H:%M:%SZ) by scripts/init-secrets.sh — never commit, never send.
 PUBLIC_ORIGIN=$ORIGIN
-SITE_ADDRESSES=$SITES
+SITE_ADDRESSES="$SITES"
 BIND_ADDRESS=127.0.0.1
 # Start the inference engine with the stack.
 COMPOSE_PROFILES=engine
