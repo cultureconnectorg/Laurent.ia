@@ -14,7 +14,7 @@ COPY requirements.txt .
 # Optional build secret `extra_ca`: only for a TLS-intercepting proxy at build time;
 # never copied into the image. Unused on a normal network.
 RUN --mount=type=secret,id=extra_ca,required=false \
-    if [ -f /run/secrets/extra_ca ]; then export PIP_CERT=/run/secrets/extra_ca; fi \
+    if [ -s /run/secrets/extra_ca ]; then export PIP_CERT=/run/secrets/extra_ca; fi \
  && grep -vE '^emergentintegrations' requirements.txt > /tmp/req.txt \
  && pip install --no-cache-dir -r /tmp/req.txt
 COPY . .

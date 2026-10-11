@@ -5,7 +5,7 @@ WORKDIR /src
 COPY package.json ./
 # Optional build secret `extra_ca` (TLS-intercepting proxy at build time only; not kept).
 RUN --mount=type=secret,id=extra_ca,required=false \
-    if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi \
+    if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi \
  && yarn install --network-timeout 600000 --non-interactive
 COPY . .
 # Same origin: the browser calls /api on the same host, through the local reverse proxy.
