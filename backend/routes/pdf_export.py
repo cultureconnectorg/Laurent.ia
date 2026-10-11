@@ -355,12 +355,19 @@ article a { color: var(--gold); text-decoration: none; border-bottom: 1px dotted
 }
 """
 
-# Web fonts inlined via Google Fonts CSS (WeasyPrint suit @import).
-GOOGLE_FONTS = (
-    "https://fonts.googleapis.com/css2"
-    "?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400"
-    "&family=Urbanist:wght@300;400;500;600;700"
-    "&family=IBM+Plex+Mono:wght@400;500&display=swap"
+# Web fonts served from backend/assets/fonts (SIL OFL 1.1) — no network call while
+# rendering a PDF (S1.5; previously loaded from fonts.googleapis.com).
+FONTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "fonts")
+_LOCAL_FONTS = (
+    ("Cormorant Garamond", "cormorant-garamond", ((400, "normal"), (500, "normal"), (600, "normal"), (700, "normal"), (400, "italic"))),
+    ("Urbanist", "urbanist", tuple((w, "normal") for w in (300, 400, 500, 600, 700))),
+    ("IBM Plex Mono", "ibm-plex-mono", ((400, "normal"), (500, "normal"))),
+)
+LOCAL_FONTS_CSS = "\n".join(
+    f'@font-face {{ font-family: "{family}"; font-style: {style}; font-weight: {weight}; '
+    f'src: url("file://{FONTS_DIR}/{slug}-latin-{weight}-{style}.woff2") format("woff2"); }}'
+    for family, slug, variants in _LOCAL_FONTS
+    for weight, style in variants
 )
 
 
@@ -404,7 +411,7 @@ def _build_html(req: PdfExportRequest, include_signature: bool) -> str:
 <head>
 <meta charset="utf-8">
 <title>{title_safe}</title>
-<link rel="stylesheet" href="{GOOGLE_FONTS}">
+<style>{LOCAL_FONTS_CSS}</style>
 </head>
 <body>
   <section class="cover">
