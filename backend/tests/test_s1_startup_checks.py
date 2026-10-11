@@ -55,6 +55,7 @@ def test_unknown_app_env_is_refused():
 
 @pytest.mark.parametrize("override, expected", [
     ({"EMERGENT_LLM_KEY": "x"}, "EMERGENT_LLM_KEY"),
+    ({"BRAIN_ENGINE_URL": ""}, "BRAIN_ENGINE_URL"),
     ({"OPENAI_API_KEY": "x"}, "OPENAI_API_KEY"),
     ({"ANTHROPIC_API_KEY": "x"}, "ANTHROPIC_API_KEY"),
     ({"SD_API_URL": "https://sd.thirdparty.example"}, "SD_API_URL"),

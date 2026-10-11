@@ -33,3 +33,14 @@ def _no_egress():
     if attempts:
         details = "; ".join(f"{a['kind']} {a['target']} from {a['origin']}" for a in attempts)
         pytest.fail(f"network egress attempted: {details}", pytrace=False)
+
+
+@pytest.fixture(scope="session")
+def app_client():
+    """One in-process client (one event loop) for the whole session: the application's
+    Motor client binds to the first loop that uses it."""
+    from fastapi.testclient import TestClient
+    from server import app
+
+    with TestClient(app) as client:
+        yield client

@@ -5,10 +5,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from fastapi.testclient import TestClient
 from pymongo import MongoClient
 
-from server import app
 
 
 class EngineSpy:
@@ -24,11 +22,9 @@ class EngineSpy:
         yield "ok"
 
 
-@pytest.fixture(scope="module")
-def client():
-    # One client (one event loop) for the module: the app's Motor client is loop-bound.
-    with TestClient(app) as c:
-        yield c
+@pytest.fixture
+def client(app_client):
+    return app_client
 
 
 @pytest.fixture
