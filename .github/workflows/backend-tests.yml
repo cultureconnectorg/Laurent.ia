@@ -108,11 +108,18 @@ jobs:
           python - <<'PY'
           import sys, xml.etree.ElementTree as ET
           cases = [t for t in ET.parse("out-real/junit.xml").iter("testcase") if "test_s2_real_engine" in t.get("classname")]
-          bad = [t.get("name") for t in cases if t.find("failure") is not None or t.find("error") is not None or t.find("skipped") is not None]
+          bad = []
+          for t in cases:
+              for tag in ("failure", "error", "skipped"):
+                  e = t.find(tag)
+                  if e is not None:
+                      bad.append(t.get("name"))
+                      print(f"--- {t.get('name')} [{tag}]\n{(e.get('message') or '')[:2000]}\n{(e.text or '')[-3000:]}")
           print(f"real-engine tests: {len(cases)}, not passed: {bad}")
           sys.exit(1 if (not cases or bad) else 0)
           PY
       - name: No network egress during the real conversation
+        if: always()
         run: test ! -s out-real/egress.jsonl || (cat out-real/egress.jsonl; exit 1)
       - uses: actions/upload-artifact@v4
         if: always()
@@ -123,6 +130,7 @@ jobs:
             engine.log
             models.sha256
       - name: Report the full suite result with the real model
-        if: steps.suite.outcome != 'success'
+        if: always() && steps.suite.outcome != 'success'
         run: |
+          grep -E "^(FAILED|ERROR)" out-real/pytest.log || true
           echo "::warning::Some suite tests fail with the 0.5B model (answer quality or format): see out-real/pytest.log"
