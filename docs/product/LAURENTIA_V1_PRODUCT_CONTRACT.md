@@ -1,6 +1,6 @@
 # LAURENT.IA V1 — Product Contract
 
-> Statut : **proposition à valider** · Octobre 2026
+> Statut : **proposition — non canonique** tant que D15 n'est pas validée · révisé le 11 octobre 2026 avec l'[audit des frontières de l'écosystème](../audit/ECOSYSTEM_BOUNDARIES_AUDIT.md)
 > Ce contrat est la spécification exécutable de la V1. Il s'appuie sur :
 > - le cadrage produit V1 de Laurent (positionnement, 6 couches, 5 surfaces, 5 rôles, 3 niveaux d'action, 7 règles de confiance) ;
 > - le cadrage canonique [`LAURENTIA_V1_CADRAGE.md`](./LAURENTIA_V1_CADRAGE.md) (audit du dépôt, souveraineté) ;
@@ -41,17 +41,17 @@ Question directrice : *« De quoi ai-je besoin pour comprendre, décider et agir
 | 5 | Registre des décisions | Memory (décisions) | Decisions |
 | 6 | Analyse / audit | Reasoning | Chat |
 | 7 | Planification | Reasoning | Chat, Projects |
-| 8 | Recherche web (sous condition D12) | Action (READ sortant) | Chat |
+| 8 | Recherche web (D12, échelle de confiance) | Action (READ sortant) | Chat |
 | 9 | Proposer des actions | Action (PROPOSE) | Actions |
 | 10 | Exécuter avec autorisation | Action (EXECUTE) | Actions |
 
 ### 1.2 Hors V1 (explicitement)
 
-Pas d'AGI · pas d'autonomie illimitée · pas de fine-tuning massif · pas de robotique ni de domotique · pas de marketplace d'agents · pas de réseau social · **pas de produit commercial multi-utilisateur** · pas de 50 agents · pas de matériel dédié autre que le serveur d'inférence · pas de remplacement de tous les outils de Laurent.
+Pas d'AGI · pas d'autonomie illimitée · pas de fine-tuning massif · pas de robotique ni de domotique · pas de marketplace d'agents · pas de réseau social · **pas de produit commercial multi-utilisateur** · pas de 50 agents · pas de matériel dédié autre que l'infrastructure d'inférence et de données · pas de remplacement de tous les outils de Laurent.
 
 ### 1.3 Contraintes non négociables
 
-1. **Souveraineté (D8)** : aucun LLM externe ne reçoit de donnée de production. Le moteur de langage tourne **sur un serveur détenu par Laurent** (D9).
+1. **Souveraineté (D8)** : aucun LLM externe ne reçoit de donnée de production. Le moteur de langage, la mémoire et le runtime tournent **sur une infrastructure contrôlée par Laurent** (D9). *Local-first* est une doctrine d'autonomie, pas une contrainte mono-machine : cette infrastructure peut compter plusieurs machines.
 2. **Principal unique** : Laurent est le seul utilisateur et l'autorité finale.
 3. **Evidence First** : aucune capacité n'est « DONE » sans preuve (§10).
 
@@ -69,6 +69,22 @@ Pas d'AGI · pas d'autonomie illimitée · pas de fine-tuning massif · pas de r
 | **L6 Evidence & Governance** | Pourquoi chaque réponse ; journal infalsifiable de ce qui a été su, supposé, décidé, fait | Le journal de preuve | — |
 
 Transverses : **Model Gateway** (accès unique aux modèles locaux, §8) et **Evaluation** (mesure de la qualité et des KPI, §11).
+
+### 2.1 Séparation des briques techniques
+
+Les six couches produit reposent sur sept briques techniques distinctes, à ne jamais confondre :
+
+| Brique | Définition | Propriétaire | Remplaçable |
+|---|---|---|---|
+| **Modèle local / moteur d'inférence** | Poids du modèle et serveur d'inférence | Infrastructure de Laurent | Oui, sur benchmark |
+| **Runtime Laurent.ia** | Boucle, rôles, Context Engine, politique d'action | Laurent.ia | Évolue, reste propriété de Laurent |
+| **Mémoire** | Objets mémoire, provenance, journal de preuve | **Laurent** | Non : actif durable, exportable en format ouvert |
+| **Outils** | Capacités atomiques déclarées (READ / PROPOSE / EXECUTE) | Laurent.ia | Oui |
+| **Agents** | Rôles internes ; agents externes sous contrat | Laurent.ia (internes) ; leurs systèmes (externes) | Oui |
+| **Données métier** | Données des produits du groupe (KORA, Kiltikonet, Meta CVLN…) | Chaque système métier | Hors Laurent.ia : lues par contrat, jamais absorbées |
+| **Interfaces externes** | Contrats versionnés entrants et sortants | Partagé, versionné | Oui, par version |
+
+**Doctrine** : Laurent.ia ne dépend structurellement d'aucun LLM propriétaire externe en production. Les modèles sont des moteurs interchangeables ; la mémoire, les données, les contrats, les décisions et la gouvernance appartiennent à l'infrastructure de Laurent (D8).
 
 ---
 
@@ -255,7 +271,24 @@ Format compatible **Model Context Protocol** (SDK MIT) pour que les outils et le
 1. Une approbation est **liée à l'empreinte exacte du contenu** (`payload_hash`) : si le contenu change après approbation, l'approbation est invalide.
 2. Une approbation est à usage unique.
 3. Tout outil avec `data_egress = external` affiche **le contenu exact qui sort** avant exécution.
-4. Les autorisations permanentes (ex. « tu peux toujours créer des tâches ») sont hors V1 ; en V1.1 elles seront limitées en portée et en durée, et révocables.
+4. En V1, chaque outil démarre au niveau de confiance le plus bas de l'échelle ci-dessous ; les autorisations permanentes sont hors V1.
+
+### 7.3 bis Échelle de confiance (évolution des autorisations)
+
+L'approbation manuelle de chaque appel est **le point de départ, pas l'état final**. Chaque outil (dont la recherche web, D12) progresse sur une échelle de confiance :
+
+| Niveau | Comportement | Exemple : recherche web |
+|---|---|---|
+| **T0 — Approbation à chaque fois** | Laurent voit et approuve chaque appel | Chaque requête est affichée et approuvée (V1) |
+| **T1 — Automatique dans un périmètre** | Automatique pour les appels qui respectent des règles déclarées ; le reste repasse en T0 | Automatique si la requête ne contient ni nom de personne, ni entité marquée `sensitive`, ni extrait de mémoire |
+| **T2 — Autorisation permanente** | Automatique dans un périmètre élargi, limitée en durée, avec relevé périodique | Automatique sur des sujets ou domaines autorisés, avec relevé quotidien des requêtes parties |
+
+**Règles de l'échelle**
+- Une promotion est **proposée** par Laurent.ia sur la base de preuves (ex. N approbations consécutives sans modification, zéro incident) et **décidée par Laurent**. Rien ne monte automatiquement.
+- Toute autorisation est limitée en portée et en durée, et révocable à tout moment.
+- Un incident (refus a posteriori, fuite détectée, erreur) **rétrograde** immédiatement l'outil en T0.
+- Les actions EXECUTE irréversibles (payer, supprimer, publier, envoyer à un tiers) restent en T0 en V1 et V1.1.
+- Chaque appel reste journalisé, quel que soit le niveau.
 
 ### 7.4 Evidence Contract
 
@@ -322,7 +355,7 @@ backend/laurent/
 ```
 Transformation progressive de l'existant (cadrage §3) : chaque brique conservée est déplacée ou rebranchée par un commit testé ; les modules B2C restent dans `routes/`, `jobs/`, `services/`, non montés.
 
-### 8.3 Stack candidate — sur le serveur de Laurent
+### 8.3 Stack candidate — sur l'infrastructure de Laurent
 
 Le choix final se fait **sur benchmark**, pas sur préférence. Licences relevées sur PyPI le 6 octobre 2026 (licence du paquet ; celle du serveur, si distincte, est à confirmer à l'adoption).
 
@@ -345,31 +378,64 @@ Le choix final se fait **sur benchmark**, pas sur préférence. Licences relevé
 
 ---
 
-## 9. Frontières avec les systèmes du groupe — établies à partir des dépôts
+## 9. Frontières avec les systèmes du groupe
 
-Audit des dépôts `Metacvln-Sept2026` (commit `7673bfc`) et `Kiltikonet-Aout2026` (commit `4645777`).
+Source : [audit des frontières de l'écosystème](../audit/ECOSYSTEM_BOUNDARIES_AUDIT.md) (lecture seule, aucun dépôt modifié). Une version précédente de ce contrat affirmait que KORA n'avait ni dépôt ni API : **c'était faux** (cf. audit §0).
 
-| Constat | Preuve | Conséquence |
+### 9.1 Principe
+
+Laurent.ia est la couche personnelle qui comprend et pilote les autres systèmes. **Aucune fusion** : chaque système garde sa mission, ses données et ses frontières. Toute relation passe par un **contrat d'interface** versionné.
+
+### 9.2 Matrice des systèmes (résumé ; détail et preuves dans l'audit §4)
+
+| Système | Mission | Données qu'il possède | Intelligence | Utilisateurs | Relation avec Laurent.ia |
+|---|---|---|---|---|---|
+| **Laurent.ia** | Intelligence personnelle de Laurent | **Mémoire personnelle de Laurent** | Modèle open-weight local | Laurent seul | — |
+| **KORA** (`kora2024/Kora-app`) | DSP culturel souverain (musique + audiovisuel) | Catalogue, abonnés, écoutes, droits, royalties | Aucun LLM dans le code ; recommandation heuristique ; moteur CVE | Abonnés, créateurs, partenaires | **Aucune dans le code** ; son architecture cible prévoit « Laurentia » comme assistant de ses abonnés (D16) |
+| **CVL Brain** | Nom des modules d'IA de plusieurs produits (Kiltikonet, Meta CVLN) | `brain_messages` (Meta CVLN) | Claude via Anthropic ou Emergent | Équipes des produits hôtes | Pas d'API propre ; confusion de nom (D5) |
+| **Agent Factory** (`frekcore/CVLNAgentfactory`) | Création et orchestration d'agents (selon ses consommateurs) | **Non vérifié** | **Non vérifié** | Produits du groupe, CI | **Aucune dans le code observé** ; dépôt inaccessible |
+| **Meta CVLN** | Système d'exploitation interne du groupe | Décisions, projets, personnes, objectifs, preuves **du groupe** | CVL Brain (Claude) | Équipe CVLN | Consomme `laurentia.briefing@1.0` (I1) ; registre obsolète (I8) |
+| **Kiltikonet** | Réseau culturel (FREK-ID, badges, jetons, territoires) | Membres, profils culturels | CVL Brain (Claude) | Membres, opérateurs | Interfaces I2, I3, I4 |
+
+### 9.3 Interfaces existantes — toutes conservées en l'état en attendant D13
+
+| # | Sens | Interface | Ce qu'elle fait réellement | État |
+|---|---|---|---|---|
+| I1 | Meta CVLN → Laurent.ia | `POST /api/brain/briefing` | Briefing à la demande d'un utilisateur Meta CVLN | Déclarée « working » |
+| I2 | Kiltikonet → Laurent.ia | `POST /api/brain/briefing`, `GET /api/brain/health` | Utilise Laurent.ia comme **moteur LLM générique** pour la génération de code de Kiltikonet | En place si configurée |
+| I3 | Kiltikonet → Laurent.ia | `GET /api/laurentia/me` | Widget « intelligence personnelle » de chaque membre | **Cassée** : route absente de Laurent.ia |
+| I4 | Laurent.ia → Kiltikonet | `GET /api/users/validate/{frek_id}`, `/profile` | Fait entrer identité et profil culturel de membres dans Laurent.ia | En place |
+| I5 | Laurent.ia → FrekCore | Validation FREK-ID | Authentification des utilisateurs B2C | En place |
+| I6 | Laurent.ia → LabelOS | Contexte artiste | Enrichissement B2C | Stub |
+| I7 | KORA → Laurent.ia | — | Aucune | Prévue dans un document seulement |
+| I8 | Registre Meta CVLN | Fiche de Laurent.ia | Décrit l'ancien produit B2C | Obsolète |
+
+Constat : **aucune interface ne touche aujourd'hui une mémoire personnelle de Laurent**, et aucune ne correspond au rôle d'intelligence personnelle. Elles relèvent de trois rôles différents : service LLM partagé (I1, I2), produit par membre (I3–I6), assistant d'abonnés envisagé (I7).
+
+### 9.4 Propriété des données (D14, vérifiée)
+
+| Domaine | Propriétaire | Règle |
 |---|---|---|
-| **Meta CVLN déclare Laurent.ia comme « Learning Plane » du groupe** (cognition, mémoire, évaluation), avec les capacités B2C (tiers, persistance fantôme, échos) | `Metacvln-Sept2026/backend/registry_data.py:164-200` | Contradiction directe avec le positionnement personnel → **D13** |
-| Meta CVLN possède déjà des collections `decisions`, `projects`, `evidence`, `people` **pour le groupe** | `Metacvln-Sept2026/docs/META_CVLN_ARCHITECTURE.md` | Risque de doublon avec le Decision Engine → **D14** |
-| Deux systèmes consomment `laurentia.briefing@1.0` : Meta CVLN (adaptateur « working ») et Kiltikonet (`kiltikonet-code`) | `META_CVLN_ARCHITECTURE.md` ; `Kiltikonet-Aout2026/backend/services/laurentia_client.py` | Un produit du groupe interroge l'intelligence personnelle de Laurent → **D13** |
-| Kiltikonet affiche un widget Laurent.ia renvoyant ses utilisateurs vers `laurentia.cvln.com` | `Kiltikonet-Aout2026/frontend/src/components/LaurentiaWidget.jsx:119` | Point d'entrée grand public à fermer (dans Kiltikonet, avec ton accord) |
-| **CVL Brain n'est pas un système unique** : un client LLM dans Kiltikonet (via Emergent), un module dans Meta CVLN (Claude Sonnet 4.6), un wrapper dans Laurent.ia | `Kiltikonet-Aout2026/backend/services/brain_llm.py:9` ; `META_CVLN_EXISTING_SYSTEM_AUDIT.md` ; `Laurent.ia/backend/services/cvl_brain.py` | Aucun contrat CVL Brain à consommer aujourd'hui ; D5 confirmé |
-| **Agent Factory** : dépôt `frekcore/CVLNAgentfactory`, **non accessible depuis cette session** ; Meta CVLN liste quatre points d'entrée « vérifiés » (`/api/monitoring/health`, `/api/runtime/status`, `/api/missions/orchestrate`, `/api/frek-workforce/capabilities`), adaptateur « NOT_CONNECTED » | `registry_data.py:128-162` | Contrat à confirmer sur le dépôt réel avant intégration |
-| **KORA** : aucun dépôt, aucune API. Décrit comme une brique plateforme vers laquelle les territoires « remontent des données » ; la publication KORA est « mockée » dans Meta CVLN | `Kiltikonet-Aout2026/memory/organigramme_kiltikonet_network.md:75` ; `registry_data.py:126` | **Aucune intégration KORA possible en V1** |
-| Kiltikonet range « Agent Factory / Laurentia » ensemble sous « automatisation / orchestration » du groupe | `Kiltikonet-Aout2026/ARCHITECTURE.md:205-216` | Même confusion d'identité que D13 |
+| Mémoire personnelle de Laurent | **Laurent.ia** | Propriétaire unique ; n'existe pas encore |
+| Décisions, projets, personnes, preuves **du groupe** | **Meta CVLN** (collections existantes) | Canonique dans Meta CVLN ; Laurent.ia garde la vue de Laurent et référence les objets du groupe par identifiant (`external_refs`), lus par contrat |
+| Catalogue, abonnés, écoutes, droits | **KORA** | Lecture d'agrégats via l'API de KORA sous contrat ; aucune copie |
+| Membres et profils culturels | **Kiltikonet** | Pas d'import de données de membres dans la V1 personnelle |
+| Identité, preuve d'existence, `.fk` | **FrekCore** | Hors V1 |
+| Agents, missions, capacités | **Agent Factory** | À établir après lecture de son code |
 
-**Règle de frontière** : Laurent.ia est la couche personnelle qui comprend et orchestre les autres systèmes ; il **n'absorbe** ni leurs responsabilités ni leurs données. Les registres d'organisation (décisions de la holding, projets du groupe) restent canoniques dans Meta CVLN ; Laurent.ia y fait référence par identifiant (`external_refs`) et les lit par contrat.
+**Doublon réel identifié** : le Decision Engine et les fiches projet de Laurent.ia recouvrent les collections `decisions` et `projects` de Meta CVLN. La règle ci-dessus l'évite : une décision **du groupe** vit dans Meta CVLN ; une décision **de Laurent** (personnelle, ou sa position avant arbitrage du groupe) vit dans Laurent.ia, avec un lien vers l'objet du groupe s'il existe.
 
----
+### 9.5 Contraintes d'accès ouvertes
+
+- `frekcore/CVLNAgentfactory` : **inaccessible** depuis la session. Les frontières avec Agent Factory ne sont pas fixées ; rien n'est supposé à la place.
+- `cultureconnectorg/KORA` : **inaccessible**. S'il diffère de `kora2024/Kora-app`, il n'est pas couvert.
 
 ## 10. Critères DONE / NOT DONE
 
 **Une capacité est DONE si et seulement si** :
 1. un test automatisé couvre son critère d'acceptation (§3) et passe ;
 2. une preuve est versionnée dans `docs/evidence/` (commande, sortie, capture) ;
-3. elle fonctionne **sur le serveur de Laurent avec le modèle local** ;
+3. elle fonctionne **sur l'infrastructure de Laurent avec le modèle local** ;
 4. une capture réseau montre **zéro appel sortant non déclaré** pendant son exécution ;
 5. ses réponses portent le bloc POURQUOI quand elles sont importantes.
 
@@ -400,7 +466,7 @@ Non pilotés : nombre de conversations, tokens, nombre d'agents, nombre de fonct
 | Actions | READ / PROPOSE / EXECUTE avec approbation à chaque fois | Autorisations permanentes limitées et révocables | Exécution planifiée |
 | Preuve | Journal chaîné SHA-256 | Export de preuve | Signature Ed25519, ancrage Meta CVLN |
 | Interface | 5 surfaces, web PWA | Voix locale, mobile via WireGuard | — |
-| Intégrations | Lecture de dépôts GitHub du groupe ; contrats existants | Meta CVLN (décisions et projets du groupe, lecture) | Agent Factory, KORA (si contrat) |
+| Intégrations | Lecture de dépôts GitHub du groupe ; interfaces existantes inchangées tant que D13 n'est pas tranchée | Meta CVLN (décisions et projets du groupe, lecture par contrat) | Agent Factory (après audit de son code), KORA (agrégats via son API, si contrat) |
 | Produit | Laurent uniquement | — | Trajectoire d'externalisation (opérateurs pour dirigeants) |
 
 ---
@@ -410,7 +476,7 @@ Non pilotés : nombre de conversations, tokens, nombre d'agents, nombre de fonct
 | Lot | Contenu | Preuves de fin |
 |---|---|---|
 | **0 — Assainissement** | Tests existants réexécutés ; mode opérateur ; modules B2C non montés ; retrait PostHog, script Emergent et reconnaissance vocale cloud ; renommage `cvl_brain*` ; verrous anti-LLM externe | Rapport de tests avant/après ; tests de verrous verts |
-| **1 — Runtime local + évaluation** | Model Gateway, serveur d'inférence sur ta machine, benchmark D8, streaming réel, tool calling, auth locale | Rapport de benchmark ; capture réseau sans sortie |
+| **1 — Runtime local + évaluation** | Model Gateway, inférence sur ton infrastructure, benchmark D8, streaming réel, tool calling, auth locale | Rapport de benchmark ; capture réseau sans sortie |
 | **2 — Memory + Identity** | Objets §4, Memory Contract §5, surface Memory, export JSONL, benchmark recherche | Tests §5.3 ; US-05 à US-09 |
 | **3 — Context + Reasoning + Projects + Decisions** | ContextPack, 6 modes, surfaces Projects et Decisions | US-01 à US-04, US-10 à US-12 |
 | **4 — Actions + Evidence** | Manifestes, approbations liées à l'empreinte, journal chaîné, surface Actions, bloc POURQUOI | US-13, US-14 ; test « aucune exécution sans approbation » |
@@ -424,9 +490,11 @@ Non pilotés : nombre de conversations, tokens, nombre d'agents, nombre de fonct
 | # | Décision | Statut |
 |---|---|---|
 | D1–D8 | Cf. cadrage §10 | Validées |
-| **D9** | Inférence et données sur **un serveur détenu par Laurent**, pas d'hébergeur externe | **Validée** (6 oct. 2026) |
+| **D9** | Inférence, mémoire et runtime sur **une infrastructure contrôlée par Laurent** (une ou plusieurs machines), pas d'hébergeur externe | **Validée** (6 oct. 2026, précisée le 11 oct. : local-first ≠ mono-machine) |
 | **D11** | Les modèles open-weight de **toutes origines** sont autorisés lorsqu'ils tournent localement pour enrichir le système de Laurent ; ils restent soumis au benchmark D8 | **Validée** (6 oct. 2026) |
-| **D12** | Recherche web : SearXNG sur le serveur de Laurent ; seule la requête sort, jamais la mémoire ni les documents ; **la requête est affichée et approuvée** en V1 (niveau PROPOSE), passage en automatique possible plus tard | **À valider** |
-| **D13** | `laurentia.briefing@1.0` : maintenu pour compatibilité mais **sans accès à la mémoire personnelle** ; plan de retrait côté Meta CVLN et Kiltikonet ; mise à jour de l'entrée du registre Meta CVLN et fermeture du widget Kiltikonet (changements dans ces dépôts, avec ton accord) | **À valider** |
-| **D14** | Les décisions et projets **du groupe** restent canoniques dans Meta CVLN ; Laurent.ia tient les décisions **de Laurent** et référence ceux du groupe par identifiant | **À valider** |
-| **D15** | Ce Product Contract devient la spécification V1 ; aucun code avant sa validation | **À valider** |
+| **D12** | Recherche web : SearXNG sur l'infrastructure de Laurent ; seule la requête sort, jamais la mémoire ni les documents ; approbation de chaque requête au départ (T0), puis évolution sur l'**échelle de confiance** du §7.3 bis | **Validée** (11 oct. 2026) |
+| **D13** | Interfaces existantes (I1–I8, §9.3) : **rien n'est retiré**. Cartographie faite ; décision à prendre interface par interface (maintenir, adapter, remplacer ou supprimer). Garde-fou immédiat : aucune ne doit jamais accéder à la mémoire personnelle de Laurent | **Cartographie faite — décision à prendre** |
+| **D14** | Laurent.ia possède la mémoire personnelle de Laurent ; chaque système métier garde ses données ; pas de duplication arbitraire (règles §9.4) | **Validée sur le principe** ; frontières vérifiées sauf Agent Factory (accès) |
+| **D15** | Ce Product Contract devient la spécification V1 canonique ; aucun code avant sa validation | **En attente** : audit d'Agent Factory requis |
+| **D16** | Le « Laurentia » prévu par l'architecture de KORA (assistant de ses abonnés) n'est pas Laurent.ia : renommer ce rôle, le confier à un autre système, ou en faire un produit distinct | **À trancher** |
+| **D17** | Les conversations de Laurent avec CVL Brain dans Meta CVLN restent-elles dans Meta CVLN, ou ce rôle d'assistant de Laurent revient-il à Laurent.ia ? | **À trancher** |

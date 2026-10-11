@@ -203,7 +203,7 @@ Ces quatre statuts forment le registre demandé : **ce qu'il sait / ce qu'il sup
 
 **Principe** : Laurent.ia sert Laurent ; il **instruit et commande**. Les autres systèmes servent leurs produits et exécutent. Laurent.ia n'absorbe ni leur responsabilité ni leurs données : il lit ou commande **via contrat**.
 
-**Responsabilités de CVL Brain, Agent Factory et KORA : non établies.** Ce dépôt n'en contient aucune spécification (KORA n'y apparaît nulle part ; « CVL Brain » n'y désigne qu'un wrapper LLM local et un registre de noms). Aucune intégration ne sera construite avant que leurs contrats réels aient été établis à partir de leur code ou de leur documentation.
+**Mise à jour du 11 octobre 2026** : les responsabilités réelles de KORA (`kora2024/Kora-app`), CVL Brain, Meta CVLN et Kiltikonet ont été établies à partir de leur code dans l'[audit des frontières](../audit/ECOSYSTEM_BOUNDARIES_AUDIT.md), et reportées dans le [Product Contract §9](./LAURENTIA_V1_PRODUCT_CONTRACT.md). Agent Factory (`frekcore/CVLNAgentfactory`) reste à auditer : dépôt inaccessible depuis la session. Aucune intégration ne sera construite avant que les contrats réels aient été établis.
 
 Ce qui existe déjà, de façon vérifiable : le contrat `laurentia.briefing@1.0` (consommé par « Meta CVLN » selon `routes/brain.py:56`) et des bridges sortants vers Kiltikonet, LabelOS et Frekcore (`services/*_bridge.py`), dont les contrats sont implicites et seront formalisés.
 
@@ -294,6 +294,6 @@ Aucun lot n'est « terminé » sans les preuves listées. Chaque preuve est vers
 | **D6** | Transparence totale envers Laurent ; confidentialité stricte envers les tiers ; pas de persona | **Validée** |
 | **D7** | Aucune responsabilité de KORA, Agent Factory ou CVL Brain n'est supposée ; contrats établis avant intégration | **Validée** |
 | **D8** | Sovereign Local Intelligence (§2, §8, fichier dédié) | **Validée** |
-| **D9** | Infrastructure d'inférence et données : **un serveur détenu par Laurent**, pas d'hébergeur externe | **Validée** (6 oct. 2026) |
+| **D9** | Infrastructure d'inférence et données : **une infrastructure contrôlée par Laurent** (une ou plusieurs machines), pas d'hébergeur externe | **Validée** (6 oct. 2026, précisée le 11 oct.) |
 | **D10** | Licence du dépôt : la BSL 1.1 actuelle (`LICENSE.md`) décrit des offres commerciales B2C | **À revoir**, non bloquant |
 | **D11–D15** | Modèles open-weight toutes origines, recherche web, contrat briefing, registres du groupe, validation du contrat | Voir [Product Contract §14](./LAURENTIA_V1_PRODUCT_CONTRACT.md) |
