@@ -1,0 +1,2 @@
+# Test-only dependencies, installed on top of requirements.txt (not in production images).
+pytest-asyncio==0.23.8

@@ -11,7 +11,8 @@ import pytest
 import requests
 from pymongo import MongoClient
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://emergent-ai-238.preview.emergentagent.com").rstrip("/")
+# Local API by default: a test run must never send data to a third-party host (S1.1).
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "laurentia")
 SALT = os.environ.get("LAURENTIA_SECRET_SALT", "laurentia-mvp-salt-change-in-prod-7d3a9c")
