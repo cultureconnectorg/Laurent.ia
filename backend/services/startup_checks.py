@@ -9,6 +9,7 @@ missing APP_ENV, is treated as a deployed environment (fail closed).
 
 Checks for a deployed environment:
   - no key for an external LLM provider (LIA-D8: sovereign inference only);
+  - a sovereign inference engine is configured (BRAIN_ENGINE_URL);
   - every configured model endpoint points to an allowed host
     (LAURENTIA_ALLOWED_MODEL_HOSTS, comma-separated);
   - CORS origins are an explicit list (no "*");
@@ -59,6 +60,9 @@ def find_problems(env: Mapping[str, str]) -> list[str]:
     for name in EXTERNAL_LLM_KEYS:
         if env.get(name, "").strip():
             problems.append(f"{name} is set: external LLM providers are forbidden (LIA-D8)")
+
+    if not env.get("BRAIN_ENGINE_URL", "").strip():
+        problems.append("BRAIN_ENGINE_URL is required: the sovereign inference engine is not configured")
 
     allowed = {h.strip().lower() for h in env.get("LAURENTIA_ALLOWED_MODEL_HOSTS", "").split(",") if h.strip()}
     for name in MODEL_ENDPOINT_VARS:

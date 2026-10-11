@@ -13,7 +13,6 @@ import pytest
 from services import startup_checks as sc
 
 BACKEND = pathlib.Path(__file__).resolve().parents[1]
-STUB = BACKEND / "tests" / "_harness" / "stub"
 
 SAFE_PRODUCTION = {
     "APP_ENV": "production",
@@ -80,8 +79,7 @@ def test_staging_is_checked_like_production():
 def _start_server(env_overrides):
     """Import the real application in a fresh process with a clean environment."""
     env = {k: v for k, v in os.environ.items() if not k.startswith(("LAURENTIA_", "EMERGENT_", "CORS_", "APP_ENV", "SD_API", "BRAIN_ENGINE", "CVLN_"))}
-    env.update({"MONGO_URL": "mongodb://127.0.0.1:27017", "DB_NAME": "startup_checks",
-                "PYTHONPATH": str(STUB)})
+    env.update({"MONGO_URL": "mongodb://127.0.0.1:27017", "DB_NAME": "startup_checks"})
     env.update(env_overrides)
     return subprocess.run([sys.executable, "-c", "import server"], cwd=BACKEND, env=env,
                           capture_output=True, text=True, timeout=120)

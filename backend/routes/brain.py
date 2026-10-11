@@ -34,7 +34,7 @@ class BriefingRequest(BaseModel):
 
 @router.get("/health")
 async def brain_health():
-    return {"ok": True, "service": "cvl-brain", "model": "claude-sonnet-4-5-20250929"}
+    return {"ok": True, "service": "cvl-brain", **cvl_brain.engine_status()}
 
 
 @router.get("/agents")

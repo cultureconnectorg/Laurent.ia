@@ -14,10 +14,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout,
-    CheckoutSessionRequest,
-)
+# B2C module, frozen (LIA-D2). The Emergent Stripe wrapper is imported lazily so the
+# application starts without emergentintegrations (not installable outside Emergent).
 
 from routes.auth import get_current_user
 
@@ -89,7 +87,8 @@ class CheckoutRequest(BaseModel):
     package_id: str = "creator_monthly"
 
 
-def _checkout_client(host_url: str) -> StripeCheckout:
+def _checkout_client(host_url: str) -> "StripeCheckout":
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
     # En LIVE, STRIPE_WEBHOOK_SECRET déclenche la vérification stripe.Webhook.construct_event
     # avec signature stricte. En absence, on accepte un parsing JSON brut (dev only).
     return StripeCheckout(
@@ -115,6 +114,7 @@ async def create_checkout(payload: CheckoutRequest, request: Request):
     cancel_url = f"{origin}/?upgrade=cancel"
 
     stripe = _checkout_client(str(request.base_url))
+    from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest
     req = CheckoutSessionRequest(
         amount=pkg["amount"],
         currency=pkg["currency"],

@@ -23,6 +23,8 @@ from services.startup_checks import enforce as _enforce_startup_checks  # noqa: 
 
 _enforce_startup_checks()
 
+from services.cvl_brain import engine_status as _engine_status  # noqa: E402
+
 # MongoDB
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -56,7 +58,7 @@ async def health():
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
+        **_engine_status(),
     }
 
 
@@ -181,7 +183,7 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
+    logger.info("Laurent.ia startup complete — engine=%s", _engine_status())
 
 
 @app.on_event("shutdown")

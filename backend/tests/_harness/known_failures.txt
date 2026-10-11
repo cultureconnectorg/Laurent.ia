@@ -1,13 +1,4 @@
-# Failures accepted as the current baseline (S0, b898e19), each with its cause.
-# This list does NOT skip anything: every test still runs and still fails in
-# the "suite" CI job. It is only used by the separate "no-regression" check.
-# B1 — need an inference engine; the sovereign engine arrives in S2.
-tests.test_laurentia_backend.TestPersistencePrivacy::test_query_persists_and_anonymizes
-tests.test_laurentia_backend.TestQuerySSE::test_sse_query_sayd
-tests.test_phase1_integration_http::test_get_session_decrypts_blobs
-tests.test_phase1_integration_http::test_memory_sessions_are_encrypted_at_rest
-tests.test_phase1_integration_http::test_query_multipart_docx
-tests.test_phase1_integration_http::test_query_multipart_pdf
-tests.test_phase1_security_uploads::test_query_json_path_still_works
-tests.test_phase1_security_uploads::test_query_multipart_creator_ok_and_encrypted_at_rest
-tests.test_phase4_echo_rgpd::test_echo_generate_with_raw_text_and_public_get
+# Failures accepted as the current baseline, each with its cause.
+# This list does NOT skip anything: every test always runs. It is only used by
+# the separate "no-regression" CI check.
+# S2: empty — the 9 B1 tests pass with the sovereign engine path.

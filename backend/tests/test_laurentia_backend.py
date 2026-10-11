@@ -43,14 +43,20 @@ class TestHealth:
         assert r.status_code == 200
         data = r.json()
         assert data["ok"] is True
-        assert data["model"] == "claude-sonnet-4-5-20250929"
+        # S2: health reports the engine that really answers; never an external model (LIA-D8).
+        assert data["engine"] == "sovereign"
+        assert data["model"] == os.environ.get("BRAIN_ENGINE_MODEL", "local")
+        assert "claude" not in str(data["model"]).lower()
 
     def test_brain_health(self, api):
         r = api.get(f"{BASE_URL}/api/brain/health", timeout=15)
         assert r.status_code == 200
         data = r.json()
         assert data["ok"] is True
-        assert data["model"] == "claude-sonnet-4-5-20250929"
+        # S2: health reports the engine that really answers; never an external model (LIA-D8).
+        assert data["engine"] == "sovereign"
+        assert data["model"] == os.environ.get("BRAIN_ENGINE_MODEL", "local")
+        assert "claude" not in str(data["model"]).lower()
 
 
 # -------------------- Instances --------------------
