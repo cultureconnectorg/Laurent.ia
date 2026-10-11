@@ -27,6 +27,16 @@ Le test PDF n° 10 (B2) passe désormais. **L'hypothèse B2 est confirmée** : l
 | **S1.6** Routes sans authentification | `e03f753` | 4 tests sur 6 échouent sur la base (`raw/s16-red-base.txt`) : un appel anonyme atteint le moteur | Un appel anonyme ou avec un jeton inconnu reçoit **401 avant tout appel au moteur**, vérifié par un espion sur le moteur ; un appel authentifié (vraie session MongoDB) passe. **Rien n'est retiré** |
 | **S1.2** CI | `5955ba7` | Pas de CI | `.github/workflows/backend-tests.yml` : MongoDB réelle, garde réseau, suite complète. Le job reste **rouge tant que B1 échoue** ; deux contrôles distincts vérifient l'absence de régression et l'absence de sortie réseau |
 
+## 2 bis. Défaut révélé par le premier passage de la CI (corrigé)
+
+- **[F]** Le premier passage sur GitHub (run n° 1, `601e24c`) a échoué **à l'installation** : `pytest-asyncio==0.23.8` exige `pytest<9`, alors que `requirements.txt` épingle `pytest==9.0.3`.
+- **[F]** En local, pip avait **silencieusement rétrogradé pytest en 8.4.2** au moment d'ajouter le plugin. Les exécutions du protocole S0 et les premières exécutions S1 ont donc tourné sous pytest 8.4.2. L'exécution A stricte, elle, a tourné sous 9.0.3.
+- **Correction** : `pytest-asyncio==1.3.0`, compatible avec `pytest<10`.
+- **Vérification** dans un environnement neuf, identique à celui de la CI (pytest 9.0.3) :
+  - S1 rejoué deux fois : 160 réussis, 9 échoués, 0 régression, 0 sortie réseau ;
+  - **base S0 rejouée** : 121 réussis, 10 échoués, **même empreinte** de la liste d'échecs (`c6d2466b…`).
+- **La base S0 est donc indépendante de cette différence de version.**
+
 ## 3. Modifications de tests existants (justifiées ligne par ligne)
 
 | Fichier | Changement | Justification |
