@@ -8,7 +8,9 @@ from _harness import network_guard
 
 
 @pytest.fixture
-def isolated_attempts():
+def isolated_attempts(monkeypatch):
+    # Deliberate attempts must not land in the run's egress log either.
+    monkeypatch.delenv("LAURENTIA_EGRESS_LOG", raising=False)
     before = len(network_guard.ATTEMPTS)
     yield
     # Attempts made on purpose here must not fail this test through the autouse check.
