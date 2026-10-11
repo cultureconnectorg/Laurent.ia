@@ -1,0 +1,30 @@
+# Red before C1 fix 2 — code at e8b4778; only the new tests and the fake FREKCORE knobs added
+______________ test_concurrent_begins_reserve_the_enrollment_once ______________
+E   AssertionError: [200, 200, 200, 200, 200, 200]
+E   assert 6 == 1
+E    +  where 6 = <built-in method count of list object at 0x7fb529cff880>(200)
+E    +    where <built-in method count of list object at 0x7fb529cff880> = [200, 200, 200, 200, 200, 200].count
+_______________ test_complete_needs_the_lock_of_its_own_ceremony _______________
+E   AssertionError: assert (200 == 200 and None)
+E    +  where 200 = <Response [200 OK]>.status_code
+E    +  and   None = <built-in method get of dict object at 0x7fb529cfe480>('enrollment_lock')
+E    +    where <built-in method get of dict object at 0x7fb529cfe480> = {'challenge': 'Y2hhbGxlbmdl', 'rp': {'id': 'localhost'}, 'user': {'id': 'dQ', 'name': 'x'}}.get
+E    +      where {'challenge': 'Y2hhbGxlbmdl', 'rp': {'id': 'localhost'}, 'user': {'id': 'dQ', 'name': 'x'}} = json()
+E    +        where json = <Response [200 OK]>.json
+________________ test_concurrent_completes_reach_frekcore_once _________________
+E   KeyError: 'enrollment_lock'
+_______________ test_double_submission_after_success_is_refused ________________
+E   KeyError: 'enrollment_lock'
+_____________ test_interrupted_ceremony_blocks_others_then_expires _____________
+E   KeyError: 'enrollment_lock'
+________________ test_frekcore_refusal_releases_the_reservation ________________
+E   KeyError: 'enrollment_lock'
+________ test_unknown_outcome_keeps_enrollment_locked_even_after_expiry ________
+E   KeyError: 'enrollment_lock'
+___________ test_sign_in_with_a_passkey_closes_an_unknown_enrollment ___________
+E   KeyError: 'enrollment_lock'
+____________________ test_the_lock_is_never_stored_in_clear ____________________
+E   KeyError: 'enrollment_lock'
+9 failed, 1 passed in 7.49s
+# Throwaway probe on the same code (not committed): 6 concurrent register/complete, no lock
+PROBE codes [200, 200, 200, 200, 200, 200] FREKCORE register/complete calls: 6

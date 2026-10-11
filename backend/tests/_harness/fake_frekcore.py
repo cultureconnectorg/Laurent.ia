@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -15,6 +16,10 @@ class FakeFrekcore:
     def __init__(self):
         self.calls: list[str] = []
         calls = self.calls
+        # Test knobs: delay (seconds) or forced status code per path suffix.
+        self.delay: dict[str, float] = {}
+        self.fail: dict[str, int] = {}
+        fake = self
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *a):
@@ -38,12 +43,22 @@ class FakeFrekcore:
             def do_POST(self):
                 self.rfile.read(int(self.headers.get("Content-Length", 0)))
                 calls.append(f"POST {self.path}")
+                for suffix, seconds in fake.delay.items():
+                    if self.path.endswith(suffix):
+                        time.sleep(seconds)
+                for suffix, code in fake.fail.items():
+                    if self.path.endswith(suffix):
+                        return self._send({"detail": f"forced {code}"}, code)
                 if self.path == "/api/v1/auth/token":
                     self._send({"access_token": "fake-token", "expires_in": 3600})
                 elif self.path.endswith("/register/begin"):
                     self._send({"challenge": "Y2hhbGxlbmdl", "rp": {"id": "localhost"}, "user": {"id": "dQ", "name": "x"}})
                 elif self.path.endswith("/register/complete"):
                     self._send({"ok": True, "holder_verified": True})
+                elif self.path.endswith("/authenticate/begin"):
+                    self._send({"challenge": "Y2hhbGxlbmdl", "rpId": "localhost", "allowCredentials": []})
+                elif self.path.endswith("/authenticate/complete"):
+                    self._send({"ok": True})
                 else:
                     self._send({"detail": "not found"}, 404)
 

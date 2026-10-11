@@ -13,6 +13,7 @@ services:
       LAURENTIA_ALLOWED_MODEL_HOSTS: test-engine
       BRAIN_ENGINE_MODEL: fake-deterministic
       LAURENTIA_IDENTITY_STATUS_TTL: "2"   # revocation check without waiting a minute
+      LAURENTIA_ENROLLMENT_LOCK_TTL: "3"   # abandoned-ceremony expiry without waiting 5 minutes
   proxy:
     # Plain-HTTP localhost for the browser checks: localhost is a secure context for
     # WebAuthn, while a throwaway browser does not trust the local CA.

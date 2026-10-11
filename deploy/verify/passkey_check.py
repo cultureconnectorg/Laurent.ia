@@ -76,6 +76,17 @@ with sync_playwright() as p:
     step("first passkey refused with a wrong code", "code d'inscription" in err.inner_text().lower(), err.inner_text())
     page.keyboard.press("Escape")
 
+    # 0b. double submission: two ceremonies started at the same time, one reservation
+    both = page.evaluate(
+        """async ([f, c]) => Promise.all([0, 1].map(() => fetch('/api/auth/passkey/register/begin', {
+             method: 'POST', headers: {'Content-Type': 'application/json'},
+             body: JSON.stringify({frek_id: f, enrollment_token: c})}).then(r => r.status)))""",
+        [FREK_ID, CODE])
+    step("double submission: one ceremony reserves, the other is refused",
+         sorted(both) == [200, 409], str(both))
+    # Both ceremonies are abandoned here (no WebAuthn): the reservation must expire.
+    page.wait_for_timeout(4000)
+
     # 1. intruder
     use_menu(page, "FREK-INTRUDER-0000", "menu-passkey-register", code=CODE)
     err = page.get_by_test_id("menu-frek-error")

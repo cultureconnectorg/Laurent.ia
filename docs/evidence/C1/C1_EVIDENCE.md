@@ -69,3 +69,32 @@
 | `test_c1_enrollment.py` (6 tests, avec une doublure locale de FREKCORE) | **5 échecs, 1 réussite** : inscription acceptée sans code (200 au lieu de 403) — `raw/enrollment-unit-red-before-fix.txt` | **6 réussites** — `raw/enrollment-unit-green-after-fix.txt` |
 | `verify/passkey_check.py` avec le **vrai FREKCORE** et un vrai navigateur | **Échec** : passkey inscrite **sans code** (200) — `raw/enrollment-e2e-red-before-fix.txt` | **14 étapes sur 14** : refus sans code (403) et avec un mauvais code ; inscription avec le bon code ; **fermeture après liaison, même avec le bon code (403)** ; révocation et désactivation toujours OK ; aucune requête hors de la pile — `raw/enrollment-e2e-green-after-fix.txt` |
 | Suite complète | — | **218 réussis, 3 sautés (vraie inférence), 0 régression, 0 sortie réseau** |
+
+## Correctif 2 issu de la revue : concurrence de l'inscription
+
+**Faille** (signalée par Laurent) : le contrôle lisait l'état `completed` en base, puis appelait FREKCORE, puis enregistrait la fermeture **après** la réponse. Ces trois opérations n'étaient pas atomiques : deux cérémonies simultanées (double soumission, ou un code intercepté utilisé en même temps) passaient toutes deux le contrôle.
+
+**Mesuré sur le code d'avant** (`e8b4778`, `raw/race-red-before-fix2.txt`) :
+- 6 `register/begin` simultanés : **6 acceptés** (attendu : 1) ;
+- 6 `register/complete` simultanés : **6 transmis à FREKCORE**. Cette sonde jetable n'est pas versionnée ; sa sortie figure dans le même fichier.
+
+**Correctif** (`routes/passkey_auth.py`, sans modifier FREKCORE) : une réservation exclusive du parcours, prise par une seule opération atomique de la base. L'unicité de `_id` fait échouer toute réservation concurrente. `begin` renvoie un **verrou de cérémonie** ; seul ce verrou peut appeler `complete`, une seule fois, et cette prise est atomique elle aussi. Seule l'empreinte SHA-256 du verrou est stockée.
+
+| État | Sens | Sortie |
+|---|---|---|
+| `reserved` | une cérémonie détient l'inscription | expire après `LAURENTIA_ENROLLMENT_LOCK_TTL` (300 s par défaut) en cas d'abandon |
+| `completing` | FREKCORE est en train d'enregistrer la clé | n'expire jamais (blocage par défaut) |
+| `uncertain` | réponse de FREKCORE perdue (5xx, délai dépassé, coupure) : la clé est peut-être enregistrée | reste **fermée** ; une connexion réussie par passkey prouve l'inscription et la clôt |
+| `completed` | fermée définitivement | — |
+
+Un refus de FREKCORE (4xx) libère la réservation. Un échec au `begin` la libère aussi, car un défi seul n'enregistre rien chez FREKCORE.
+
+| Preuve | Avant | Après |
+|---|---|---|
+| `test_c1_enrollment_race.py` (10 tests : `begin` simultanés, `complete` simultanés, double soumission après succès, cérémonie interrompue puis expirée, verrou périmé refusé, refus FREKCORE, échec au `begin`, issue inconnue restant fermée même après expiration, clôture par connexion, verrou jamais stocké en clair) | **9 échecs** | **10 réussites**, 3 répétitions identiques — `raw/race-green-after-fix2.txt` |
+| `verify/passkey_check.py` avec le **vrai FREKCORE**, Chromium et une durée de verrou de 3 s | — | **15 étapes sur 15**. Double soumission : `[409, 200]`. Les deux cérémonies abandonnées expirent, puis l'inscription par l'interface réussit, ce qui prouve que le frontal transmet bien le verrou. Le reste des étapes est inchangé — `raw/passkey_e2e_fix2.txt` |
+| Suite complète (`run_suite.sh`) | 218 réussis | **228 réussis, 3 sautés (vraie inférence), 0 régression, 0 sortie réseau** — `raw/fix2-suite/` |
+
+**Tests existants modifiés** : dans `test_c1_enrollment.py`, deux tests transmettent désormais le verrou obtenu au `begin` à `complete`, comme le fait le nouveau contrat. Leurs assertions sont inchangées.
+
+**Limite restante.** L'état `uncertain` sans passkey réellement enregistrée bloque l'inscription. Dans ce cas, il faut une action explicite de l'opérateur : supprimer le document `principal_enrollment` (seulement s'il n'est pas `completed`), puis relancer `frekcore-setup.sh` pour obtenir un nouveau code. C'est un choix délibéré : fermer par défaut plutôt que risquer une seconde inscription.

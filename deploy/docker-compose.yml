@@ -116,6 +116,8 @@ services:
       LAURENTIA_PRINCIPAL_FREK_ID: ${LAURENTIA_PRINCIPAL_FREK_ID:-}
       # SHA-256 of the one-time code for the first passkey (empty = registration closed).
       LAURENTIA_ENROLLMENT_TOKEN_SHA256: ${LAURENTIA_ENROLLMENT_TOKEN_SHA256:-}
+      # Seconds a started passkey ceremony holds the enrollment before it expires.
+      LAURENTIA_ENROLLMENT_LOCK_TTL: ${LAURENTIA_ENROLLMENT_LOCK_TTL:-300}
       # B2C and outbound jobs off (LIA-D2; no silent copy of the corpus, R1).
       CHANTIER7_SCHEDULERS_DISABLED: "1"
       CHANTIER10_REPORTS_DISABLED: "1"

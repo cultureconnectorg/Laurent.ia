@@ -37,10 +37,12 @@ def _begin(client, token=None):
     return client.post("/api/auth/passkey/register/begin", json=body)
 
 
-def _complete(client, token=None):
+def _complete(client, token=None, lock=None):
     body = {"frek_id": PRINCIPAL, "credential": {"id": "x"}}
     if token is not None:
         body["enrollment_token"] = token
+    if lock is not None:
+        body["enrollment_lock"] = lock  # the reservation of this ceremony (C1 fix 2)
     return client.post("/api/auth/passkey/register/complete", json=body)
 
 
@@ -63,8 +65,9 @@ def test_registration_is_closed_when_no_enrollment_token_is_configured(app_clien
 
 
 def test_valid_token_enrolls_once_then_registration_closes(app_client, frek):
-    assert _begin(app_client, TOKEN).status_code == 200
-    assert _complete(app_client, TOKEN).status_code == 200
+    r = _begin(app_client, TOKEN)
+    assert r.status_code == 200
+    assert _complete(app_client, TOKEN, r.json()["enrollment_lock"]).status_code == 200
     # The same token, a second time: closed. FREKCORE is not even asked.
     before = frek.count("/register/begin")
     assert _begin(app_client, TOKEN).status_code == 403
@@ -73,8 +76,8 @@ def test_valid_token_enrolls_once_then_registration_closes(app_client, frek):
 
 
 def test_closure_is_stored_in_the_database_not_in_memory(app_client, frek):
-    _begin(app_client, TOKEN)
-    _complete(app_client, TOKEN)
+    lock = _begin(app_client, TOKEN).json()["enrollment_lock"]
+    _complete(app_client, TOKEN, lock)
     db = MongoClient(os.environ["MONGO_URL"])[os.environ["DB_NAME"]]
     doc = db.laurentia_settings.find_one({"_id": "principal_enrollment"})
     assert doc and doc.get("completed") is True and doc.get("frek_id") == PRINCIPAL
