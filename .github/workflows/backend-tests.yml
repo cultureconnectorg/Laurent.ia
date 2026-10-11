@@ -1,0 +1,53 @@
+# Backend test protocol (S0/S1): real MongoDB, local API under a network guard,
+# full suite. No deployment, no secret, no external model.
+name: backend-tests
+
+on:
+  push:
+    branches: ["claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:7.0
+        ports: ["27017:27017"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: System libraries for WeasyPrint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0
+      - name: Install dependencies
+        working-directory: backend
+        # emergentintegrations is not on PyPI and litellm is hosted by Emergent:
+        # the API starts with the fail-loud stub in tests/_harness/stub instead.
+        run: |
+          grep -vE '^(emergentintegrations|litellm)' requirements.txt > /tmp/req.txt
+          pip install -r /tmp/req.txt -r requirements-test.txt
+      - name: Run the suite (red until the sovereign engine lands in S2)
+        id: suite
+        continue-on-error: true
+        run: backend/tests/_harness/run_suite.sh out
+      - name: No regression against the documented baseline
+        run: python backend/tests/_harness/compare_baseline.py out/junit.xml backend/tests/_harness/known_failures.txt
+      - name: No network egress during the run
+        run: test ! -s out/egress.jsonl || (cat out/egress.jsonl; exit 1)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: out/
+      - name: Report the honest suite result
+        if: steps.suite.outcome != 'success'
+        run: |
+          echo "::warning::The full suite is not green: see out/pytest.log (expected B1 failures until S2)"
+          exit 1
