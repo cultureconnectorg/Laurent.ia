@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from routes.auth import require_user
 from services import cvl_brain, cvl_brain_knowledge
 
 
@@ -23,7 +24,8 @@ class OmegaRequest(BaseModel):
 
 
 @router.post("/chat-enriched")
-async def chat_enriched_stream(payload: OmegaRequest, request: Request):
+async def chat_enriched_stream(payload: OmegaRequest, request: Request, _user: dict = Depends(require_user)):
+    """Legacy streaming alias — internal interface only (S1.6: authenticated user required)."""
     system = cvl_brain_knowledge.build_system_prompt()
     started = time.perf_counter()
 
