@@ -169,6 +169,7 @@ def _resolve_tier(instance: dict) -> str:
 
 @router.post("/instances/init")
 async def init_instance(payload: InstanceInitRequest, request: Request):
+    payload.frek_id = payload.frek_id.strip().upper()
     await _authorize_tenant(request, payload.frek_id)
     db = _get_db(request)
     validation = await kiltikonet_bridge.validate_frek_id(payload.frek_id)
@@ -182,6 +183,7 @@ async def init_instance(payload: InstanceInitRequest, request: Request):
 
 @router.get("/instances/{frek_id}")
 async def get_instance(frek_id: str, request: Request):
+    frek_id = frek_id.strip().upper()
     await _authorize_tenant(request, frek_id)
     db = _get_db(request)
     inst = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
@@ -252,6 +254,7 @@ async def resolve_by_device(request: Request):
 
 @router.get("/memory/{frek_id}")
 async def get_memory(frek_id: str, request: Request):
+    frek_id = frek_id.strip().upper()
     await _authorize_tenant(request, frek_id)
     db = _get_db(request)
     mem = await db.laurentia_memory.find_one({"frek_id": frek_id}, {"_id": 0})
@@ -605,6 +608,7 @@ async def query(request: Request):
             payload = QueryRequest(**payload_dict)
         except Exception as e:
             raise HTTPException(422, f"Payload JSON invalide : {e}")
+        payload.frek_id = payload.frek_id.strip().upper()
         await _authorize_tenant(request, payload.frek_id)
 
         # Récupère tous les UploadFile (clés "files" ou "files[]")
@@ -657,6 +661,7 @@ async def query(request: Request):
         payload = QueryRequest(**body)
     except Exception as e:
         raise HTTPException(422, f"Body JSON invalide : {e}")
+    payload.frek_id = payload.frek_id.strip().upper()
     await _authorize_tenant(request, payload.frek_id)
     return await _run_query(
         db=db,
