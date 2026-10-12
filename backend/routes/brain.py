@@ -33,7 +33,12 @@ class BriefingRequest(BaseModel):
 
 @router.get("/health")
 async def brain_health():
-    return {"ok": True, "service": "cvl-brain", "model": "claude-sonnet-4-5-20250929"}
+    return {
+        "ok": True,
+        "service": "cvl-brain",
+        "model": os.environ.get("LAURENTIA_LLM_MODEL", "local-model"),
+        "inference_configured": bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()),
+    }
 
 
 @router.get("/agents")
