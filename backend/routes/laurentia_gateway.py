@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from datetime import datetime, timezone
 
@@ -22,6 +23,7 @@ from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services import cvl_brain, cvl_brain_knowledge, kiltikonet_bridge, labelos_bridge
+from routes.auth import get_current_user
 from services.cvl_brain_agents import log_call, log_write
 from services.crypto import encrypt_text
 from services.file_parser import (
@@ -45,6 +47,39 @@ logger = logging.getLogger(__name__)
 
 # Tiers autorisés à uploader des pièces jointes
 UPLOAD_ALLOWED_TIERS = {"creator", "infinite"}
+
+
+def _is_explicit_development() -> bool:
+    markers = (
+        os.environ.get("LAURENTIA_ENV", ""),
+        os.environ.get("APP_ENV", ""),
+        os.environ.get("ENVIRONMENT", ""),
+        os.environ.get("NODE_ENV", ""),
+        os.environ.get("VERCEL_ENV", ""),
+        os.environ.get("RAILWAY_ENVIRONMENT", ""),
+    )
+    values = {value.strip().lower() for value in markers if value.strip()}
+    return bool(values & {"dev", "development", "local", "test", "testing"}) and not bool(
+        values & {"prod", "production"}
+    )
+
+
+async def _authorize_tenant(request: Request, frek_id: str | None = None) -> dict | None:
+    """Bind user-scoped endpoints to a verified session; anonymous use is dev-only.
+
+    No device fingerprint or caller-supplied FREK-ID is treated as an authenticator.
+    """
+    user = await get_current_user(request)
+    if user:
+        authenticated_frek_id = str(user.get("frek_id") or "").strip().upper()
+        if not authenticated_frek_id:
+            raise HTTPException(403, "Session sans FREK-ID associé")
+        if frek_id and authenticated_frek_id != frek_id.strip().upper():
+            raise HTTPException(403, "Accès refusé : FREK-ID différent de la session authentifiée")
+        return user
+    if _is_explicit_development():
+        return None
+    raise HTTPException(401, "Authentification requise pour accéder aux données Laurentia")
 
 
 # -------------------- Schémas --------------------
@@ -134,6 +169,7 @@ def _resolve_tier(instance: dict) -> str:
 
 @router.post("/instances/init")
 async def init_instance(payload: InstanceInitRequest, request: Request):
+    await _authorize_tenant(request, payload.frek_id)
     db = _get_db(request)
     validation = await kiltikonet_bridge.validate_frek_id(payload.frek_id)
     if not validation.get("valid"):
@@ -146,6 +182,7 @@ async def init_instance(payload: InstanceInitRequest, request: Request):
 
 @router.get("/instances/{frek_id}")
 async def get_instance(frek_id: str, request: Request):
+    await _authorize_tenant(request, frek_id)
     db = _get_db(request)
     inst = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
     if not inst:
@@ -174,14 +211,18 @@ async def resolve_by_device(request: Request):
         "session_count": <int>,
         "last_session_id": "<id>" | null }
     """
+    user = await _authorize_tenant(request)
     db = _get_db(request)
     device_fp = request.headers.get("x-device-fingerprint") or request.headers.get("X-Device-Fingerprint")
     device_id = device_id_from_fingerprint(device_fp)
     if not device_id:
         return {"device_id": None, "frek_id": None, "instance": None, "session_count": 0, "last_session_id": None}
 
+    lookup = {"device_ids": device_id}
+    if user:
+        lookup["frek_id"] = str(user["frek_id"]).strip().upper()
     inst = await db.laurentia_instances.find_one(
-        {"device_ids": device_id},
+        lookup,
         {"_id": 0},
         sort=[("last_active", -1)],
     )
@@ -211,6 +252,7 @@ async def resolve_by_device(request: Request):
 
 @router.get("/memory/{frek_id}")
 async def get_memory(frek_id: str, request: Request):
+    await _authorize_tenant(request, frek_id)
     db = _get_db(request)
     mem = await db.laurentia_memory.find_one({"frek_id": frek_id}, {"_id": 0})
     if not mem:
@@ -550,6 +592,7 @@ async def query(request: Request):
             payload = QueryRequest(**payload_dict)
         except Exception as e:
             raise HTTPException(422, f"Payload JSON invalide : {e}")
+        await _authorize_tenant(request, payload.frek_id)
 
         # Récupère tous les UploadFile (clés "files" ou "files[]")
         # Duck-typing pour résister aux divergences d'imports après hot reload.
@@ -601,6 +644,7 @@ async def query(request: Request):
         payload = QueryRequest(**body)
     except Exception as e:
         raise HTTPException(422, f"Body JSON invalide : {e}")
+    await _authorize_tenant(request, payload.frek_id)
     return await _run_query(
         db=db,
         frek_id=payload.frek_id,
