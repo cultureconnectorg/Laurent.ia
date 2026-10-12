@@ -67,6 +67,18 @@ def _is_production_runtime() -> bool:
     return any(value.strip().lower() in {"prod", "production"} for value in markers)
 
 
+def _is_development_runtime() -> bool:
+    markers = (
+        os.environ.get("LAURENTIA_ENV", ""),
+        os.environ.get("APP_ENV", ""),
+        os.environ.get("ENVIRONMENT", ""),
+        os.environ.get("NODE_ENV", ""),
+        os.environ.get("VERCEL_ENV", ""),
+        os.environ.get("RAILWAY_ENVIRONMENT", ""),
+    )
+    return any(value.strip().lower() in {"dev", "development", "local", "test", "testing"} for value in markers)
+
+
 def _bridge_configured() -> bool:
     return bool(KILTIKONET_API_URL and KILTIKONET_API_KEY)
 
@@ -83,15 +95,15 @@ async def validate_frek_id(frek_id: str) -> dict:
       - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
     """
     if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
-        if _is_production_runtime():
-            return {"valid": False, "frek_id": frek_id, "error": "demo identities disabled in production"}
+        if not _is_development_runtime() or _is_production_runtime():
+            return {"valid": False, "frek_id": frek_id, "error": "demo identities disabled outside explicit development"}
         p = _MOCK_PROFILES[frek_id]
         return {"valid": True, "frek_id": frek_id, "role": p["role"]}
 
     if not _bridge_configured():
-        if _is_production_runtime():
+        if not _is_development_runtime() or _is_production_runtime():
             return {"valid": False, "frek_id": frek_id, "error": "Kiltikonet identity authority not configured"}
-        # Mode développement uniquement — accepte tout FREK-ID avec rôle guest.
+        # Mode développement explicite uniquement — accepte tout FREK-ID avec rôle guest.
         return {"valid": True, "frek_id": frek_id, "role": "guest"}
 
     try:
@@ -127,12 +139,12 @@ async def get_frek_profile(frek_id: str) -> dict:
       - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
     """
     if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
-        if _is_production_runtime():
-            raise KiltikonetUnavailable("Demo profile access is disabled in production")
+        if not _is_development_runtime() or _is_production_runtime():
+            raise KiltikonetUnavailable("Demo profile access is disabled outside explicit development")
         return _MOCK_PROFILES[frek_id]
 
     if not _bridge_configured():
-        if _is_production_runtime():
+        if not _is_development_runtime() or _is_production_runtime():
             raise KiltikonetUnavailable("Kiltikonet identity authority is not configured")
         return _default_profile(frek_id)
 
