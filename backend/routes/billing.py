@@ -14,10 +14,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout,
-    CheckoutSessionRequest,
-)
+from services.stripe_checkout import StripeCheckout, CheckoutSessionRequest
 
 from routes.auth import get_current_user
 
