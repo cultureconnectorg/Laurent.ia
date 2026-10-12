@@ -200,7 +200,12 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
+    logger.info(
+        "Laurent.ia startup complete — llm_provider=%s llm_configured=%s model=%s",
+        "self-hosted" if os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() else "unconfigured",
+        bool(os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()),
+        os.environ.get("LAURENTIA_LOCAL_LLM_MODEL") or "unconfigured",
+    )
 
 
 @app.on_event("shutdown")
