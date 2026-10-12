@@ -133,24 +133,11 @@ async def kiltikonet_unavailable_handler(_request, exc):
     )
 
 
-# CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
-_cors_env = os.environ.get('CORS_ORIGINS', '*').strip()
-if _cors_env == '*':
-    app.add_middleware(
-        CORSMiddleware,
-        allow_credentials=True,
-        allow_origin_regex=".*",
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_credentials=True,
-        allow_origins=_cors_env.split(','),
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS — credentials (cookies httpOnly) uniquement pour des origines explicites
+# (CORS_ORIGINS=https://a,https://b). Absent ou '*' → toute origine SANS credentials.
+from services.security import cors_middleware_kwargs  # noqa: E402
+
+app.add_middleware(CORSMiddleware, **cors_middleware_kwargs(os.environ.get('CORS_ORIGINS')))
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -158,6 +145,9 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def on_startup():
+    # Fail closed : refuse de démarrer sans clé de chiffrement de la mémoire.
+    from services.crypto import ensure_key
+    ensure_key()
     from services.cvl_brain_agents import ensure_registry
     from services.rate_limit_mongo import ensure_indexes as ensure_ratelimit_indexes
     await ensure_registry(db)

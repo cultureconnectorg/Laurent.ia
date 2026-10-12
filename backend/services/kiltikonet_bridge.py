@@ -2,8 +2,9 @@
 kiltikonet_bridge.py — Interconnexion vers kiltikonet.fr (PRODUCTION v1.2-LIVE).
 
 Mode :
-  - DEMO-* whitelist  → toujours autorisé (démo/pytest offline).
-  - Bridge non configuré (KILTIKONET_API_URL vide) → guest fallback (dev only).
+  - DEMO-* whitelist  → autorisé UNIQUEMENT si LAURENTIA_ALLOW_DEMO_IDS=true.
+  - Bridge non configuré (KILTIKONET_API_URL vide) → visiteurs anonymes ANON-*
+    en guest ; tout autre FREK-ID refusé (fail closed) sauf LAURENTIA_ALLOW_DEMO_IDS=true.
   - Bridge configuré + 200                          → données amont.
   - Bridge configuré + 401/403/404                  → identité refusée (valid=False).
   - Bridge configuré + 5xx/timeout/network          → KiltikonetUnavailable
@@ -16,6 +17,8 @@ import logging
 import os
 
 import httpx
+
+from services.security import demo_ids_allowed, demote_role
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ class KiltikonetUnavailable(RuntimeError):
 # Whitelist DEMO-* — conservée pour pytest, démo offline et continuité.
 _MOCK_PROFILES = {
     "DEMO-SAYD": {
-        "valid": True, "frek_id": "DEMO-SAYD", "first_name": "Sayd", "role": "founder",
+        "valid": True, "frek_id": "DEMO-SAYD", "first_name": "Sayd", "role": "member",
         "cultural_profile": {"rythme": 0.82, "memoire": 0.91, "oralite": 0.76,
                              "spiritualite": 0.68, "communaute": 0.88, "creativite": 0.95, "souverainete": 0.92},
         "badges": ["fondateur", "coeurvolan"], "wallet": {"jcc_balance": 150},
@@ -59,24 +62,36 @@ def _bridge_configured() -> bool:
     return bool(KILTIKONET_API_URL and KILTIKONET_API_KEY)
 
 
+def is_anonymous_frek_id(frek_id: str | None) -> bool:
+    """Visiteur anonyme (FREK-ID aléatoire généré par le navigateur, préfixe ANON-)."""
+    return bool(frek_id) and frek_id.startswith("ANON-") and len(frek_id) >= 10
+
+
 async def validate_frek_id(frek_id: str) -> dict:
     """
     Valide un FREK-ID via Kiltikonet.
 
     Comportement STRICT en mode LIVE :
-      - DEMO-* whitelist → valid
-      - bridge non configuré (dev) → valid guest
+      - DEMO-* whitelist → valid seulement si LAURENTIA_ALLOW_DEMO_IDS=true
+      - bridge non configuré → ANON-* guest ; autre FREK-ID refusé
+        (sauf LAURENTIA_ALLOW_DEMO_IDS=true → guest, mode dev)
       - 200 amont → données réelles
       - 401/403/404 amont → {"valid": False, ...}
       - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
     """
-    if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
-        p = _MOCK_PROFILES[frek_id]
-        return {"valid": True, "frek_id": frek_id, "role": p["role"]}
+    if frek_id.startswith("DEMO-"):
+        if not demo_ids_allowed():
+            return {"valid": False, "frek_id": frek_id}
+        if frek_id in _MOCK_PROFILES:
+            p = _MOCK_PROFILES[frek_id]
+            return {"valid": True, "frek_id": frek_id, "role": demote_role(p["role"])}
 
     if not _bridge_configured():
-        # Mode dev — accepte tout FREK-ID avec rôle guest
-        return {"valid": True, "frek_id": frek_id, "role": "guest"}
+        # Fail closed : seuls les visiteurs anonymes (ANON-*) sont acceptés en guest,
+        # sauf mode dev explicite.
+        if is_anonymous_frek_id(frek_id) or demo_ids_allowed():
+            return {"valid": True, "frek_id": frek_id, "role": "guest"}
+        return {"valid": False, "frek_id": frek_id}
 
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -110,7 +125,7 @@ async def get_frek_profile(frek_id: str) -> dict:
       - 404 amont → profil par défaut (utilisateur sans profil enrichi)
       - 5xx/timeout/network → KiltikonetUnavailable (→ HTTP 503)
     """
-    if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES:
+    if frek_id.startswith("DEMO-") and frek_id in _MOCK_PROFILES and demo_ids_allowed():
         return _MOCK_PROFILES[frek_id]
 
     if not _bridge_configured():

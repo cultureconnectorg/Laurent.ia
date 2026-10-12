@@ -25,17 +25,50 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_KEY = "mvp-encryption-placeholder-change-in-prod"
-_RAW = os.environ.get("LAURENTIA_ENCRYPTION_KEY", "").strip()
+class EncryptionKeyMissing(RuntimeError):
+    """LAURENTIA_ENCRYPTION_KEY absente : refus de chiffrer/déchiffrer (fail closed)."""
 
-if not _RAW:
-    logger.error("LAURENTIA_ENCRYPTION_KEY absente — la mémoire NE SERA PAS chiffrée correctement.")
-    _RAW = _DEFAULT_KEY
-elif _RAW == _DEFAULT_KEY:
-    logger.warning("LAURENTIA_ENCRYPTION_KEY = valeur par défaut. Régénère-la en prod.")
 
-_KEY: bytes = hashlib.sha256(_RAW.encode("utf-8")).digest()
-_AES = AESGCM(_KEY)
+# Ancienne valeur de repli codée en dur (publique) — refusée explicitement.
+_FORBIDDEN_KEYS = {"mvp-encryption-placeholder-change-in-prod"}
+
+_AES: AESGCM | None = None
+
+
+def _load_aes() -> AESGCM:
+    """
+    Construit la clé AES-256 à la première utilisation.
+    - LAURENTIA_ENCRYPTION_KEY définie (et différente de l'ancien placeholder) → SHA-256.
+    - Absente + LAURENTIA_ALLOW_EPHEMERAL_KEY=true → clé aléatoire éphémère
+      (dev uniquement : la mémoire chiffrée est perdue au redémarrage).
+    - Sinon → EncryptionKeyMissing (fail closed). Jamais de constante en code.
+    """
+    global _AES
+    if _AES is not None:
+        return _AES
+    from services.security import ephemeral_key_allowed
+
+    raw = os.environ.get("LAURENTIA_ENCRYPTION_KEY", "").strip()
+    if raw and raw not in _FORBIDDEN_KEYS:
+        key = hashlib.sha256(raw.encode("utf-8")).digest()
+    elif ephemeral_key_allowed():
+        logger.warning(
+            "LAURENTIA_ENCRYPTION_KEY absente — clé ÉPHÉMÈRE aléatoire (dev uniquement, "
+            "données illisibles après redémarrage)."
+        )
+        key = os.urandom(32)
+    else:
+        raise EncryptionKeyMissing(
+            "LAURENTIA_ENCRYPTION_KEY absente ou invalide : chiffrement refusé. "
+            "Définir la variable (ou LAURENTIA_ALLOW_EPHEMERAL_KEY=true en dev)."
+        )
+    _AES = AESGCM(key)
+    return _AES
+
+
+def ensure_key() -> None:
+    """Vérification au démarrage : lève EncryptionKeyMissing si la clé manque."""
+    _load_aes()
 
 
 def encrypt_text(plaintext: str | None) -> dict | None:
@@ -48,7 +81,7 @@ def encrypt_text(plaintext: str | None) -> dict | None:
     if not isinstance(plaintext, str):
         plaintext = str(plaintext)
     nonce = os.urandom(12)
-    ct = _AES.encrypt(nonce, plaintext.encode("utf-8"), None)
+    ct = _load_aes().encrypt(nonce, plaintext.encode("utf-8"), None)
     return {
         "v": 1,
         "n": base64.b64encode(nonce).decode("ascii"),
@@ -71,10 +104,11 @@ def decrypt_text(blob) -> str:
         return blob
     if not isinstance(blob, dict) or blob.get("v") != 1:
         return ""
+    aes = _load_aes()  # EncryptionKeyMissing propagée : jamais de déchiffrement sans clé
     try:
         nonce = base64.b64decode(blob["n"])
         ct = base64.b64decode(blob["c"])
-        return _AES.decrypt(nonce, ct, None).decode("utf-8")
+        return aes.decrypt(nonce, ct, None).decode("utf-8")
     except Exception as e:
         logger.warning("decrypt_text failed: %s", e)
         return ""

@@ -14,15 +14,16 @@ import os
 import httpx
 
 from services import kiltikonet_bridge
+from services.security import demo_ids_allowed, demote_role
 
 FREKCORE_API_URL = os.environ.get("FREKCORE_API_URL", "").strip()
 FREKCORE_API_KEY = os.environ.get("FREKCORE_API_KEY", "").strip()
 FREKCORE_TIMEOUT = float(os.environ.get("FREKCORE_TIMEOUT", "10"))
 
-# Mock dev — liste stricte des FREK-IDs valides en absence de frekcore remote.
-# En prod (FREKCORE_API_URL configuré), cette liste est ignorée.
+# Mock dev — liste stricte des FREK-IDs de démo. Utilisée UNIQUEMENT si
+# LAURENTIA_ALLOW_DEMO_IDS=true. Jamais de rôle founder/admin pour une démo.
 _DEV_VALID_FREK_IDS = {
-    "DEMO-SAYD":   {"role": "founder", "first_name": "Sayd"},
+    "DEMO-SAYD":   {"role": "member",  "first_name": "Sayd"},
     "DEMO-ARTIST": {"role": "artist",  "first_name": "Mira"},
     "DEMO-PRO":    {"role": "pro",     "first_name": "Lina"},
 }
@@ -37,23 +38,19 @@ async def validate_frek_id(frek_id: str) -> dict:
     Valide un FREK-ID auprès du service frekcore.
 
     Routage:
-    - `DEMO-*` → toujours dev whitelist (utile pour démo/tests même en prod)
-    - autres   → frekcore.com si configuré, sinon dev whitelist
+    - `DEMO-*` → whitelist locale UNIQUEMENT si LAURENTIA_ALLOW_DEMO_IDS=true,
+                 rôle jamais privilégié ; sinon refusé.
+    - autres   → frekcore.com si configuré, sinon refusé (fail closed).
     """
     key = (frek_id or "").strip().upper()
 
-    # Dev / demo IDs — toujours validés via whitelist locale
-    if key.startswith("DEMO-"):
+    if key.startswith("DEMO-") or not is_remote_configured():
+        if not demo_ids_allowed():
+            return {"valid": False, "frek_id": key}
         meta = _DEV_VALID_FREK_IDS.get(key)
         if not meta:
             return {"valid": False, "frek_id": key}
-        return {"valid": True, "frek_id": key, **meta}
-
-    if not is_remote_configured():
-        meta = _DEV_VALID_FREK_IDS.get(key)
-        if not meta:
-            return {"valid": False, "frek_id": key}
-        return {"valid": True, "frek_id": key, **meta}
+        return {"valid": True, "frek_id": key, **meta, "role": demote_role(meta.get("role"))}
 
     try:
         async with httpx.AsyncClient(timeout=FREKCORE_TIMEOUT, follow_redirects=True) as client:

@@ -189,12 +189,20 @@ async def test_rgpd_purge_anonymizes_old_attributions():
     client.close()
 
 
-def test_rgpd_endpoint_idempotent(http_client):
-    r1 = http_client.post("/api/admin/rgpd/purge", json={})
-    r2 = http_client.post("/api/admin/rgpd/purge", json={})
-    assert r1.status_code == 200
-    assert r2.status_code == 200
-    j2 = r2.json()
-    # Le 2ème appel doit avoir 0 modif (déjà tout purgé)
+def test_rgpd_endpoint_requires_admin(http_client):
+    """POST /api/admin/rgpd/purge sans session admin → 401 (fail closed)."""
+    r = http_client.post("/api/admin/rgpd/purge", json={})
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_rgpd_purge_idempotent():
+    """Deux passes successives : la 2ème ne modifie plus rien."""
+    import motor.motor_asyncio as motor
+    client = motor.AsyncIOMotorClient(MONGO_URL)
+    adb = client[DB_NAME]
+    await purge_once(adb)
+    j2 = await purge_once(adb)
     assert j2["instances_anonymized"] == 0
     assert j2["echo_attributions_anonymized"] == 0
+    client.close()

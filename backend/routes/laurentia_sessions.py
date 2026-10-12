@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
-from routes.auth import get_current_user
+from routes.auth import authorize_frek_access, get_current_user
 from services.security import tenant_id_for
 from services.crypto import decrypt_text
 
@@ -38,10 +38,8 @@ async def list_sessions(request: Request):
     db = request.app.state.db
     user = await get_current_user(request)
     if not user:
-        # Mode démo : utilise le FREK-ID de la query ?frek_id=
-        frek_id = request.query_params.get("frek_id")
-        if not frek_id:
-            raise HTTPException(401, "Non authentifié")
+        # Visiteur anonyme : ?frek_id=ANON-xxx uniquement (DEMO-* si mode dev explicite)
+        frek_id = await authorize_frek_access(request, request.query_params.get("frek_id"))
     else:
         frek_id = user["frek_id"]
 
@@ -83,8 +81,7 @@ async def get_session(session_id: str, request: Request):
     db = request.app.state.db
     user = await get_current_user(request)
     frek_id = user["frek_id"] if user else request.query_params.get("frek_id")
-    if not frek_id:
-        raise HTTPException(401, "Non authentifié")
+    frek_id = await authorize_frek_access(request, frek_id)
 
     t_id = tenant_id_for(frek_id)
     rows = await db.laurentia_interactions.find(
@@ -105,8 +102,7 @@ async def delete_session(session_id: str, request: Request):
     db = request.app.state.db
     user = await get_current_user(request)
     frek_id = user["frek_id"] if user else request.query_params.get("frek_id")
-    if not frek_id:
-        raise HTTPException(401, "Non authentifié")
+    frek_id = await authorize_frek_access(request, frek_id)
 
     t_id = tenant_id_for(frek_id)
     res = await db.laurentia_interactions.delete_many(

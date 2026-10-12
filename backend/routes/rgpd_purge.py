@@ -12,7 +12,7 @@ Politique souveraine v1.2 :
 
 Fréquence : déclenché au startup (best-effort, non bloquant) puis toutes les 24h.
 
-Endpoint admin (idempotent) :
+Endpoint admin (idempotent, session founder|admin requise) :
   POST /api/admin/rgpd/purge   →  exécute immédiatement, renvoie le nombre d'opérations.
 """
 from __future__ import annotations
@@ -21,7 +21,9 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+
+from routes.auth import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,6 @@ def schedule_periodic_purge(app, db) -> None:
 
 
 @router.post("/purge")
-async def trigger_purge(request: Request):
+async def trigger_purge(request: Request, _admin: dict = Depends(require_admin)):
     db = request.app.state.db
     return await purge_once(db)

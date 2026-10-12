@@ -38,6 +38,7 @@ from services.rate_limit_mongo import (
     check_and_consume as rl_check_and_consume,
 )
 from services.security import tenant_id_for
+from routes.auth import authorize_frek_access, get_current_user
 
 
 router = APIRouter(prefix="/api/laurentia", tags=["laurentia"])
@@ -118,6 +119,22 @@ async def _ensure_instance(db: AsyncIOMotorDatabase, frek_id: str) -> dict:
     return doc
 
 
+async def _session_frek_id(request: Request) -> str | None:
+    user = await get_current_user(request)
+    return user.get("frek_id") if user else None
+
+
+async def _validate_frek(frek_id: str, session_frek_id: str | None = None) -> dict:
+    """
+    Validation d'identité. Si le bridge Kiltikonet n'est pas configuré, un FREK-ID
+    porté par une session authentifiée (cookie/Bearer) est accepté : l'identité
+    est alors prouvée par la session, pas par le seul FREK-ID (fail closed sinon).
+    """
+    if session_frek_id and session_frek_id == frek_id and not kiltikonet_bridge._bridge_configured():
+        return {"valid": True, "frek_id": frek_id, "role": "member"}
+    return await kiltikonet_bridge.validate_frek_id(frek_id)
+
+
 def _degraded_response_text() -> str:
     return (
         "Tu approches de ta limite mensuelle. "
@@ -135,7 +152,7 @@ def _resolve_tier(instance: dict) -> str:
 @router.post("/instances/init")
 async def init_instance(payload: InstanceInitRequest, request: Request):
     db = _get_db(request)
-    validation = await kiltikonet_bridge.validate_frek_id(payload.frek_id)
+    validation = await _validate_frek(payload.frek_id, await _session_frek_id(request))
     if not validation.get("valid"):
         raise HTTPException(403, "FREK-ID invalide")
 
@@ -146,6 +163,7 @@ async def init_instance(payload: InstanceInitRequest, request: Request):
 
 @router.get("/instances/{frek_id}")
 async def get_instance(frek_id: str, request: Request):
+    frek_id = await authorize_frek_access(request, frek_id)
     db = _get_db(request)
     inst = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
     if not inst:
@@ -211,6 +229,7 @@ async def resolve_by_device(request: Request):
 
 @router.get("/memory/{frek_id}")
 async def get_memory(frek_id: str, request: Request):
+    frek_id = await authorize_frek_access(request, frek_id)
     db = _get_db(request)
     mem = await db.laurentia_memory.find_one({"frek_id": frek_id}, {"_id": 0})
     if not mem:
@@ -261,6 +280,7 @@ async def _run_query(
     files_summary: list[dict] | None = None,
     device_fp: str | None = None,
     orchestrator=None,
+    session_frek_id: str | None = None,
 ):
     """
     Cœur d'exécution — partagé entre route JSON et route multipart.
@@ -269,7 +289,7 @@ async def _run_query(
     started = time.perf_counter()
 
     # 1. validation FREK-ID via bridge kiltikonet (mocké)
-    validation = await kiltikonet_bridge.validate_frek_id(frek_id)
+    validation = await _validate_frek(frek_id, session_frek_id)
     if not validation.get("valid"):
         raise HTTPException(403, "FREK-ID non valide")
 
@@ -593,6 +613,7 @@ async def query(request: Request):
             files_summary=files_summary,
             device_fp=device_fp,
             orchestrator=getattr(request.app.state, "orchestrator", None),
+            session_frek_id=await _session_frek_id(request),
         )
 
     # JSON path (legacy)
@@ -609,4 +630,5 @@ async def query(request: Request):
         session_id_in=payload.context.session_id,
         device_fp=device_fp,
         orchestrator=getattr(request.app.state, "orchestrator", None),
+        session_frek_id=await _session_frek_id(request),
     )

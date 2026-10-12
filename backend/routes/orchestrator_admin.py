@@ -105,9 +105,19 @@ async def ovh_sms_reply(request: Request):
     Format attendu (configurable côté OVH) :
       JSON {"from": "+596...", "message": "OK inc-xxxxx"}
       ou form: from, message
-    Sécurité minimale : on vérifie que `from` matche FOUNDER_PHONE_NUMBER.
+    Sécurité :
+      - secret partagé OVH_SMS_WEBHOOK_SECRET obligatoire (en-tête X-Webhook-Token
+        ou paramètre ?token=), comparé en temps constant ; absent → 503, faux → 403.
+      - puis `from` doit matcher FOUNDER_PHONE_NUMBER (défense en profondeur).
     """
+    import hmac
     import os
+    expected = os.environ.get("OVH_SMS_WEBHOOK_SECRET", "").strip()
+    if not expected:
+        raise HTTPException(503, "Webhook SMS non configuré")
+    provided = (request.headers.get("x-webhook-token") or request.query_params.get("token") or "").strip()
+    if not provided or not hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8")):
+        raise HTTPException(403, "Jeton webhook invalide")
     founder = os.environ.get("FOUNDER_PHONE_NUMBER", "")
     try:
         body = await request.json()

@@ -4,11 +4,12 @@ MVP: implémentation minimale ADDITIVE (compat).
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel, Field
 
 from services import cvl_brain, cvl_brain_knowledge
 from services.cvl_brain_agents import AGENT_REGISTRY
+from routes.auth import require_user
 
 import hmac
 import os
@@ -44,8 +45,8 @@ async def list_agents(request: Request):
 
 
 @router.post("/chat-enriched")
-async def chat_enriched(payload: ChatEnrichedRequest):
-    """Non-streaming legacy endpoint."""
+async def chat_enriched(payload: ChatEnrichedRequest, _user: dict = Depends(require_user)):
+    """Non-streaming legacy endpoint. Session utilisateur requise (pas de proxy LLM ouvert)."""
     system = cvl_brain_knowledge.build_system_prompt()
     text = await cvl_brain.chat_enriched(payload.message, system, payload.session_id)
     return {"response": text}

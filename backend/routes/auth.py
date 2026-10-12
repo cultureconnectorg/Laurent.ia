@@ -18,6 +18,7 @@ from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from services import frekcore_bridge
+from services.security import PRIVILEGED_ROLES, demo_ids_allowed, demote_role
 
 EMERGENT_OAUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 SESSION_TTL_DAYS = 7
@@ -96,6 +97,45 @@ async def require_user(request: Request) -> dict:
     if not user:
         raise HTTPException(401, "Non authentifié")
     return user
+
+
+async def require_admin(request: Request) -> dict:
+    """Session valide + rôle founder|admin (même règle que les autres routes /api/admin)."""
+    user = await require_user(request)
+    role = (user.get("role") or "").lower()
+    if role not in PRIVILEGED_ROLES:
+        raise HTTPException(403, "Accès admin requis")
+    return user
+
+
+async def authorize_frek_access(request: Request, frek_id: str | None) -> str:
+    """
+    Contrôle d'accès aux données rattachées à un FREK-ID.
+
+    - Session authentifiée : le FREK-ID demandé doit être celui de la session
+      (ou rôle founder/admin), sinon 403.
+    - Sans session : seuls les FREK-IDs anonymes générés par le navigateur
+      (ANON-*, identifiant aléatoire porteur) sont acceptés ; DEMO-* uniquement
+      si LAURENTIA_ALLOW_DEMO_IDS=true. Tout autre FREK-ID → 401.
+    Retourne le FREK-ID autorisé.
+    """
+    from services.kiltikonet_bridge import is_anonymous_frek_id
+
+    frek_id = (frek_id or "").strip()
+    if not frek_id:
+        raise HTTPException(401, "Non authentifié")
+    user = await get_current_user(request)
+    if user:
+        if user.get("frek_id") == frek_id:
+            return frek_id
+        if (user.get("role") or "").lower() in PRIVILEGED_ROLES:
+            return frek_id
+        raise HTTPException(403, "Accès refusé à ce FREK-ID")
+    if is_anonymous_frek_id(frek_id):
+        return frek_id
+    if frek_id.startswith("DEMO-") and demo_ids_allowed():
+        return frek_id
+    raise HTTPException(401, "Non authentifié")
 
 
 # ---------------- Endpoints ----------------
@@ -229,8 +269,14 @@ async def me(request: Request):
 async def login_with_frek_id(payload: FrekLoginRequest, request: Request, response: Response):
     """
     Connexion directe via un FREK-ID existant (membre de l'écosystème).
-    Valide auprès du service frekcore (mocké en dev, HTTP en prod).
+
+    SÉCURITÉ : un FREK-ID n'est pas un secret. Aucune preuve vérifiée (signature,
+    jeton frekcore) n'existe encore dans ce code ; la route est donc DÉSACTIVÉE
+    (404) sauf mode dev explicite LAURENTIA_ALLOW_DEMO_IDS=true. Même en dev,
+    aucun rôle founder/admin n'est accordé par cette voie.
     """
+    if not demo_ids_allowed():
+        raise HTTPException(404, "Connexion par FREK-ID désactivée")
     db = request.app.state.db
     raw = (payload.frek_id or "").strip().upper()
     if not raw or len(raw) < 4:
@@ -243,7 +289,7 @@ async def login_with_frek_id(payload: FrekLoginRequest, request: Request, respon
     profile = await frekcore_bridge.get_profile(raw)
     frek_id = validation.get("frek_id", raw)
     first_name = profile.get("first_name") or raw.split("-")[-1].capitalize()
-    role = validation.get("role") or profile.get("role") or "member"
+    role = demote_role(validation.get("role") or profile.get("role") or "member")
     picture = profile.get("picture")
     email = profile.get("email") or f"{frek_id.lower()}@frekcore.local"
 
