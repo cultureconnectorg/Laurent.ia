@@ -48,10 +48,17 @@ async def root():
 
 @api_router.get("/health")
 async def health():
+    # This reports configuration, not model reachability. A successful health
+    # response must never imply that inference has been tested end-to-end.
+    local_model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    local_url = os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+    configured = bool(local_model and local_url)
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
+        "llm_provider": "self-hosted" if configured else "unconfigured",
+        "llm_configured": configured,
+        "model": local_model or None,
     }
 
 
