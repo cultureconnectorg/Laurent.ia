@@ -36,7 +36,7 @@ def test_demo_identity_is_rejected_in_production(monkeypatch):
     result = asyncio.run(frekcore_bridge.validate_frek_id("DEMO-SAYD"))
 
     assert result["valid"] is False
-    assert result["error"] == "demo identities disabled in production"
+    assert result["error"] == "demo identities disabled outside explicit development"
 
 
 def test_demo_identity_remains_available_in_explicit_nonproduction(monkeypatch):
@@ -59,3 +59,10 @@ def test_production_refuses_identity_when_remote_authority_is_missing(monkeypatc
 
     assert result["valid"] is False
     assert result["error"] == "FREKCORE authority not configured"
+
+def test_demo_identity_is_rejected_when_runtime_is_unmarked(monkeypatch):
+    clear_runtime_markers(monkeypatch)
+
+    result = asyncio.run(frekcore_bridge.validate_frek_id("DEMO-SAYD"))
+
+    assert result["valid"] is False
