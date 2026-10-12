@@ -1,31 +1,55 @@
 """
-cvl_brain.py — Wrapper Claude pour Laurent.ia
-Migré vers claude-sonnet-4-5-20250929 via emergentintegrations + EMERGENT_LLM_KEY.
+cvl_brain.py — Client strict d'un moteur LLM souverain auto-hébergé.
 
-Fournit:
-- chat_enriched(...) → réponse complète (non-streaming)
-- chat_stream(...)   → générateur asynchrone qui yield chunk-par-chunk (pseudo-stream)
+Aucun fournisseur LLM externe n'est appelé par ce module.
+Le moteur doit exposer une API compatible OpenAI sur une adresse locale/privée,
+configurée par LAURENTIA_LOCAL_LLM_URL, avec LAURENTIA_LOCAL_LLM_MODEL.
+Si le moteur n'est pas configuré ou joignable, l'appel échoue sans fallback externe.
 """
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 import uuid
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
-
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
-DEFAULT_MODEL = os.environ.get("LAURENTIA_CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+import httpx
 
 
-def _build_chat(session_id: str, system_message: str) -> LlmChat:
-    """Crée une nouvelle instance LlmChat (anthropic / claude-sonnet-4.5)."""
-    return LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=session_id or str(uuid.uuid4()),
-        system_message=system_message,
-    ).with_model("anthropic", DEFAULT_MODEL)
+def _local_endpoint() -> tuple[str, str, str | None, float]:
+    endpoint = os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+    model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    api_key = os.environ.get("LAURENTIA_LOCAL_LLM_API_KEY", "").strip() or None
+    timeout = float(os.environ.get("LAURENTIA_LOCAL_LLM_TIMEOUT_SECONDS", "60"))
+
+    if not endpoint or not model:
+        raise RuntimeError(
+            "Moteur souverain non configuré : définir LAURENTIA_LOCAL_LLM_URL "
+            "et LAURENTIA_LOCAL_LLM_MODEL. Aucun fournisseur externe ne sera utilisé."
+        )
+
+    parsed = urlparse(endpoint)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        raise RuntimeError("LAURENTIA_LOCAL_LLM_URL doit être une URL HTTP(S) valide sans identifiants intégrés.")
+
+    hostname = parsed.hostname.lower()
+    local_host = hostname == "localhost"
+    try:
+        ip = ipaddress.ip_address(hostname)
+        local_host = local_host or ip.is_loopback or ip.is_private or ip.is_link_local
+    except ValueError:
+        # Refuse les noms DNS publics: le endpoint doit être local/privé et explicite.
+        pass
+    if not local_host:
+        raise RuntimeError(
+            "Endpoint LLM refusé : seuls localhost et les adresses IP privées/locales sont autorisés."
+        )
+
+    if parsed.port is not None and not (1 <= parsed.port <= 65535):
+        raise RuntimeError("Port du moteur LLM local invalide.")
+    return endpoint, model, api_key, timeout
 
 
 async def chat_enriched(
@@ -33,11 +57,41 @@ async def chat_enriched(
     system_message: str,
     session_id: str | None = None,
 ) -> str:
-    """Réponse complète, non streamée."""
-    chat = _build_chat(session_id or str(uuid.uuid4()), system_message)
-    msg = UserMessage(text=user_text)
-    response = await chat.send_message(msg)
-    return response if isinstance(response, str) else str(response)
+    """Appelle exclusivement le moteur souverain auto-hébergé configuré."""
+    endpoint, model, api_key, timeout = _local_endpoint()
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_text},
+        ],
+        "stream": False,
+    }
+    # session_id is accepted for API compatibility; the local endpoint does not
+    # receive it as a provider-specific session identifier.
+    _ = session_id or str(uuid.uuid4())
+
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        response = await client.post(endpoint, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError("Réponse invalide du moteur LLM souverain (format chat-completions attendu).") from exc
+
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # Some OpenAI-compatible local runtimes return typed content blocks.
+        parts = [part.get("text", "") for part in content if isinstance(part, dict)]
+        return "".join(parts)
+    raise RuntimeError("Contenu de réponse invalide du moteur LLM souverain.")
 
 
 async def chat_stream(
@@ -47,17 +101,12 @@ async def chat_stream(
     chunk_size: int = 6,
     chunk_delay: float = 0.018,
 ) -> AsyncGenerator[str, None]:
-    """
-    Pseudo-streaming SSE.
-    `emergentintegrations.LlmChat.send_message()` retourne la réponse complète,
-    on la débite en chunks de quelques caractères pour offrir un rendu fluide token-by-token.
-    """
+    """Pseudo-streaming SSE sur la réponse du moteur souverain local."""
     full = await chat_enriched(user_text, system_message, session_id)
-    # Découpe par mots, regroupés par paquet
     tokens = full.split(" ")
-    buffer = []
-    for i, tok in enumerate(tokens):
-        buffer.append(tok)
+    buffer: list[str] = []
+    for i, token in enumerate(tokens):
+        buffer.append(token)
         if len(buffer) >= chunk_size or i == len(tokens) - 1:
             chunk = " ".join(buffer)
             if i != len(tokens) - 1:
