@@ -142,17 +142,12 @@ _runtime_markers = (
     os.environ.get("VERCEL_ENV", ""),
     os.environ.get("RAILWAY_ENVIRONMENT", ""),
 )
-_is_production_runtime = any(
-    value.strip().lower() in {"prod", "production"} for value in _runtime_markers
-)
+_runtime_values = {value.strip().lower() for value in _runtime_markers if value.strip()}
+_is_production_runtime = bool(_runtime_values & {"prod", "production"})
+_is_development_runtime = bool(_runtime_values & {"dev", "development", "local", "test", "testing"})
 _cors_env = os.environ.get("CORS_ORIGINS", "*").strip()
 _cors_origins = [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
-if _is_production_runtime and (not _cors_origins or "*" in _cors_origins):
-    raise RuntimeError(
-        "Configuration CORS dangereuse : CORS_ORIGINS doit être une liste explicite "
-        "d'origines en production."
-    )
-if _cors_env == "*" and not _is_production_runtime:
+if _cors_env == "*" and _is_development_runtime and not _is_production_runtime:
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
@@ -160,8 +155,11 @@ if _cors_env == "*" and not _is_production_runtime:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-elif "*" in _cors_origins:
-    raise RuntimeError("CORS_ORIGINS ne peut pas mélanger '*' et des origines explicites.")
+elif not _cors_origins or "*" in _cors_origins:
+    raise RuntimeError(
+        "Configuration CORS dangereuse : utilisez une liste explicite d'origines; "
+        "le wildcard n'est autorisé qu'en développement explicite."
+    )
 else:
     app.add_middleware(
         CORSMiddleware,
