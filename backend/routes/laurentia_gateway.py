@@ -268,8 +268,19 @@ async def get_memory(frek_id: str, request: Request):
 
 @router.post("/feedback")
 async def feedback(payload: FeedbackRequest, request: Request):
+    user = await _authorize_tenant(request)
     db = _get_db(request)
-    await db.laurentia_interactions.update_one(
+    interaction = await db.laurentia_interactions.find_one(
+        {"_id_str": payload.interaction_id},
+        {"_id": 0, "tenant_id": 1},
+    )
+    if not interaction:
+        raise HTTPException(404, "Interaction introuvable")
+    if user:
+        expected_tenant = tenant_id_for(str(user["frek_id"]).strip().upper())
+        if interaction.get("tenant_id") != expected_tenant:
+            raise HTTPException(403, "Accès refusé : interaction hors du tenant authentifié")
+    result = await db.laurentia_interactions.update_one(
         {"_id_str": payload.interaction_id},
         {
             "$set": {
@@ -278,6 +289,8 @@ async def feedback(payload: FeedbackRequest, request: Request):
             }
         },
     )
+    if getattr(result, "matched_count", 1) == 0:
+        raise HTTPException(404, "Interaction introuvable")
     return {"ok": True}
 
 
