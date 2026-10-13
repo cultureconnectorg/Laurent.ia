@@ -59,6 +59,7 @@ def test_payment_status_cannot_be_read_by_another_user(monkeypatch):
 
 
 def test_checkout_rejects_unconfigured_redirect_origin(monkeypatch):
+    monkeypatch.setattr(billing, "STRIPE_API_KEY", "sk_test_unit")
     monkeypatch.setenv("FRONTEND_URL", "https://app.example.com")
     monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
     async def alice(_request):
