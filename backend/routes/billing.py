@@ -96,10 +96,13 @@ def _validated_origin(payload_origin: str, request: Request) -> str:
         if value.strip() and value.strip() != "*"
     }
     request_origin = (request.headers.get("origin") or "").strip().rstrip("/")
-    if request_origin:
-        allowed.add(request_origin)
     if origin not in allowed:
+        # An Origin header is caller-controlled and must not itself extend the allowlist.
         raise HTTPException(400, "origin_url non autorisée")
+    if request_origin and request_origin != origin:
+        raise HTTPException(400, "origin_url différente de l'origine de la requête")
+    if not allowed and not request_origin and os.environ.get("LAURENTIA_ENV", "").lower() in {"dev", "development", "local", "test", "testing"} and parsed.hostname in {"localhost", "127.0.0.1"}:
+        return origin
     return origin
 
 
