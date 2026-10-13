@@ -27,7 +27,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install minimal public test dependencies
-        run: python -m pip install --upgrade pip pytest httpx fastapi pydantic python-dotenv
+        run: python -m pip install --upgrade pip pytest httpx fastapi pydantic python-dotenv motor cryptography pypdf python-docx python-multipart
       - name: Run sovereign LLM and identity bridge regressions
         env:
           LAURENTIA_ENV: test
@@ -37,3 +37,4 @@ jobs:
           backend/tests/test_auth_frek_login_guard.py
           backend/tests/test_frekcore_bridge_production.py
           backend/tests/test_kiltikonet_bridge_production.py
+          backend/tests/test_laurentia_gateway_tenant_auth.py
