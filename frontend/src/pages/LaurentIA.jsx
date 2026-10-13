@@ -20,7 +20,7 @@ import { toast } from "sonner";
 /**
  * LaurentIA — page principale chat-first.
  *
- * Auth: si l'utilisateur est connecté (Emergent Google), on utilise son FREK-ID dérivé.
+ * Auth: si l'utilisateur est connecté via Google OIDC, on utilise son FREK-ID dérivé.
  * Sinon mode démo (URL ?frek_id= ou localStorage ou DEMO-SAYD par défaut).
  */
 export default function LaurentIA() {
