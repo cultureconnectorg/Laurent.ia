@@ -1,10 +1,11 @@
 """
-auth.py — Emergent Managed Google Auth integration.
+auth.py — Google OpenID Connect and local session management.
 
-Endpoints (additif, /api/auth/*):
-- POST /api/auth/session  body { session_id } — exchange with Emergent, set cookie, derive FREK-ID
-- GET  /api/auth/me                          — return current user (cookie or Bearer)
-- POST /api/auth/logout                      — clear cookie + delete DB session
+Endpoints (/api/auth/*):
+- GET  /api/auth/google/start                 — begin Google OIDC
+- GET  /api/auth/google/callback              — verify state, exchange code, issue local session
+- GET  /api/auth/me                           — return current user (cookie or Bearer)
+- POST /api/auth/logout                       — clear cookie + delete DB session
 """
 from __future__ import annotations
 
