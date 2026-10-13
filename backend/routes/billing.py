@@ -86,15 +86,12 @@ def _validated_origin(payload_origin: str, request: Request) -> str:
     if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1"}:
         raise HTTPException(400, "origin_url doit utiliser HTTPS")
 
-    allowed = {
-        value.strip().rstrip("/")
-        for value in (
-            os.environ.get("FRONTEND_URL", ""),
-            os.environ.get("CORS_ORIGINS", ""),
-        )
-        for value in value.split(",")
-        if value.strip() and value.strip() != "*"
-    }
+    allowed = set()
+    for raw_origins in (os.environ.get("FRONTEND_URL", ""), os.environ.get("CORS_ORIGINS", "")):
+        for candidate in raw_origins.split(","):
+            candidate = candidate.strip().rstrip("/")
+            if candidate and candidate != "*":
+                allowed.add(candidate)
     request_origin = (request.headers.get("origin") or "").strip().rstrip("/")
     if origin not in allowed:
         explicit_dev = os.environ.get("LAURENTIA_ENV", "").strip().lower() in {"dev", "development", "local", "test", "testing"}
