@@ -115,7 +115,7 @@ await page.goto("https://<your-frontend-domain>/")
 
 ## Failure indicators
 - ❌ `/api/auth/me` 401 with valid token → check expires_at tz-awareness
-- ❌ Cookie not set after `/auth/session` → check samesite/secure flags
+- ❌ Cookie not set after Google callback → check redirect URI, cookie flags, and browser network logs
 - ❌ FREK-ID `null` after login → check derivation hash function
 
 ## Notes
