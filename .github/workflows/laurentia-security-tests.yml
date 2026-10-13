@@ -7,6 +7,8 @@ on:
       - "backend/services/frekcore_bridge.py"
       - "backend/services/kiltikonet_bridge.py"
       - "backend/routes/auth.py"
+      - "backend/routes/billing.py"
+      - "backend/routes/brain.py"
       - "backend/tests/**"
       - ".github/workflows/laurentia-security-tests.yml"
   workflow_dispatch:
