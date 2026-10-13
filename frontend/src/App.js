@@ -12,8 +12,7 @@ import AdminReportsPage from "@/pages/admin/AdminReportsPage";
 
 function AppRouter() {
   const location = useLocation();
-  // CRITICAL race-condition fix: detect session_id in URL hash *synchronously during render*.
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+  // Detect the backend-owned Google OIDC result synchronously during render.
   if (location.hash?.includes("auth=success") || location.hash?.includes("auth=error")) {
     return <AuthCallback />;
   }
