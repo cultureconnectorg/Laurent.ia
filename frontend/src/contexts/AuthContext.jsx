@@ -54,20 +54,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // The backend handles Google OIDC and sets our httpOnly session cookie.
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback (hash with session_id),
-    // skip the /me check. AuthCallback will exchange the session_id first.
-    if (window.location.hash?.includes("session_id=")) {
+    if (window.location.hash?.includes("auth=success") || window.location.hash?.includes("auth=error")) {
       setLoading(false);
       return;
     }
     refresh();
   }, [refresh]);
 
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
   const login = useCallback(() => {
-    const redirectUrl = window.location.origin + "/";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = `${API}/auth/google/start`;
   }, []);
 
   const logout = useCallback(async () => {
