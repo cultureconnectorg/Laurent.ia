@@ -8,6 +8,13 @@ import { withFingerprintHeaders } from "@/services/fingerprint";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const VOICE_PRIORITY = [
+  /antill|caribb|créol|creol|guadel|martin|haiti/i,        // 1. Voix créole / antillaise
+  /^Thomas$|^Audrey$|^Amélie$|^Amelie$|^Aurélie$|premium/i, // 2. Voix Apple premium FR
+  /Google.*français|Google.*French/i,                       // 3. Google FR
+  /Microsoft.*Henri|Microsoft.*Julie|Microsoft.*Paul/i,     // 4. Microsoft FR Premium
+];
+
 const initialMeta = {
   first_name: "Hôte",
   version: "free",
@@ -190,13 +197,6 @@ export default function useLaurentIA({ frekId = "DEMO-SAYD", appContext = "direc
   // Sélection préférentielle d'une voix française à coloration caribéenne/chaleureuse.
   // Heuristique : priorise les voix premium (Thomas, Audrey, Amélie, Antilles, Caribbean),
   // puis les voix Google FR, puis tout fr-* par défaut.
-  const VOICE_PRIORITY = [
-    /antill|caribb|créol|creol|guadel|martin|haiti/i,        // 1. Voix créole / antillaise
-    /^Thomas$|^Audrey$|^Amélie$|^Amelie$|^Aurélie$|premium/i, // 2. Voix Apple premium FR
-    /Google.*français|Google.*French/i,                       // 3. Google FR
-    /Microsoft.*Henri|Microsoft.*Julie|Microsoft.*Paul/i,     // 4. Microsoft FR Premium
-  ];
-
   const pickFrenchVoice = useCallback(() => {
     if (!("speechSynthesis" in window)) return null;
     const voices = window.speechSynthesis.getVoices() || [];
