@@ -33,7 +33,18 @@ class BriefingRequest(BaseModel):
 
 @router.get("/health")
 async def brain_health():
-    return {"ok": True, "service": "cvl-brain", "model": "claude-sonnet-4-5-20250929"}
+    # Report local-engine configuration only; do not imply reachability or
+    # advertise a retired external provider as the active model.
+    local_model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    local_url = os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+    configured = bool(local_model and local_url)
+    return {
+        "ok": True,
+        "service": "cvl-brain",
+        "llm_provider": "self-hosted" if configured else "unconfigured",
+        "llm_configured": configured,
+        "model": local_model or None,
+    }
 
 
 @router.get("/agents")
