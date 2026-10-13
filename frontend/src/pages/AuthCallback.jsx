@@ -11,7 +11,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { refresh } = useAuth();
+  const { refresh, migrateAnonIfAny } = useAuth();
   const hasProcessed = useRef(false);
   const [error, setError] = useState(null);
 
