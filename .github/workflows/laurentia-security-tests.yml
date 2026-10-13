@@ -39,3 +39,4 @@ jobs:
           backend/tests/test_kiltikonet_bridge_production.py
           backend/tests/test_laurentia_gateway_tenant_auth.py
           backend/tests/test_billing_stripe_official.py
+          backend/tests/test_brain_health_sovereign.py
