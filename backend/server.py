@@ -78,7 +78,7 @@ app.include_router(api_router)
 # Routes Laurent.ia (additif)
 from routes.laurentia_gateway import router as laurentia_router  # noqa: E402
 from routes.laurentia_sessions import router as laurentia_sessions_router  # noqa: E402
-from routes.brain import router as brain_router  # noqa: E402
+from routes.brain import router as brain_router, briefing as brain_briefing  # noqa: E402
 from routes.omega import router as omega_router  # noqa: E402
 from routes.auth import router as auth_router  # noqa: E402
 from routes.billing import router as billing_router, webhook_router as billing_webhook  # noqa: E402
@@ -102,6 +102,14 @@ from orchestrator.orchestrator import make_orchestrator  # noqa: E402
 app.include_router(laurentia_router)
 app.include_router(laurentia_sessions_router)
 app.include_router(brain_router)
+# Alias de compatibilité Meta CVLN : réutilise strictement le même handler,
+# le même schéma de requête et la même authentification inter-services.
+app.add_api_route(
+    "/api/briefing",
+    brain_briefing,
+    methods=["POST"],
+    tags=["briefing-compat"],
+)
 app.include_router(omega_router)
 app.include_router(auth_router)
 app.include_router(billing_router)
