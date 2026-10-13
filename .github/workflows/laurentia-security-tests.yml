@@ -27,7 +27,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install minimal public test dependencies
-        run: python -m pip install --upgrade pip pytest httpx fastapi pydantic
+        run: python -m pip install --upgrade pip pytest httpx fastapi pydantic python-dotenv
       - name: Run sovereign LLM and identity bridge regressions
         env:
           LAURENTIA_ENV: test
