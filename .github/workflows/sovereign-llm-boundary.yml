@@ -1,0 +1,30 @@
+name: Sovereign LLM boundary
+
+on:
+  push:
+    branches:
+      - gpt/sovereign-llm-endpoint-hardening
+  pull_request:
+    paths:
+      - backend/services/cvl_brain.py
+      - backend/tests/test_cvl_brain_sovereignty.py
+      - .github/workflows/sovereign-llm-boundary.yml
+
+permissions:
+  contents: read
+
+jobs:
+  endpoint-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install focused test dependencies
+        run: python -m pip install "httpx==0.28.1" "openai==1.99.9" "pytest==9.0.3"
+      - name: Test sovereign endpoint policy
+        working-directory: backend
+        run: python -m pytest -q tests/test_cvl_brain_sovereignty.py
