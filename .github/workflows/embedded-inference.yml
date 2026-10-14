@@ -35,3 +35,28 @@ jobs:
       - name: Run embedded inference contract tests
         working-directory: backend
         run: python -m pytest -q contract_tests/test_embedded_inference_contract.py contract_tests/test_root_health_contract.py contract_tests/test_local_inference_messages.py
+      - name: Run pinned local model generation smoke test
+        working-directory: backend
+        env:
+          LAURENTIA_MODEL_CACHE: ${{ runner.temp }}/laurentia-model-cache
+          LAURENTIA_LOCAL_THREADS: "2"
+        run: |
+          python - <<'PY'
+          import asyncio
+          from services.local_inference import chat_complete, model_status
+
+          answer = asyncio.run(
+              chat_complete(
+                  "You are a concise assistant. Follow the user's instruction.",
+                  "Reply with exactly: OK",
+              )
+          )
+          status = model_status()
+          assert answer.strip(), "The embedded model returned an empty answer."
+          assert status["loaded"] is True, "The embedded model did not remain loaded."
+          assert status["generation_count"] == 1, "The model generation was not recorded."
+          print(f"Embedded model generation succeeded: {status['model']}; "
+                f"load_seconds={status['load_seconds']}; "
+                f"generation_seconds={status['last_generation_seconds']}; "
+                f"answer={answer[:80]!r}")
+          PY
