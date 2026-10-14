@@ -144,13 +144,20 @@ async def create_checkout(payload: CheckoutRequest, request: Request):
 
 @router.get("/status/{session_id}")
 async def get_status(session_id: str, request: Request):
+    # Le statut peut activer un abonnement : il doit rester privé au propriétaire
+    # de la transaction, même si le session_id est difficile à deviner.
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(401, "Connexion requise")
+
     db = request.app.state.db
+    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if not tx or tx.get("user_id") != user.get("user_id"):
+        # Même réponse pour une transaction inexistante ou appartenant à un autre compte.
+        raise HTTPException(404, "Transaction inconnue")
+
     stripe = _checkout_client(str(request.base_url))
     status = await stripe.get_checkout_status(session_id)
-
-    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
-    if not tx:
-        raise HTTPException(404, "Transaction inconnue")
 
     # Update transaction
     await db.payment_transactions.update_one(
