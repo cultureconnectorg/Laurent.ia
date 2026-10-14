@@ -2,7 +2,10 @@
 Laurent.ia — backend principal (FastAPI).
 ADDITIF — préserve les routes /api/status héritées du template.
 """
+import asyncio
+
 from fastapi import FastAPI, APIRouter
+from starlette.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -57,6 +60,58 @@ async def health():
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
     }
+
+
+@api_router.get("/health/inference")
+async def inference_health():
+    """Probe the configured inference endpoint without exposing its URL or credentials."""
+    model = os.environ.get("LAURENTIA_LLM_MODEL", "local-model").strip() or "local-model"
+    if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "configured": False,
+                "reachable": False,
+                "model": model,
+                "reason": "not_configured",
+            },
+        )
+
+    from services.cvl_brain import _build_client
+
+    inference_client = None
+    try:
+        inference_client = _build_client()
+        model_list = await asyncio.wait_for(inference_client.models.list(), timeout=8.0)
+        available_models = {item.id for item in model_list.data}
+        model_available = model in available_models
+        return JSONResponse(
+            status_code=200 if model_available else 503,
+            content={
+                "ok": model_available,
+                "configured": True,
+                "reachable": True,
+                "model": model,
+                "model_available": model_available,
+                "reason": "ready" if model_available else "configured_model_not_listed",
+            },
+        )
+    except Exception as exc:
+        reason = "timeout" if isinstance(exc, asyncio.TimeoutError) else "endpoint_unreachable"
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "configured": True,
+                "reachable": False,
+                "model": model,
+                "reason": reason,
+            },
+        )
+    finally:
+        if inference_client is not None:
+            await inference_client.close()
 
 
 @api_router.post("/status", response_model=StatusCheck)
