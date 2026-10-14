@@ -107,14 +107,26 @@ def _get_model():
         return _model
 
 
-def _messages(system_message: str, user_text: str) -> list[dict[str, str]]:
-    # Character limits are a safety rail; the model tokenizer remains the final
-    # authority on token use. Do not persist prompts or completions in a cache.
-    system_limit = max(500, min(6000, int(os.environ.get("LAURENTIA_LOCAL_SYSTEM_CHARS", "2500"))))
-    user_limit = max(500, min(8000, int(os.environ.get("LAURENTIA_LOCAL_INPUT_CHARS", "4000"))))
+def _messages(model, system_message: str, user_text: str) -> list[dict[str, str]]:
+    """Trim by actual model tokens, preserving system instructions and recent user text."""
+    prompt_budget = max(96, CONTEXT_TOKENS - MAX_OUTPUT_TOKENS - 32)
+    system_budget = min(128, max(48, prompt_budget // 3))
+    user_budget = max(32, prompt_budget - system_budget)
+
+    system_tokens = model.tokenize(system_message.encode("utf-8"), add_bos=False, special=False)
+    user_tokens = model.tokenize(user_text.encode("utf-8"), add_bos=False, special=False)
+    # Preserve the beginning of the system prompt (policy/instructions) and the
+    # latest user context. This avoids overflowing n_ctx on long requests.
+    if len(system_tokens) > system_budget:
+        system_tokens = system_tokens[:system_budget]
+    if len(user_tokens) > user_budget:
+        user_tokens = user_tokens[-user_budget:]
+
+    system_content = model.detokenize(system_tokens).decode("utf-8", errors="ignore")
+    user_content = model.detokenize(user_tokens).decode("utf-8", errors="ignore")
     return [
-        {"role": "system", "content": system_message[-system_limit:]},
-        {"role": "user", "content": user_text[-user_limit:]},
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
     ]
 
 
@@ -122,8 +134,9 @@ def _complete(system_message: str, user_text: str) -> str:
     global _last_generation_seconds, _last_completion_tokens, _generation_count
     started = time.monotonic()
     with _generation_lock:
-        result = _get_model().create_chat_completion(
-            messages=_messages(system_message, user_text),
+        model = _get_model()
+        result = model.create_chat_completion(
+            messages=_messages(model, system_message, user_text),
             max_tokens=MAX_OUTPUT_TOKENS,
             temperature=0.2,
         )
@@ -152,11 +165,11 @@ async def chat_stream(system_message: str, user_text: str):
     def worker():
         global _last_generation_seconds, _last_completion_tokens, _generation_count
         started = time.monotonic()
-        completion_chars = 0
         try:
             with _generation_lock:
-                stream = _get_model().create_chat_completion(
-                    messages=_messages(system_message, user_text),
+                model = _get_model()
+                stream = model.create_chat_completion(
+                    messages=_messages(model, system_message, user_text),
                     max_tokens=MAX_OUTPUT_TOKENS,
                     temperature=0.2,
                     stream=True,
@@ -167,7 +180,6 @@ async def chat_stream(system_message: str, user_text: str):
                         continue
                     delta = (choices[0].get("delta") or {}).get("content")
                     if isinstance(delta, str) and delta:
-                        completion_chars += len(delta)
                         publish(("chunk", delta))
             _last_generation_seconds = time.monotonic() - started
             _last_completion_tokens = None
