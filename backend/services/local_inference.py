@@ -24,7 +24,7 @@ MODEL_FILE = "SmolLM2-135M-Instruct-Q2_K.gguf"
 MODEL_REVISION = "32db44d69cedb731dc0fc96f60e01a86c6f5919d"
 MODEL_SHA256 = "478cca924101ed67bb2751f597be41532b2f4817ee2ab1b0d7cc379c76e79faf"
 MODEL_CACHE = Path(os.environ.get("LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"))
-MODEL_ID = os.environ.get("LAURENTIA_LOCAL_MODEL_ID", "smollm2-135m-instruct-q2_k")
+MODEL_ID = "smollm2-135m-instruct-q2_k"
 CONTEXT_TOKENS = max(256, min(768, int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512"))))
 MAX_OUTPUT_TOKENS = max(
     16,
