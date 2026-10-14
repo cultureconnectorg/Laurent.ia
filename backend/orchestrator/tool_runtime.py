@@ -43,7 +43,7 @@ class ToolContext:
 class ToolSpec:
     name: str
     description: str
-    handler: Callable[[ToolContext, dict[str, Any]], Any]
+    handler: Callable[[ToolContext, dict[str, Any]], Awaitable[Any]]
     validate_arguments: Callable[[dict[str, Any]], bool]
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
 
@@ -106,6 +106,8 @@ class ToolRegistry:
             raise ValueError(f"duplicate tool: {spec.name}")
         if not spec.description.strip() or len(spec.description) > 500:
             raise ValueError("tool description must be 1..500 characters")
+        if not inspect.iscoroutinefunction(spec.handler):
+            raise ValueError("tool handlers must be async so execution can be cancelled on timeout")
         if not 0 < spec.timeout_seconds <= 10:
             raise ValueError("tool timeout must be >0 and <=10 seconds")
         self._tools[spec.name] = spec
@@ -127,19 +129,10 @@ class ToolRegistry:
                 raise ToolRuntimeError("tool_not_allowed")
             if not spec.validate_arguments(call["arguments"]):
                 raise ToolRuntimeError("arguments_invalid")
-            if inspect.iscoroutinefunction(spec.handler):
-                value = await asyncio.wait_for(
-                    spec.handler(context, call["arguments"]),
-                    timeout=spec.timeout_seconds,
-                )
-            else:
-                # Keep synchronous handlers off the event loop and bound their wait.
-                value = await asyncio.wait_for(
-                    asyncio.to_thread(spec.handler, context, call["arguments"]),
-                    timeout=spec.timeout_seconds,
-                )
-                if inspect.isawaitable(value):
-                    value = await asyncio.wait_for(value, timeout=spec.timeout_seconds)
+            value = await asyncio.wait_for(
+                spec.handler(context, call["arguments"]),
+                timeout=spec.timeout_seconds,
+            )
             output = value if isinstance(value, str) else json.dumps(
                 value, ensure_ascii=False, default=str
             )
@@ -180,13 +173,13 @@ def _is_text_argument(arguments: dict[str, Any]) -> bool:
     return set(arguments) == {"text"} and isinstance(arguments["text"], str) and len(arguments["text"]) <= 4_000
 
 
-def _normalize_text(context: ToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+async def _normalize_text(context: ToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
     # Pure, local utility: no side effects, network, filesystem, or database.
     text = arguments["text"]
     return {"text": " ".join(text.split()), "characters": len(text)}
 
 
-def _runtime_capabilities(context: ToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+async def _runtime_capabilities(context: ToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
     if arguments:
         raise ToolRuntimeError("arguments_invalid")
     return {
