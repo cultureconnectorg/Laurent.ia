@@ -1,7 +1,7 @@
 """
 laurentia_gateway.py — Cœur du système.
 
-POST /api/laurentia/query          → SSE stream tokens Claude
+POST /api/laurentia/query          → SSE stream from controlled inference
                                       Accepte JSON (`application/json`)
                                       OU multipart/form-data avec fichiers (Creator/Infinite).
 POST /api/laurentia/instances/init → crée une instance pour un FREK-ID
