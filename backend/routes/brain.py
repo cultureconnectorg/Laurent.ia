@@ -38,6 +38,7 @@ async def brain_health():
         "service": "cvl-brain",
         "model": os.environ.get("LAURENTIA_LLM_MODEL", "local-model"),
         "inference_configured": bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()),
+        "agent_factory_enabled": os.environ.get("LAURENTIA_AGENT_FACTORY_ENABLED", "").lower() == "true",
     }
 
 
@@ -63,17 +64,55 @@ async def briefing(payload: BriefingRequest, request: Request):
     service_key = os.environ.get("LAURENTIA_CVLN_SERVICE_API_KEY", "").strip()
     if not service_key or not raw_key or not hmac.compare_digest(raw_key, service_key):
         raise HTTPException(403, "X-API-Key inter-service invalide")
+
     prompt = (payload.request or payload.topic or "").strip()
     if not prompt:
         prompt = "Fournis un briefing synthétique à partir du contexte transmis."
     if payload.context:
         prompt += "\n\n[CONTEXTE]\n" + str(payload.context)
+
+    factory_recommendation = None
+    if os.environ.get("LAURENTIA_AGENT_FACTORY_ENABLED", "").lower() == "true":
+        # Only the task prompt and an explicit entity label cross the service boundary.
+        # No full personal context, credentials, or session history is forwarded.
+        from services.agent_factory_bridge import recommend_agents
+
+        entity = payload.context.get("entity") if isinstance(payload.context, dict) else None
+        try:
+            factory_recommendation = await recommend_agents(
+                (payload.request or payload.topic or "").strip() or prompt,
+                entity=entity if isinstance(entity, str) else None,
+            )
+        except Exception as exc:
+            # When explicitly enabled, do not silently claim the Factory contributed.
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "agent_factory_unavailable",
+                    "message": "Agent Factory activée mais recommandation indisponible.",
+                    "trace_id": payload.trace_id,
+                },
+            ) from exc
+
+        agents = factory_recommendation["recommended_agents"]
+        draft = factory_recommendation["draft_mission"]
+        prompt += (
+            "\n\n[RECOMMANDATIONS CVLN AGENT FACTORY — NON EXÉCUTÉES]"
+            "\nAgents recommandés: " + str(agents)
+            + "\nBrouillon de mission: " + str(draft)
+            + "\nConsigne: utilise ces éléments comme recommandations, vérifie leur pertinence, "
+              "signale les manques et ne prétends pas que ces agents ont exécuté une tâche."
+        )
+
     system = cvl_brain_knowledge.build_system_prompt()
     text = await cvl_brain.chat_enriched(prompt, system, payload.trace_id)
-    return {
+    response = {
         "contract": "laurentia.briefing",
         "version": "1.0",
         "trace_id": payload.trace_id,
         "issuer": payload.issuer,
         "response": text,
     }
+    if factory_recommendation is not None:
+        response["agent_factory"] = factory_recommendation
+    return response
