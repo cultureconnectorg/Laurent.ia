@@ -30,21 +30,31 @@ def _factory_url() -> str:
         raise RuntimeError("CVLN Agent Factory URL is invalid")
 
     host = (parsed.hostname or "").lower().rstrip(".")
-    if parsed.scheme != "https":
-        try:
-            addr = ipaddress.ip_address(host)
-            internal = addr.is_private or addr.is_loopback or addr.is_link_local
-        except ValueError:
-            internal = host == "localhost" or host.endswith((".internal", ".local", ".localhost"))
-        if not internal:
-            raise RuntimeError("HTTPS is required for non-local Agent Factory endpoints")
+    if not host:
+        raise RuntimeError("Factory hostname is required")
 
-    forbidden = {
-        "api.openai.com", "api.anthropic.com", "generativelanguage.googleapis.com",
-        "api.groq.com", "api.mistral.ai", "integrations.emergentagent.com",
+    allowed_hosts = {
+        item.strip().lower().rstrip(".")
+        for item in os.environ.get("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", "").split(",")
+        if item.strip()
     }
-    if host in forbidden:
-        raise RuntimeError("External AI-provider endpoints are forbidden")
+    if not allowed_hosts:
+        raise RuntimeError("Explicit Factory hostname allowlist is required")
+    if host not in allowed_hosts:
+        raise RuntimeError("Factory hostname is not allowlisted")
+
+    try:
+        addr = ipaddress.ip_address(host)
+        local_address = addr.is_private or addr.is_loopback or addr.is_link_local
+    except ValueError:
+        local_address = host == "localhost" or host.endswith((".internal", ".local", ".localhost"))
+
+    if parsed.scheme != "https" and not local_address:
+        raise RuntimeError("HTTPS is required for non-local Factory endpoints")
+    if parsed.port not in (None, 443) and not local_address:
+        raise RuntimeError("Non-default public ports are not allowed")
+    if parsed.path not in ("", "/"):
+        raise RuntimeError("Configure the Factory origin without a path")
     return base
 
 
