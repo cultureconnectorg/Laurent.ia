@@ -34,8 +34,8 @@ app.state.db = db
 async def root_health():
     """Return a truthful service landing status; inference readiness is separate."""
     inference_configured = bool(
-        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
-        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
+        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
     )
     return {
         "service": "laurentia",
@@ -70,13 +70,13 @@ async def root():
 async def health():
     # This reports configuration only; it does not claim the model is reachable.
     inference_configured = bool(
-        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
-        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
+        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
     )
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None,
+        "model": os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None,
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
     }
@@ -85,8 +85,8 @@ async def health():
 @api_router.get("/health/inference")
 async def inference_health():
     """Probe the configured sovereign model catalogue without exposing secrets."""
-    model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None
-    if not os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() or not model:
+    model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None
+    if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip() or not model:
         return JSONResponse(
             status_code=503,
             content={
@@ -99,21 +99,17 @@ async def inference_health():
         )
 
     try:
-        from urllib.parse import urlparse, urlunparse
         import httpx
-        from services.cvl_brain import _local_endpoint
+        from services.cvl_brain import _controlled_base_url
 
-        endpoint, model, api_key, timeout = _local_endpoint()
-        parsed = urlparse(endpoint)
-        path = parsed.path.rstrip("/")
-        models_path = path[:-len("chat/completions")] + "models"
-        models_url = urlunparse(parsed._replace(path=models_path, query="", fragment=""))
-        headers = {"Accept": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+        endpoint = _controlled_base_url()
+        model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or "local-model"
+        api_key = os.environ.get("LAURENTIA_LLM_API_KEY", "").strip() or "local-endpoint"
+        models_url = endpoint.rstrip("/") + "/models"
+        headers = {"Accept": "application/json", "Authorization": f"Bearer {api_key}"}
 
         async with httpx.AsyncClient(
-            timeout=min(timeout, 8.0),
+            timeout=httpx.Timeout(8.0, connect=3.0),
             follow_redirects=False,
             trust_env=False,
         ) as inference_client:
