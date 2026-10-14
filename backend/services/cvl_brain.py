@@ -48,6 +48,11 @@ def _local_endpoint() -> tuple[str, str, str | None, float]:
             "paramètres de requête ni fragment."
         )
 
+    if not parsed.path.rstrip("/").endswith("/chat/completions"):
+        raise RuntimeError(
+            "LAURENTIA_LOCAL_LLM_URL doit cibler une route compatible /chat/completions."
+        )
+
     hostname = parsed.hostname.lower().rstrip(".")
     local_host = hostname == "localhost"
     try:
