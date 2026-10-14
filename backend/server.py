@@ -33,13 +33,16 @@ app.state.db = db
 @app.get("/")
 async def root_health():
     """Return a truthful service landing status; inference readiness is separate."""
-    inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+    mode = os.environ.get("LAURENTIA_INFERENCE_MODE", "embedded").strip().lower()
+    inference_configured = (
+        mode == "embedded"
+        or bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
+                and os.environ.get("LAURENTIA_LLM_MODEL", "").strip())
     )
     return {
         "service": "laurentia",
         "status": "online",
+        "inference_mode": mode,
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
         "health_url": "/api/health",
@@ -69,14 +72,21 @@ async def root():
 @api_router.get("/health")
 async def health():
     # This reports configuration only; it does not claim the model is reachable.
-    inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+    mode = os.environ.get("LAURENTIA_INFERENCE_MODE", "embedded").strip().lower()
+    inference_configured = (
+        mode == "embedded"
+        or bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
+                and os.environ.get("LAURENTIA_LLM_MODEL", "").strip())
+    )
+    model = (
+        os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+        or ("smollm2-135m-instruct-q2_k" if mode == "embedded" else None)
     )
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None,
+        "model": model,
+        "inference_mode": mode,
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
     }
@@ -84,7 +94,27 @@ async def health():
 
 @api_router.get("/health/inference")
 async def inference_health():
-    """Probe the configured sovereign model catalogue without exposing secrets."""
+    """Report readiness for the embedded model or probe a controlled endpoint."""
+    mode = os.environ.get("LAURENTIA_INFERENCE_MODE", "embedded").strip().lower()
+    if mode == "embedded":
+        from services.local_inference import model_status
+        status = model_status()
+        ready = bool(status["loaded"] and status["downloaded"])
+        return JSONResponse(
+            status_code=200 if ready else 503,
+            content={
+                "ok": ready,
+                "configured": True,
+                "reachable": ready,
+                "mode": "embedded",
+                "model": status["model"],
+                "model_loaded": status["loaded"],
+                "model_downloaded": status["downloaded"],
+                "reason": "ready" if ready else (
+                    "model_not_loaded" if status["downloaded"] else "model_not_downloaded"
+                ),
+            },
+        )
     model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None
     if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip() or not model:
         return JSONResponse(
