@@ -81,6 +81,22 @@ def test_async_handler_timeout_is_bounded():
     assert result.error == "tool_timeout"
 
 
+def test_sync_handler_timeout_is_bounded():
+    import time
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="slow_sync", description="test sync timeout",
+        handler=lambda context, arguments: (time.sleep(0.05), "too late")[1],
+        validate_arguments=lambda args: args == {}, timeout_seconds=0.001,
+    ))
+    result = asyncio.run(registry.execute(
+        {"tool": "slow_sync", "arguments": {}}, context=CTX
+    ))
+    assert not result.ok
+    assert result.error == "tool_timeout"
+
+
 def test_result_is_truncated():
     registry = ToolRegistry()
     registry.register(ToolSpec(
