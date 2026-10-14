@@ -18,6 +18,7 @@ def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     assert "SmolLM2-135M-Instruct-Q2_K.gguf" in source
     assert 'LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"' in source
     assert "A complete local artifact avoids a Hugging Face request on warm starts." in source
+    assert "CONTEXT_TOKENS = max(256, min(768" in source
     assert "n_ctx=CONTEXT_TOKENS" in source
     assert "n_threads=THREADS" in source
     assert "n_batch=BATCH_SIZE" in source
@@ -26,6 +27,8 @@ def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     assert "hf_hub_download" in source
     assert '"cache_hit": _cache_hit' in source
     assert '"load_seconds":' in source
+    assert '"last_generation_seconds":' in source
+    assert "Do not persist prompts or completions in a cache." in source
 
 
 def test_health_reports_embedded_mode_without_claiming_model_is_ready():
