@@ -7,7 +7,6 @@ unapproved proxy by the host environment.
 """
 from __future__ import annotations
 
-import asyncio
 import ipaddress
 import os
 from typing import AsyncGenerator
@@ -138,16 +137,29 @@ async def chat_stream(
     chunk_size: int = 6,
     chunk_delay: float = 0.018,
 ) -> AsyncGenerator[str, None]:
-    """Compatibility pseudo-stream over a complete response."""
-    full = await chat_enriched(user_text, system_message, session_id)
-    tokens = full.split(" ")
-    buffer: list[str] = []
-    for i, token in enumerate(tokens):
-        buffer.append(token)
-        if len(buffer) >= chunk_size or i == len(tokens) - 1:
-            chunk = " ".join(buffer)
-            if i != len(tokens) - 1:
-                chunk += " "
-            yield chunk
-            buffer = []
-            await asyncio.sleep(chunk_delay)
+    """Stream real content deltas from the configured inference endpoint.
+
+    chunk_size and chunk_delay remain accepted for call-site compatibility;
+    actual chunking and timing are controlled by the inference server.
+    """
+    client = _build_client()
+    try:
+        stream = await client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_text},
+            ],
+            extra_headers={"X-Laurentia-Session-ID": session_id or ""},
+            stream=True,
+        )
+        async for event in stream:
+            choices = getattr(event, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            content = getattr(delta, "content", None) if delta else None
+            if isinstance(content, str) and content:
+                yield content
+    finally:
+        await client.close()
