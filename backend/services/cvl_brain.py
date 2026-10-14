@@ -149,9 +149,6 @@ async def chat_messages(
     session_id: str | None = None,
 ) -> str:
     """Complete a bounded transcript using embedded inference by default."""
-    if _use_embedded_model():
-        from services.local_inference import chat_messages as local_chat_messages
-        return await local_chat_messages(messages)
     if not isinstance(messages, list) or not 1 <= len(messages) <= 24:
         raise ValueError("Conversation must contain between 1 and 24 messages.")
     allowed_roles = {"system", "user", "assistant", "tool"}
@@ -167,6 +164,10 @@ async def chat_messages(
         checked.append({"role": role, "content": content})
     if total_chars > 80_000:
         raise ValueError("Conversation exceeds the configured context budget.")
+
+    if _use_embedded_model():
+        from services.local_inference import chat_messages as local_chat_messages
+        return await local_chat_messages(checked)
 
     client = _build_client()
     try:
