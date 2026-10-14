@@ -32,7 +32,7 @@ def test_missing_local_engine_fails_closed_without_external_fallback(monkeypatch
     "endpoint",
     [
         "https://api.example.com/v1/chat/completions",
-        "http://169.254.169.254/latest/meta-data",
+        "http://169.254.169.254/v1/chat/completions",
         "http://169.254.10.20/v1/chat/completions",
         "http://224.0.0.1/v1/chat/completions",
         "http://0.0.0.0:11434/v1/chat/completions",
