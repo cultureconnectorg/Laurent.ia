@@ -1,6 +1,10 @@
 name: Backend contract smoke
 
 on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-contract-smoke.yml"
   pull_request:
     paths:
       - "backend/**"
