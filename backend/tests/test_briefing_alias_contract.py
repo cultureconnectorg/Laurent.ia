@@ -2,6 +2,7 @@
 
 These checks intentionally use only the Python standard library so they can run
 without importing the production application or connecting to MongoDB.
+The test is intentionally isolated from production secrets and external services.
 """
 import ast
 from pathlib import Path
