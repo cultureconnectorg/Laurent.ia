@@ -82,7 +82,7 @@ async def run_agent_turn(
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_text},
     ]
-    descriptions = registry.describe()
+    descriptions = registry.describe(context=context)
     results: list[ToolResult] = []
     tool_calls = 0
 
