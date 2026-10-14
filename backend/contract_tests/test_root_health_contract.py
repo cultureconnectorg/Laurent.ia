@@ -48,13 +48,14 @@ def test_health_routes_use_the_same_sovereign_engine_contract():
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "health"
     )
     health_source = ast.unparse(health)
-    assert "LAURENTIA_LOCAL_LLM_URL" in health_source
-    assert "LAURENTIA_LOCAL_LLM_MODEL" in health_source
-    assert "LAURENTIA_LLM_BASE_URL" not in source
-    assert "LAURENTIA_LLM_MODEL" not in source
-    assert "from services.cvl_brain import _local_endpoint" in source
-    assert "_controlled_base_url" not in source
-    assert "_build_client" not in source
+    assert "LAURENTIA_LLM_BASE_URL" in health_source
+    assert "LAURENTIA_LLM_MODEL" in health_source
+    assert "LAURENTIA_LOCAL_LLM_URL" not in source
+    assert "LAURENTIA_LOCAL_LLM_MODEL" not in source
+    assert "from services.cvl_brain import _controlled_base_url" in source
+    assert "_local_endpoint" not in source
+    assert "follow_redirects=False" in source
+    assert "trust_env=False" in source
 
 
 def test_inference_probe_disables_redirects_and_environment_proxies():
