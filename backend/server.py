@@ -30,23 +30,7 @@ app = FastAPI(title="Laurent.ia API", version="0.1.0")
 app.state.db = db
 
 
-@app.get("/")
-async def root_health():
-    """Return a truthful service landing status; inference readiness is separate."""
-    inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
-    )
-    return {
-        "service": "laurentia",
-        "status": "online",
-        "inference_configured": inference_configured,
-        "inference_status": "configured" if inference_configured else "not_configured",
-        "health_url": "/api/health",
-        "inference_readiness_url": "/api/health/inference",
-    }
-
-# Routes héritées /api/status (template)
+# Routes héritées /api/status (template) — conservées pour compatibilité.
 api_router = APIRouter(prefix="/api")
 
 
@@ -66,27 +50,44 @@ async def root():
     return {"message": "Laurent.ia online", "version": "0.1.0"}
 
 
+@app.get("/")
+async def root_health():
+    """Return service status separately from verified inference readiness."""
+    configured = bool(
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    )
+    return {
+        "service": "laurentia",
+        "status": "online",
+        "inference_configured": configured,
+        "inference_status": "configured" if configured else "not_configured",
+        "health_url": "/api/health",
+        "inference_readiness_url": "/api/health/inference",
+    }
+
+
 @api_router.get("/health")
 async def health():
-    # This reports configuration only; it does not claim the model is reachable.
-    inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+    """Configuration-only health; does not claim that the model is reachable."""
+    configured = bool(
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
     )
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None,
-        "inference_configured": inference_configured,
-        "inference_status": "configured" if inference_configured else "not_configured",
+        "model": os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None,
+        "inference_configured": configured,
+        "inference_status": "configured" if configured else "not_configured",
     }
 
 
 @api_router.get("/health/inference")
 async def inference_health():
     """Probe the configured sovereign model catalogue without exposing secrets."""
-    model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None
-    if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip() or not model:
+    model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None
+    if not os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() or not model:
         return JSONResponse(
             status_code=503,
             content={
@@ -100,22 +101,25 @@ async def inference_health():
 
     try:
         import httpx
-        from services.cvl_brain import _controlled_base_url
+        from urllib.parse import urlsplit, urlunsplit
+        from services.cvl_brain import _local_endpoint
 
-        endpoint = _controlled_base_url()
-        model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
-        api_key = os.environ.get("LAURENTIA_LLM_API_KEY", "").strip() or "local-endpoint"
-        models_url = endpoint.rstrip("/") + "/models"
-        headers = {"Accept": "application/json", "Authorization": f"Bearer {api_key}"}
+        endpoint, model, api_key, timeout = _local_endpoint()
+        parsed = urlsplit(endpoint)
+        prefix = parsed.path.rsplit("/chat/completions", 1)[0].rstrip("/")
+        models_url = urlunsplit((parsed.scheme, parsed.netloc, prefix + "/models", "", ""))
+        headers = {"Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(8.0, connect=3.0),
+            timeout=httpx.Timeout(min(timeout, 8.0), connect=min(timeout, 3.0)),
             follow_redirects=False,
             trust_env=False,
         ) as inference_client:
             response = await asyncio.wait_for(
                 inference_client.get(models_url, headers=headers),
-                timeout=8.0,
+                timeout=min(timeout, 8.0),
             )
             response.raise_for_status()
             payload = response.json()
@@ -149,7 +153,6 @@ async def inference_health():
             },
         )
     except Exception as exc:
-        # Deliberately avoid returning exception text, URLs, or credentials.
         reason = "timeout" if isinstance(exc, asyncio.TimeoutError) else "invalid_configuration"
         try:
             import httpx
@@ -298,7 +301,7 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()))
+    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()))
 
 
 @app.on_event("shutdown")
