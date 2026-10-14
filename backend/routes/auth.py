@@ -350,25 +350,18 @@ class MigrateAnonRequest(BaseModel):
 @router.post("/migrate-anon")
 async def migrate_anon(payload: MigrateAnonRequest, request: Request):
     """
-    Migre les interactions anonymes (ANON-XXXX) vers le FREK-ID de l'utilisateur connecté.
-    Idempotent. Évite que le visiteur perde ce qu'il a fait avant login.
+    Refuse la migration tant que le serveur ne peut pas prouver la possession
+    du tenant invité source. Un FREK-ID ANON fourni par le client n'est pas
+    une preuve d'identité : le migrer directement permettrait de réattribuer
+    les interactions d'un autre invité.
     """
-    from services.security import tenant_id_for
-    db = request.app.state.db
     user = await get_current_user(request)
     if not user:
         raise HTTPException(401, "Non authentifié")
     anon = (payload.anon_frek_id or "").strip().upper()
     if not anon.startswith("ANON-"):
-        return {"ok": True, "migrated": 0}
-
-    src_tenant = tenant_id_for(anon)
-    dst_tenant = tenant_id_for(user["frek_id"])
-    if src_tenant == dst_tenant:
-        return {"ok": True, "migrated": 0}
-
-    res = await db.laurentia_interactions.update_many(
-        {"tenant_id": src_tenant},
-        {"$set": {"tenant_id": dst_tenant, "migrated_from_anon_at": datetime.now(timezone.utc).isoformat()}},
+        raise HTTPException(400, "FREK-ID invité invalide")
+    raise HTTPException(
+        409,
+        "Migration invitée temporairement désactivée : une preuve de possession du tenant source est requise.",
     )
-    return {"ok": True, "migrated": res.modified_count}
