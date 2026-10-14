@@ -43,12 +43,21 @@ LAURENTIA_CVLN_SERVICE_API_KEY=<SECRET_LONG_ALEATOIRE_PARTAGE_AVEC_LES_CONSOMMAT
 ```dotenv
 LAURENTIA_LLM_MODEL=<IDENTIFIANT_EXACT_DU_MODELE_SERVI>
 LAURENTIA_LLM_API_KEY=<CLE_DU_ENDPOINT_PRIVE_SI_REQUISE>
+LAURENTIA_LLM_ALLOWED_HOSTS=<HOTES_EXACTS_AUTORISES_SEPARES_PAR_VIRGULE>
 ```
 
 - Si le moteur privé n'exige pas de clé, `LAURENTIA_LLM_API_KEY` peut rester
   absent ; l'adaptateur utilise alors une valeur locale non secrète.
 - `LAURENTIA_LLM_MODEL` doit correspondre au nom servi par l'endpoint, pas à un
   nom supposé.
+- `LAURENTIA_LLM_BASE_URL` doit être la base OpenAI-compatible (généralement la
+  racine `/v1`), pas l'URL complète `/chat/completions`.
+- Les hôtes privés/internes sont autorisés par défaut. Pour un hôte DNS public
+  sous contrôle CVLN, utiliser HTTPS et inscrire son nom exact dans
+  `LAURENTIA_LLM_ALLOWED_HOSTS`, séparé par des virgules. Aucun wildcard n'est
+  accepté. Si cette liste est renseignée, elle devient la liste d'autorisation
+  exacte, y compris pour les hôtes privés. Les domaines des fournisseurs LLM
+  hébergés connus restent refusés, même s'ils figurent dans la liste.
 
 ### Ponts interservices
 
