@@ -24,7 +24,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services import cvl_brain, cvl_brain_knowledge, kiltikonet_bridge, labelos_bridge
 from orchestrator.agent_loop import run_agent_turn
-from orchestrator.tool_runtime import ToolContext, build_safe_default_registry
+from orchestrator.tool_runtime import ToolContext
+from orchestrator.laurentia_tools import build_request_tool_registry
 from services.cvl_brain_agents import log_call, log_write
 from services.crypto import encrypt_text
 from services.file_parser import (
@@ -456,7 +457,7 @@ async def _run_query(
             if agentic_enabled:
                 # Opt-in only until the local model is benchmarked against this
                 # explicit proposal protocol. Tools are code-registered and side-effect free.
-                registry = build_safe_default_registry()
+                registry = build_request_tool_registry(db=db, frek_id=frek_id, tenant_id=t_id)
                 tool_context = ToolContext(
                     tenant_id=t_id,
                     session_id=session_id,
