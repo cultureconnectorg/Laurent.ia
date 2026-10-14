@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Check, Sparkles, Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -16,20 +17,37 @@ const TIER_ICONS = {
 };
 
 export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
+  const { isAuthenticated, login } = useAuth();
   const [packages, setPackages] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
+  const [packagesError, setPackagesError] = useState(false);
 
   useEffect(() => {
     if (!open || packages) return;
+    let cancelled = false;
     (async () => {
+      setPackagesError(false);
       try {
         const r = await fetch(`${API}/billing/packages`);
-        if (r.ok) setPackages(await r.json());
-      } catch (_) {}
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (!cancelled) setPackages(data);
+      } catch (_) {
+        if (!cancelled) setPackagesError(true);
+      }
     })();
+    return () => { cancelled = true; };
   }, [open, packages]);
 
   const handleCheckout = async (packageId) => {
+    if (!isAuthenticated) {
+      window.sessionStorage.setItem("laurentia_pending_package", packageId);
+      toast("Connecte-toi pour continuer. Tu retrouveras les offres à ton retour.", {
+        action: { label: "Se connecter", onClick: login },
+        duration: 8000,
+      });
+      return;
+    }
     setLoadingId(packageId);
     try {
       const r = await fetch(`${API}/billing/create-checkout`, {
@@ -40,7 +58,15 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        toast(d.detail || "Erreur démarrage paiement");
+        if (r.status === 401) {
+          window.sessionStorage.setItem("laurentia_pending_package", packageId);
+          toast("Connexion requise pour sécuriser ton abonnement.", {
+            action: { label: "Se connecter", onClick: login },
+            duration: 8000,
+          });
+        } else {
+          toast(d.detail || "Impossible de démarrer le paiement. Réessaie.");
+        }
         setLoadingId(null);
         return;
       }
@@ -74,8 +100,20 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
         </DialogHeader>
 
         {!packages ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+          <div className="flex flex-col items-center justify-center gap-4 py-16 px-7 text-center">
+            {packagesError ? (
+              <>
+                <p className="text-sm text-white/65">Les offres ne sont pas disponibles pour le moment.</p>
+                <button
+                  type="button"
+                  onClick={() => { setPackagesError(false); setPackages(null); }}
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:bg-white/5"
+                  data-testid="pricing-retry"
+                >
+                  Réessayer
+                </button>
+              </>
+            ) : <Loader2 className="w-5 h-5 animate-spin text-white/40" />}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-7 pb-7 pt-2">
