@@ -8,6 +8,7 @@ We deliberately do not persist prompts or completions in a cache.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import threading
 import time
@@ -17,14 +18,11 @@ from typing import Any
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
-MODEL_REPO = os.environ.get(
-    "LAURENTIA_LOCAL_MODEL_REPO",
-    "tensorblock/SmolLM2-135M-Instruct-GGUF",
-)
-MODEL_FILE = os.environ.get(
-    "LAURENTIA_LOCAL_MODEL_FILE",
-    "SmolLM2-135M-Instruct-Q2_K.gguf",
-)
+# Immutable model provenance: repository commit and SHA-256 are reviewed code, not env overrides.
+MODEL_REPO = "tensorblock/SmolLM2-135M-Instruct-GGUF"
+MODEL_FILE = "SmolLM2-135M-Instruct-Q2_K.gguf"
+MODEL_REVISION = "32db44d69cedb731dc0fc96f60e01a86c6f5919d"
+MODEL_SHA256 = "478cca924101ed67bb2751f597be41532b2f4817ee2ab1b0d7cc379c76e79faf"
 MODEL_CACHE = Path(os.environ.get("LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"))
 MODEL_ID = os.environ.get("LAURENTIA_LOCAL_MODEL_ID", "smollm2-135m-instruct-q2_k")
 CONTEXT_TOKENS = max(256, min(768, int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512"))))
@@ -49,6 +47,16 @@ def model_file_path() -> Path | None:
     """Return a valid cached artifact without making a network request."""
     candidate = MODEL_CACHE / MODEL_FILE
     return candidate if candidate.is_file() and candidate.stat().st_size > 1_000_000 else None
+
+
+def _verify_model_checksum(path: Path, expected_sha256: str = MODEL_SHA256) -> None:
+    """Fail closed unless the downloaded or cached model matches the reviewed SHA-256."""
+    digest = hashlib.sha256()
+    with path.open("rb") as model_file:
+        for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected_sha256.lower():
+        raise RuntimeError("Embedded model SHA-256 mismatch; refusing to load model.")
 
 
 def model_status() -> dict[str, Any]:
@@ -85,6 +93,7 @@ def _get_model():
         cached = model_file_path()
         if cached is not None:
             # A complete local artifact avoids a Hugging Face request on warm starts.
+            _verify_model_checksum(cached)
             model_path = str(cached)
             _cache_hit = True
         else:
@@ -93,8 +102,10 @@ def _get_model():
             model_path = hf_hub_download(
                 repo_id=MODEL_REPO,
                 filename=MODEL_FILE,
+                revision=MODEL_REVISION,
                 local_dir=str(MODEL_CACHE),
             )
+            _verify_model_checksum(Path(model_path))
             _cache_hit = False
         from llama_cpp import Llama
 
