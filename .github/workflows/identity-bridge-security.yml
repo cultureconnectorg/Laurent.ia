@@ -1,0 +1,33 @@
+name: Laurentia identity bridge security
+
+on:
+  pull_request:
+    paths:
+      - "backend/services/frekcore_bridge.py"
+      - "backend/services/kiltikonet_bridge.py"
+      - "backend/tests/test_frekcore_bridge_production.py"
+      - "backend/tests/test_kiltikonet_bridge_production.py"
+      - ".github/workflows/identity-bridge-security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  identity-bridge-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest httpx
+      - name: Test fail-closed identity behavior
+        env:
+          LAURENTIA_ENV: test
+        run: >-
+          python -m pytest -q
+          backend/tests/test_frekcore_bridge_production.py
+          backend/tests/test_kiltikonet_bridge_production.py
