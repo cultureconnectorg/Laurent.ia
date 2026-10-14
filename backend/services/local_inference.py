@@ -3,6 +3,7 @@
 Model weights are open artifacts; prompts are processed in this process and are
 never sent to a hosted inference API. Point LAURENTIA_MODEL_CACHE at a persistent
 mounted volume when one exists; /tmp is intentionally only an ephemeral fallback.
+We deliberately do not persist prompts or completions in a cache.
 """
 from __future__ import annotations
 
