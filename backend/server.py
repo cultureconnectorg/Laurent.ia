@@ -34,8 +34,8 @@ app.state.db = db
 async def root_health():
     """Return a truthful service landing status; inference readiness is separate."""
     inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
     )
     return {
         "service": "laurentia",
@@ -70,13 +70,13 @@ async def root():
 async def health():
     # This reports configuration only; it does not claim the model is reachable.
     inference_configured = bool(
-        os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
-        and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
     )
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None,
+        "model": os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None,
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
     }
@@ -85,8 +85,8 @@ async def health():
 @api_router.get("/health/inference")
 async def inference_health():
     """Probe the configured sovereign model catalogue without exposing secrets."""
-    model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or None
-    if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip() or not model:
+    model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None
+    if not os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() or not model:
         return JSONResponse(
             status_code=503,
             content={
@@ -103,7 +103,7 @@ async def inference_health():
         from services.cvl_brain import _controlled_base_url
 
         endpoint = _controlled_base_url()
-        model = os.environ.get("LAURENTIA_LLM_MODEL", "").strip() or "local-model"
+        model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or "local-model"
         api_key = os.environ.get("LAURENTIA_LLM_API_KEY", "").strip() or "local-endpoint"
         models_url = endpoint.rstrip("/") + "/models"
         headers = {"Accept": "application/json", "Authorization": f"Bearer {api_key}"}
@@ -298,7 +298,7 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()))
+    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()))
 
 
 @app.on_event("shutdown")
