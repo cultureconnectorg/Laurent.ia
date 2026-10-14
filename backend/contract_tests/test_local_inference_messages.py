@@ -1,7 +1,10 @@
 """Offline contract tests for local multi-message agent turns."""
 import asyncio
 import threading
+import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import local_inference
 
 
