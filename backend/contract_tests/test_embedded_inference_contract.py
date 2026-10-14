@@ -58,6 +58,8 @@ def test_model_artifact_is_pinned_to_reviewed_revision_and_sha256():
     source = (BACKEND / "services" / "local_inference.py").read_text()
     assert 'MODEL_REVISION = "32db44d69cedb731dc0fc96f60e01a86c6f5919d"' in source
     assert 'MODEL_SHA256 = "478cca924101ed67bb2751f597be41532b2f4817ee2ab1b0d7cc379c76e79faf"' in source
+    assert 'MODEL_ID = "smollm2-135m-instruct-q2_k"' in source
+    assert "LAURENTIA_LOCAL_MODEL_ID" not in source
     assert "revision=MODEL_REVISION" in source
     assert "_verify_model_checksum(cached)" in source
     assert "_verify_model_checksum(Path(model_path))" in source
