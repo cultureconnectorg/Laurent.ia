@@ -1,6 +1,12 @@
 """Route-level tests proving Agent Factory recommendations reach Laurentia briefing."""
 import asyncio
+import sys
+from pathlib import Path
 
+import pytest
+
+pytest.importorskip("fastapi")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from routes import brain as brain_route
 
 
