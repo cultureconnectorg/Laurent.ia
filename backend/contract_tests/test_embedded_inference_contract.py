@@ -1,7 +1,12 @@
+import hashlib
+import sys
 from pathlib import Path
+
+import pytest
 
 
 BACKEND = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND))
 
 
 def test_embedded_model_is_the_default_and_remote_endpoint_is_opt_in():
@@ -47,3 +52,25 @@ def test_runtime_is_pinned_to_python_312_and_inference_package_is_declared():
     assert (BACKEND / ".python-version").read_text().strip().startswith("3.12.")
     requirements = (BACKEND / "requirements.txt").read_text()
     assert "llama-cpp-python==" in requirements
+
+
+def test_model_artifact_is_pinned_to_reviewed_revision_and_sha256():
+    source = (BACKEND / "services" / "local_inference.py").read_text()
+    assert 'MODEL_REVISION = "32db44d69cedb731dc0fc96f60e01a86c6f5919d"' in source
+    assert 'MODEL_SHA256 = "478cca924101ed67bb2751f597be41532b2f4817ee2ab1b0d7cc379c76e79faf"' in source
+    assert "revision=MODEL_REVISION" in source
+    assert "_verify_model_checksum(cached)" in source
+    assert "_verify_model_checksum(Path(model_path))" in source
+
+
+def test_model_checksum_verifier_accepts_exact_hash_and_rejects_mismatch(tmp_path):
+    from services.local_inference import _verify_model_checksum
+
+    artifact = tmp_path / "model.gguf"
+    payload = b"test-only model artifact"
+    artifact.write_bytes(payload)
+    expected = hashlib.sha256(payload).hexdigest()
+
+    assert _verify_model_checksum(artifact, expected) is None
+    with pytest.raises(RuntimeError, match="SHA-256 mismatch"):
+        _verify_model_checksum(artifact, "0" * 64)
