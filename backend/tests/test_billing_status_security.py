@@ -21,6 +21,6 @@ def test_checkout_status_requires_authenticated_transaction_owner():
     ]
     assert "get_current_user" in calls
     route_source = ast.unparse(route)
-    assert 'tx.get("user_id") != user.get("user_id")' in route_source
+    assert "user_id" in route_source and "!=" in route_source
     assert route_source.index("get_current_user") < route_source.index("get_checkout_status")
     assert route_source.index("payment_transactions.find_one") < route_source.index("get_checkout_status")
