@@ -127,7 +127,7 @@ def test_handler_exception_does_not_leak_details():
     registry = ToolRegistry()
     registry.register(ToolSpec(
         name="safe_failure", description="test safe error",
-        handler=secret_failure, validate_arguments=lambda args: args == {},
+        handler=secret_failure, validate_arguments=lambda args: args == {}, effect="read_only",
     ))
     result = asyncio.run(registry.execute(
         {"tool": "safe_failure", "arguments": {}}, context=CTX
