@@ -13,20 +13,37 @@ def test_missing_factory_url_fails_closed(monkeypatch):
         bridge._factory_url()
 
 
+def test_missing_allowlist_fails_closed(monkeypatch):
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_BASE_URL", "https://factory.example.com")
+    monkeypatch.delenv("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", raising=False)
+    with pytest.raises(RuntimeError, match="allowlist"):
+        bridge._factory_url()
+
+
+def test_non_allowlisted_host_fails_closed(monkeypatch):
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_BASE_URL", "https://factory.example.com")
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", "factory.cvln.example")
+    with pytest.raises(RuntimeError, match="not allowlisted"):
+        bridge._factory_url()
+
+
 def test_public_http_factory_url_is_rejected(monkeypatch):
     monkeypatch.setenv("CVLN_AGENT_FACTORY_BASE_URL", "http://factory.example.com")
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", "factory.example.com")
     with pytest.raises(RuntimeError, match="HTTPS is required"):
         bridge._factory_url()
 
 
 def test_external_provider_url_is_rejected(monkeypatch):
     monkeypatch.setenv("CVLN_AGENT_FACTORY_BASE_URL", "https://api.openai.com")
-    with pytest.raises(RuntimeError, match="forbidden"):
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", "factory.cvln.example")
+    with pytest.raises(RuntimeError, match="not allowlisted"):
         bridge._factory_url()
 
 
 def test_bad_service_token_fails_closed(monkeypatch):
     monkeypatch.setenv("CVLN_AGENT_FACTORY_BASE_URL", "https://factory.cvln.example")
+    monkeypatch.setenv("CVLN_AGENT_FACTORY_ALLOWED_HOSTS", "factory.cvln.example")
     monkeypatch.setenv("CVLN_AGENT_FACTORY_SERVICE_TOKEN", "not-a-service-token")
     with pytest.raises(RuntimeError, match="service token"):
         asyncio.run(bridge.recommend_agents("Prépare le plan Kiltikonet"))
