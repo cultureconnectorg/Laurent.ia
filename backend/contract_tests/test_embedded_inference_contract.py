@@ -28,6 +28,9 @@ def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     assert '"cache_hit": _cache_hit' in source
     assert '"load_seconds":' in source
     assert '"last_generation_seconds":' in source
+    assert "model.tokenize(system_message.encode" in source
+    assert "system_tokens = system_tokens[:system_budget]" in source
+    assert "user_tokens = user_tokens[-user_budget:]" in source
     assert "Do not persist prompts or completions in a cache." in source
 
 
