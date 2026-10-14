@@ -12,14 +12,20 @@ def test_embedded_model_is_the_default_and_remote_endpoint_is_opt_in():
     assert "services.local_inference" in source
 
 
-def test_embedded_runtime_uses_open_weights_and_small_cpu_limits():
+def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     source = (BACKEND / "services" / "local_inference.py").read_text()
     assert "tensorblock/SmolLM2-135M-Instruct-GGUF" in source
     assert "SmolLM2-135M-Instruct-Q2_K.gguf" in source
-    assert 'n_ctx=int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512"))' in source
-    assert 'n_threads=max(1, int(os.environ.get("LAURENTIA_LOCAL_THREADS", "1")))' in source
+    assert 'LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"' in source
+    assert "A complete local artifact avoids a Hugging Face request on warm starts." in source
+    assert "n_ctx=CONTEXT_TOKENS" in source
+    assert "n_threads=THREADS" in source
+    assert "n_batch=BATCH_SIZE" in source
+    assert "_generation_lock = threading.Lock()" in source
     assert "create_chat_completion" in source
     assert "hf_hub_download" in source
+    assert '"cache_hit": _cache_hit' in source
+    assert '"load_seconds":' in source
 
 
 def test_health_reports_embedded_mode_without_claiming_model_is_ready():
