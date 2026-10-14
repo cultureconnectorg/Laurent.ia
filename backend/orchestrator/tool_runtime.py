@@ -127,12 +127,19 @@ class ToolRegistry:
                 raise ToolRuntimeError("tool_not_allowed")
             if not spec.validate_arguments(call["arguments"]):
                 raise ToolRuntimeError("arguments_invalid")
-            value = spec.handler(context, call["arguments"])
-            if inspect.isawaitable(value):
-                value = await asyncio.wait_for(value, timeout=spec.timeout_seconds)
+            if inspect.iscoroutinefunction(spec.handler):
+                value = await asyncio.wait_for(
+                    spec.handler(context, call["arguments"]),
+                    timeout=spec.timeout_seconds,
+                )
             else:
-                # Sync handlers must be fast; all production I/O tools should be async.
-                value = value
+                # Keep synchronous handlers off the event loop and bound their wait.
+                value = await asyncio.wait_for(
+                    asyncio.to_thread(spec.handler, context, call["arguments"]),
+                    timeout=spec.timeout_seconds,
+                )
+                if inspect.isawaitable(value):
+                    value = await asyncio.wait_for(value, timeout=spec.timeout_seconds)
             output = value if isinstance(value, str) else json.dumps(
                 value, ensure_ascii=False, default=str
             )
