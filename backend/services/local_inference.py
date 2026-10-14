@@ -25,8 +25,8 @@ MODEL_FILE = os.environ.get(
     "SmolLM2-135M-Instruct-Q2_K.gguf",
 )
 MODEL_CACHE = Path(os.environ.get("LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"))
-MODEL_ID = os.environ.get("LAURENTIA_LLM_MODEL", "smollm2-135m-instruct-q2_k")
-CONTEXT_TOKENS = max(256, int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512")))
+MODEL_ID = os.environ.get("LAURENTIA_LOCAL_MODEL_ID", "smollm2-135m-instruct-q2_k")
+CONTEXT_TOKENS = max(256, min(768, int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512"))))
 MAX_OUTPUT_TOKENS = max(16, min(256, int(os.environ.get("LAURENTIA_LOCAL_MAX_TOKENS", "96"))))
 THREADS = max(1, min(2, int(os.environ.get("LAURENTIA_LOCAL_THREADS", "1"))))
 BATCH_SIZE = max(8, min(32, int(os.environ.get("LAURENTIA_LOCAL_BATCH", "16"))))
@@ -36,6 +36,9 @@ _model_lock = threading.Lock()
 _generation_lock = threading.Lock()
 _load_seconds: float | None = None
 _cache_hit: bool | None = None
+_last_generation_seconds: float | None = None
+_last_completion_tokens: int | None = None
+_generation_count = 0
 
 
 def model_file_path() -> Path | None:
@@ -54,6 +57,12 @@ def model_status() -> dict[str, Any]:
         "artifact": MODEL_FILE if path is not None else None,
         "cache_hit": _cache_hit,
         "load_seconds": round(_load_seconds, 2) if _load_seconds is not None else None,
+        "last_generation_seconds": (
+            round(_last_generation_seconds, 2)
+            if _last_generation_seconds is not None else None
+        ),
+        "last_completion_tokens": _last_completion_tokens,
+        "generation_count": _generation_count,
         "context_tokens": CONTEXT_TOKENS,
         "max_output_tokens": MAX_OUTPUT_TOKENS,
         "generation_busy": _generation_lock.locked(),
@@ -99,10 +108,10 @@ def _get_model():
 
 
 def _messages(system_message: str, user_text: str) -> list[dict[str, str]]:
-    # Keep the prompt bounded on a 512-token-class context. Character limits are
-    # a safety rail; the model tokenizer remains the final authority on token use.
-    system_limit = int(os.environ.get("LAURENTIA_LOCAL_SYSTEM_CHARS", "3000"))
-    user_limit = int(os.environ.get("LAURENTIA_LOCAL_INPUT_CHARS", "6000"))
+    # Character limits are a safety rail; the model tokenizer remains the final
+    # authority on token use. Do not persist prompts or completions in a cache.
+    system_limit = max(500, min(6000, int(os.environ.get("LAURENTIA_LOCAL_SYSTEM_CHARS", "2500"))))
+    user_limit = max(500, min(8000, int(os.environ.get("LAURENTIA_LOCAL_INPUT_CHARS", "4000"))))
     return [
         {"role": "system", "content": system_message[-system_limit:]},
         {"role": "user", "content": user_text[-user_limit:]},
@@ -110,12 +119,18 @@ def _messages(system_message: str, user_text: str) -> list[dict[str, str]]:
 
 
 def _complete(system_message: str, user_text: str) -> str:
+    global _last_generation_seconds, _last_completion_tokens, _generation_count
+    started = time.monotonic()
     with _generation_lock:
         result = _get_model().create_chat_completion(
             messages=_messages(system_message, user_text),
             max_tokens=MAX_OUTPUT_TOKENS,
             temperature=0.2,
         )
+    _last_generation_seconds = time.monotonic() - started
+    usage = result.get("usage") or {}
+    _last_completion_tokens = usage.get("completion_tokens")
+    _generation_count += 1
     content = result["choices"][0]["message"].get("content")
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("Embedded Laurent.ia model returned an empty response.")
@@ -135,6 +150,9 @@ async def chat_stream(system_message: str, user_text: str):
         loop.call_soon_threadsafe(queue.put_nowait, item)
 
     def worker():
+        global _last_generation_seconds, _last_completion_tokens, _generation_count
+        started = time.monotonic()
+        completion_chars = 0
         try:
             with _generation_lock:
                 stream = _get_model().create_chat_completion(
@@ -149,7 +167,11 @@ async def chat_stream(system_message: str, user_text: str):
                         continue
                     delta = (choices[0].get("delta") or {}).get("content")
                     if isinstance(delta, str) and delta:
+                        completion_chars += len(delta)
                         publish(("chunk", delta))
+            _last_generation_seconds = time.monotonic() - started
+            _last_completion_tokens = None
+            _generation_count += 1
             publish(("end", None))
         except Exception as exc:
             # Never expose filesystem paths, credentials, or upstream URLs.
