@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install focused test dependencies
-        run: python -m pip install "httpx==0.28.1" "openai==1.99.9" "pytest==9.0.3"
+        run: python -m pip install "httpx==0.28.1" "openai==1.99.9" "pytest==9.0.3" "python-dotenv==1.2.2"
       - name: Test sovereign endpoint policy
         working-directory: backend
         run: python -m pytest -q tests/test_cvl_brain_sovereignty.py
