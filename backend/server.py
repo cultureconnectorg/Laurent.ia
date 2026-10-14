@@ -30,6 +30,26 @@ app = FastAPI(title="Laurent.ia API", version="0.1.0")
 app.state.db = db
 
 
+# Routes héritées /api/status (template) — conservées pour compatibilité.
+api_router = APIRouter(prefix="/api")
+
+
+class StatusCheck(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_name: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StatusCheckCreate(BaseModel):
+    client_name: str
+
+
+@api_router.get("/")
+async def root():
+    return {"message": "Laurent.ia online", "version": "0.1.0"}
+
+
 @app.get("/")
 async def root_health():
     """Return service status separately from verified inference readiness."""
