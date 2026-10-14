@@ -27,6 +27,7 @@ def test_chat_messages_rejects_invalid_transcripts_before_network(monkeypatch, m
 
 
 def test_chat_messages_uses_controlled_client_and_passes_session_header(monkeypatch):
+    monkeypatch.setattr(cvl_brain, "_use_embedded_model", lambda: False)
     captured = {}
 
     async def create(**kwargs):
