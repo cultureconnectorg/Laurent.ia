@@ -27,7 +27,10 @@ MODEL_FILE = os.environ.get(
 MODEL_CACHE = Path(os.environ.get("LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"))
 MODEL_ID = os.environ.get("LAURENTIA_LOCAL_MODEL_ID", "smollm2-135m-instruct-q2_k")
 CONTEXT_TOKENS = max(256, min(768, int(os.environ.get("LAURENTIA_LOCAL_CONTEXT", "512"))))
-MAX_OUTPUT_TOKENS = max(16, min(256, int(os.environ.get("LAURENTIA_LOCAL_MAX_TOKENS", "96"))))
+MAX_OUTPUT_TOKENS = max(
+    16,
+    min(256, CONTEXT_TOKENS - 128, int(os.environ.get("LAURENTIA_LOCAL_MAX_TOKENS", "96"))),
+)
 THREADS = max(1, min(2, int(os.environ.get("LAURENTIA_LOCAL_THREADS", "1"))))
 BATCH_SIZE = max(8, min(32, int(os.environ.get("LAURENTIA_LOCAL_BATCH", "16"))))
 
