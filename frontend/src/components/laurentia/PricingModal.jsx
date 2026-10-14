@@ -21,6 +21,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
   const [packages, setPackages] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
   const [packagesError, setPackagesError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (!open || packages) return;
@@ -37,7 +38,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
       }
     })();
     return () => { cancelled = true; };
-  }, [open, packages]);
+  }, [open, packages, retryNonce]);
 
   const handleCheckout = async (packageId) => {
     if (!isAuthenticated) {
@@ -106,7 +107,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
                 <p className="text-sm text-white/65">Les offres ne sont pas disponibles pour le moment.</p>
                 <button
                   type="button"
-                  onClick={() => { setPackagesError(false); setPackages(null); }}
+                  onClick={() => { setPackagesError(false); setRetryNonce((n) => n + 1); }}
                   className="rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:bg-white/5"
                   data-testid="pricing-retry"
                 >
