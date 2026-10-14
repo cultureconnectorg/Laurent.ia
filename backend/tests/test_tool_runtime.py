@@ -81,27 +81,24 @@ def test_async_handler_timeout_is_bounded():
     assert result.error == "tool_timeout"
 
 
-def test_sync_handler_timeout_is_bounded():
-    import time
-
+def test_sync_handlers_are_rejected_to_preserve_timeout_cancellation():
     registry = ToolRegistry()
-    registry.register(ToolSpec(
-        name="slow_sync", description="test sync timeout",
-        handler=lambda context, arguments: (time.sleep(0.05), "too late")[1],
-        validate_arguments=lambda args: args == {}, timeout_seconds=0.001,
-    ))
-    result = asyncio.run(registry.execute(
-        {"tool": "slow_sync", "arguments": {}}, context=CTX
-    ))
-    assert not result.ok
-    assert result.error == "tool_timeout"
+    with pytest.raises(ValueError, match="handlers must be async"):
+        registry.register(ToolSpec(
+            name="unsafe_sync", description="sync handlers cannot be cancelled",
+            handler=lambda context, arguments: "result",
+            validate_arguments=lambda args: args == {},
+        ))
 
 
 def test_result_is_truncated():
+    async def long_result(context, arguments):
+        return "x" * 5000
+
     registry = ToolRegistry()
     registry.register(ToolSpec(
         name="long_result", description="test truncation",
-        handler=lambda context, arguments: "x" * 5000,
+        handler=long_result,
         validate_arguments=lambda args: args == {},
     ))
     result = asyncio.run(registry.execute(
@@ -124,7 +121,7 @@ def test_context_requires_trusted_identity_fields():
 
 
 def test_handler_exception_does_not_leak_details():
-    def secret_failure(context, arguments):
+    async def secret_failure(context, arguments):
         raise RuntimeError("mongodb://user:secret@example.invalid")
 
     registry = ToolRegistry()
