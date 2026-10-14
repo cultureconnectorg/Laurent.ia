@@ -110,7 +110,7 @@ class ToolRegistry:
         self.allowed_effects = frozenset(
             DEFAULT_ALLOWED_EFFECTS if allowed_effects is None else allowed_effects
         )
-        if not self.allowed_effects.issubset(TOOL_EFFECTS):
+        if not self.allowed_effects.issubset(TOOL_EFFECTS - {"unknown"}):
             raise ValueError("allowed_effects contains an unknown tool effect")
 
     def register(self, spec: ToolSpec) -> None:
