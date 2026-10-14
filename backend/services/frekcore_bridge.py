@@ -28,6 +28,31 @@ _DEV_VALID_FREK_IDS = {
 }
 
 
+def is_production_runtime() -> bool:
+    """Recognize common deployment environment markers; production must never trust demo identities."""
+    markers = (
+        os.environ.get("LAURENTIA_ENV", ""),
+        os.environ.get("APP_ENV", ""),
+        os.environ.get("ENVIRONMENT", ""),
+        os.environ.get("NODE_ENV", ""),
+        os.environ.get("VERCEL_ENV", ""),
+        os.environ.get("RAILWAY_ENVIRONMENT", ""),
+    )
+    return any(value.strip().lower() in {"prod", "production"} for value in markers)
+
+
+def is_development_runtime() -> bool:
+    markers = (
+        os.environ.get("LAURENTIA_ENV", ""),
+        os.environ.get("APP_ENV", ""),
+        os.environ.get("ENVIRONMENT", ""),
+        os.environ.get("NODE_ENV", ""),
+        os.environ.get("VERCEL_ENV", ""),
+        os.environ.get("RAILWAY_ENVIRONMENT", ""),
+    )
+    return any(value.strip().lower() in {"dev", "development", "local", "test", "testing"} for value in markers)
+
+
 def is_remote_configured() -> bool:
     return bool(FREKCORE_API_URL and FREKCORE_API_KEY)
 
@@ -37,19 +62,25 @@ async def validate_frek_id(frek_id: str) -> dict:
     Valide un FREK-ID auprès du service frekcore.
 
     Routage:
-    - `DEMO-*` → toujours dev whitelist (utile pour démo/tests même en prod)
-    - autres   → frekcore.com si configuré, sinon dev whitelist
+    - production → les identités DEMO-* sont toujours refusées
+    - hors production → whitelist locale DEMO-* disponible pour les tests/démos
+    - autres → service distant si configuré, sinon refus
     """
     key = (frek_id or "").strip().upper()
 
-    # Dev / demo IDs — toujours validés via whitelist locale
+    # Les identités de démonstration ne sont jamais des identités de production.
     if key.startswith("DEMO-"):
+        if not is_development_runtime() or is_production_runtime():
+            return {"valid": False, "frek_id": key, "error": "demo identities disabled outside explicit development"}
         meta = _DEV_VALID_FREK_IDS.get(key)
         if not meta:
             return {"valid": False, "frek_id": key}
         return {"valid": True, "frek_id": key, **meta}
 
     if not is_remote_configured():
+        # Aucun environnement implicite ne peut remplacer l'autorité distante.
+        if not is_development_runtime() or is_production_runtime():
+            return {"valid": False, "frek_id": key, "error": "FREKCORE authority not configured"}
         meta = _DEV_VALID_FREK_IDS.get(key)
         if not meta:
             return {"valid": False, "frek_id": key}
