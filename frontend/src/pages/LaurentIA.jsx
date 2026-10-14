@@ -356,7 +356,7 @@ export default function LaurentIA() {
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#E7C566]">
                     Quota mensuel atteint
                   </span>
-                  <button className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#E7C566] underline" data-testid="upgrade-pro-cta">
+                  <button type="button" onClick={() => setPricingOpen(true)} className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#E7C566] underline" data-testid="upgrade-pro-cta">
                     Activer Pro
                   </button>
                 </div>
@@ -391,6 +391,7 @@ export default function LaurentIA() {
         open={pricingOpen}
         onOpenChange={setPricingOpen}
         currentTier={meta.tier || meta.version || "free"}
+        preferredPackageId={window.sessionStorage.getItem("laurentia_pending_package")}
       />
     </div>
   );
