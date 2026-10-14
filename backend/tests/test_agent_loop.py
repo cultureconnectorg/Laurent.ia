@@ -40,7 +40,7 @@ def test_model_tool_model_loop_executes_allowlisted_tool_then_returns_answer():
 
 def test_model_cannot_execute_unknown_tool():
     async def model(messages, tools):
-        if not any(m["role"] == "tool" for m in messages):
+        if not any("Résultat d’outil" in m["content"] for m in messages):
             return envelope("shell", {"command": "id"})
         return "Action refusée."
 
