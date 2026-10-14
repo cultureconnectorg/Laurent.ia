@@ -19,6 +19,7 @@ def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     assert 'LAURENTIA_MODEL_CACHE", "/tmp/laurentia-model-cache"' in source
     assert "A complete local artifact avoids a Hugging Face request on warm starts." in source
     assert "CONTEXT_TOKENS = max(256, min(768" in source
+    assert "CONTEXT_TOKENS - 128" in source
     assert "n_ctx=CONTEXT_TOKENS" in source
     assert "n_threads=THREADS" in source
     assert "n_batch=BATCH_SIZE" in source
