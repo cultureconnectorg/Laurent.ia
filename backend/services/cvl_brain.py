@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import math
 import os
 import uuid
 from typing import AsyncGenerator
@@ -22,7 +23,10 @@ def _local_endpoint() -> tuple[str, str, str | None, float]:
     endpoint = os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
     model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
     api_key = os.environ.get("LAURENTIA_LOCAL_LLM_API_KEY", "").strip() or None
-    timeout = float(os.environ.get("LAURENTIA_LOCAL_LLM_TIMEOUT_SECONDS", "60"))
+    try:
+        timeout = float(os.environ.get("LAURENTIA_LOCAL_LLM_TIMEOUT_SECONDS", "60"))
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("LAURENTIA_LOCAL_LLM_TIMEOUT_SECONDS doit être un nombre entre 1 et 300.") from exc
 
     if not endpoint or not model:
         raise RuntimeError(
@@ -31,24 +35,48 @@ def _local_endpoint() -> tuple[str, str, str | None, float]:
         )
 
     parsed = urlparse(endpoint)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-        raise RuntimeError("LAURENTIA_LOCAL_LLM_URL doit être une URL HTTP(S) valide sans identifiants intégrés.")
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise RuntimeError(
+            "LAURENTIA_LOCAL_LLM_URL doit être une URL HTTP(S) valide sans identifiants, "
+            "paramètres de requête ni fragment."
+        )
 
-    hostname = parsed.hostname.lower()
+    hostname = parsed.hostname.lower().rstrip(".")
     local_host = hostname == "localhost"
     try:
         ip = ipaddress.ip_address(hostname)
-        local_host = local_host or ip.is_loopback or ip.is_private or ip.is_link_local
+        # Link-local includes cloud metadata addresses (for example 169.254.169.254).
+        # Never permit these, multicast, unspecified, or reserved destinations.
+        local_host = local_host or (
+            (ip.is_loopback or ip.is_private)
+            and not (ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved)
+        )
     except ValueError:
-        # Refuse les noms DNS publics: le endpoint doit être local/privé et explicite.
+        # DNS names are rejected except the explicit loopback name above.
         pass
+
     if not local_host:
         raise RuntimeError(
-            "Endpoint LLM refusé : seuls localhost et les adresses IP privées/locales sont autorisés."
+            "Endpoint LLM refusé : seuls localhost et les adresses IP privées/locales "
+            "non link-local sont autorisés."
         )
 
-    if parsed.port is not None and not (1 <= parsed.port <= 65535):
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise RuntimeError("Port du moteur LLM local invalide.") from exc
+    if port is not None and not (1 <= port <= 65535):
         raise RuntimeError("Port du moteur LLM local invalide.")
+    if not math.isfinite(timeout) or not (1 <= timeout <= 300):
+        raise RuntimeError("LAURENTIA_LOCAL_LLM_TIMEOUT_SECONDS doit être compris entre 1 et 300.")
+
     return endpoint, model, api_key, timeout
 
 
@@ -59,7 +87,7 @@ async def chat_enriched(
 ) -> str:
     """Appelle exclusivement le moteur souverain auto-hébergé configuré."""
     endpoint, model, api_key, timeout = _local_endpoint()
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
@@ -75,7 +103,7 @@ async def chat_enriched(
     # receive it as a provider-specific session identifier.
     _ = session_id or str(uuid.uuid4())
 
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
         response = await client.post(endpoint, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
@@ -102,6 +130,10 @@ async def chat_stream(
     chunk_delay: float = 0.018,
 ) -> AsyncGenerator[str, None]:
     """Pseudo-streaming SSE sur la réponse du moteur souverain local."""
+    if chunk_size < 1:
+        raise ValueError("chunk_size doit être supérieur ou égal à 1.")
+    if chunk_delay < 0:
+        raise ValueError("chunk_delay ne peut pas être négatif.")
     full = await chat_enriched(user_text, system_message, session_id)
     tokens = full.split(" ")
     buffer: list[str] = []
@@ -113,4 +145,5 @@ async def chat_stream(
                 chunk += " "
             yield chunk
             buffer = []
-            await asyncio.sleep(chunk_delay)
+            if chunk_delay:
+                await asyncio.sleep(chunk_delay)
