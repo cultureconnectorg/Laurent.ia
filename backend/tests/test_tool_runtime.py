@@ -72,7 +72,7 @@ def test_async_handler_timeout_is_bounded():
     registry = ToolRegistry()
     registry.register(ToolSpec(
         name="slow_tool", description="test timeout", handler=slow,
-        validate_arguments=lambda args: args == {}, timeout_seconds=0.001,
+        validate_arguments=lambda args: args == {}, effect="read_only", timeout_seconds=0.001,
     ))
     result = asyncio.run(registry.execute(
         {"tool": "slow_tool", "arguments": {}}, context=CTX
@@ -87,7 +87,7 @@ def test_sync_handlers_are_rejected_to_preserve_timeout_cancellation():
         registry.register(ToolSpec(
             name="unsafe_sync", description="sync handlers cannot be cancelled",
             handler=lambda context, arguments: "result",
-            validate_arguments=lambda args: args == {},
+            validate_arguments=lambda args: args == {}, effect="read_only",
         ))
 
 
@@ -99,7 +99,7 @@ def test_result_is_truncated():
     registry.register(ToolSpec(
         name="long_result", description="test truncation",
         handler=long_result,
-        validate_arguments=lambda args: args == {},
+        validate_arguments=lambda args: args == {}, effect="read_only",
     ))
     result = asyncio.run(registry.execute(
         {"tool": "long_result", "arguments": {}}, context=CTX
@@ -127,7 +127,7 @@ def test_handler_exception_does_not_leak_details():
     registry = ToolRegistry()
     registry.register(ToolSpec(
         name="safe_failure", description="test safe error",
-        handler=secret_failure, validate_arguments=lambda args: args == {},
+        handler=secret_failure, validate_arguments=lambda args: args == {}, effect="read_only",
     ))
     result = asyncio.run(registry.execute(
         {"tool": "safe_failure", "arguments": {}}, context=CTX
@@ -135,3 +135,123 @@ def test_handler_exception_does_not_leak_details():
     assert not result.ok
     assert result.error == "tool_failed"
     assert "secret" not in result.output
+
+
+
+def test_side_effecting_tools_are_hidden_and_denied_by_default():
+    async def mutate(context, arguments):
+        return {"mutated": True}
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="write_record", description="writes a record", handler=mutate,
+        validate_arguments=lambda args: args == {}, effect="write",
+    ))
+    assert registry.describe() == []
+    result = asyncio.run(registry.execute(
+        {"tool": "write_record", "arguments": {}}, context=CTX
+    ))
+    assert not result.ok
+    assert result.error == "tool_not_allowed"
+
+
+def test_unknown_effect_is_denied_by_default():
+    async def unclassified(context, arguments):
+        return "should never run"
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        name="unclassified", description="unclassified tool", handler=unclassified,
+        validate_arguments=lambda args: args == {},
+    ))
+    result = asyncio.run(registry.execute(
+        {"tool": "unclassified", "arguments": {}}, context=CTX
+    ))
+    assert not result.ok
+    assert result.error == "tool_not_allowed"
+
+def test_write_requires_both_runtime_capability_and_request_approval():
+    calls = []
+
+    async def mutate(context, arguments):
+        calls.append("write")
+        return {"written": True}
+
+    registry = ToolRegistry(allowed_effects={"read_only", "write"})
+    registry.register(ToolSpec(
+        name="write_record", description="writes a record", handler=mutate,
+        validate_arguments=lambda args: args == {}, effect="write",
+    ))
+    proposal = {"tool": "write_record", "arguments": {}}
+
+    # Runtime capability alone must not approve the current request.
+    denied = asyncio.run(registry.execute(proposal, context=CTX))
+    assert not denied.ok and denied.error == "tool_not_allowed"
+    assert registry.describe(context=CTX) == []
+    assert calls == []
+
+    approved = ToolContext(
+        tenant_id="tenant-test", session_id="session-test", principal_id="user-test",
+        approved_effects=frozenset({"read_only", "write"}),
+    )
+    allowed = asyncio.run(registry.execute(proposal, context=approved))
+    assert allowed.ok
+    assert json.loads(allowed.output) == {"written": True}
+    assert registry.describe(context=approved) == [
+        {"name": "write_record", "description": "writes a record"}
+    ]
+    assert calls == ["write"]
+
+
+def test_external_effect_requires_explicit_request_approval():
+    calls = []
+
+    async def call_external(context, arguments):
+        calls.append("external")
+        return {"called": True}
+
+    registry = ToolRegistry(allowed_effects={"read_only", "external"})
+    registry.register(ToolSpec(
+        name="external_call", description="calls an external service",
+        handler=call_external, validate_arguments=lambda args: args == {},
+        effect="external",
+    ))
+    proposal = {"tool": "external_call", "arguments": {}}
+    denied = asyncio.run(registry.execute(proposal, context=CTX))
+    assert not denied.ok and denied.error == "tool_not_allowed"
+    assert calls == []
+
+    approved = ToolContext(
+        tenant_id="tenant-test", session_id="session-test", principal_id="user-test",
+        approved_effects=frozenset({"read_only", "external"}),
+    )
+    allowed = asyncio.run(registry.execute(proposal, context=approved))
+    assert allowed.ok
+    assert calls == ["external"]
+
+
+def test_unknown_effect_cannot_be_approved_or_enabled():
+    async def unknown_handler(context, arguments):
+        return "should never run"
+
+    with pytest.raises(ValueError, match="allowed_effects"):
+        ToolRegistry(allowed_effects={"read_only", "unknown"})
+
+    with pytest.raises(ToolRuntimeError, match="approved_effects"):
+        ToolContext(
+            tenant_id="tenant-test", session_id="session-test", principal_id="user-test",
+            approved_effects=frozenset({"read_only", "unknown"}),
+        )
+
+    registry = ToolRegistry(allowed_effects={"read_only", "write", "external"})
+    registry.register(ToolSpec(
+        name="unknown_effect", description="unclassified handler",
+        handler=unknown_handler, validate_arguments=lambda args: args == {},
+        effect="unknown",
+    ))
+    assert registry.describe(context=CTX) == []
+    result = asyncio.run(registry.execute(
+        {"tool": "unknown_effect", "arguments": {}}, context=CTX
+    ))
+    assert not result.ok and result.error == "tool_not_allowed"
+

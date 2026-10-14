@@ -19,6 +19,9 @@ MAX_ARGUMENT_BYTES = 8_192
 MAX_RESULT_CHARS = 4_000
 MAX_PLAN_STEPS = 4
 DEFAULT_TIMEOUT_SECONDS = 2.0
+TOOL_EFFECTS = frozenset({"read_only", "write", "external", "unknown"})
+DEFAULT_ALLOWED_EFFECTS = frozenset({"read_only"})
+EXECUTABLE_EFFECTS = TOOL_EFFECTS - {"unknown"}
 
 
 class ToolRuntimeError(ValueError):
@@ -27,16 +30,23 @@ class ToolRuntimeError(ValueError):
 
 @dataclass(frozen=True)
 class ToolContext:
-    """Identity boundary supplied by trusted request middleware, not the model."""
+    """Trusted request context; approved_effects must come from server-side policy."""
     tenant_id: str
     session_id: str
     principal_id: str
+    # Read-only work is the only implicit approval. Mutating/network effects require
+    # a trusted caller to supply an explicit approval after its own authorization flow.
+    approved_effects: frozenset[str] = DEFAULT_ALLOWED_EFFECTS
 
     def __post_init__(self) -> None:
         for name in ("tenant_id", "session_id", "principal_id"):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip() or len(value) > 256:
                 raise ToolRuntimeError(f"invalid_context:{name}")
+        if not isinstance(self.approved_effects, frozenset):
+            raise ToolRuntimeError("invalid_context:approved_effects")
+        if not self.approved_effects.issubset(EXECUTABLE_EFFECTS):
+            raise ToolRuntimeError("invalid_context:approved_effects")
 
 
 @dataclass(frozen=True)
@@ -45,6 +55,8 @@ class ToolSpec:
     description: str
     handler: Callable[[ToolContext, dict[str, Any]], Awaitable[Any]]
     validate_arguments: Callable[[dict[str, Any]], bool]
+    # Unknown is deliberately the default: new tools cannot gain side-effect permissions by omission.
+    effect: str = "unknown"
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
 
 
@@ -91,13 +103,23 @@ def parse_tool_proposal(raw: str | Mapping[str, Any]) -> dict[str, Any]:
 
 
 class ToolRegistry:
-    """Fixed, code-owned allowlist of bounded tool handlers."""
+    """Fixed, code-owned allowlist with separate capability and request-approval gates."""
 
-    def __init__(self, *, max_steps: int = MAX_PLAN_STEPS) -> None:
+    def __init__(
+        self,
+        *,
+        max_steps: int = MAX_PLAN_STEPS,
+        allowed_effects: set[str] | frozenset[str] | None = None,
+    ) -> None:
         if not 1 <= max_steps <= MAX_PLAN_STEPS:
             raise ValueError(f"max_steps must be between 1 and {MAX_PLAN_STEPS}")
         self._tools: dict[str, ToolSpec] = {}
         self.max_steps = max_steps
+        self.allowed_effects = frozenset(
+            DEFAULT_ALLOWED_EFFECTS if allowed_effects is None else allowed_effects
+        )
+        if not self.allowed_effects.issubset(EXECUTABLE_EFFECTS):
+            raise ValueError("allowed_effects must contain only read_only, write, or external")
 
     def register(self, spec: ToolSpec) -> None:
         if not _TOOL_NAME.fullmatch(spec.name):
@@ -108,15 +130,20 @@ class ToolRegistry:
             raise ValueError("tool description must be 1..500 characters")
         if not inspect.iscoroutinefunction(spec.handler):
             raise ValueError("tool handlers must be async so execution can be cancelled on timeout")
+        if spec.effect not in TOOL_EFFECTS:
+            raise ValueError("tool effect must be read_only, write, external, or unknown")
         if not 0 < spec.timeout_seconds <= 10:
             raise ValueError("tool timeout must be >0 and <=10 seconds")
         self._tools[spec.name] = spec
 
-    def describe(self) -> list[dict[str, str]]:
-        """Safe schema metadata; handlers and internal context are never exposed."""
+    def describe(self, *, context: ToolContext | None = None) -> list[dict[str, str]]:
+        """Expose only tools allowed by runtime policy AND this trusted request's approvals."""
+        request_approvals = context.approved_effects if context is not None else DEFAULT_ALLOWED_EFFECTS
+        permitted = self.allowed_effects & request_approvals
         return [
             {"name": item.name, "description": item.description}
             for item in self._tools.values()
+            if item.effect in permitted
         ]
 
     async def execute(
@@ -125,7 +152,11 @@ class ToolRegistry:
         try:
             call = parse_tool_proposal(proposal)
             spec = self._tools.get(call["tool"])
-            if spec is None:
+            if (
+                spec is None
+                or spec.effect not in self.allowed_effects
+                or spec.effect not in context.approved_effects
+            ):
                 raise ToolRuntimeError("tool_not_allowed")
             if not spec.validate_arguments(call["arguments"]):
                 raise ToolRuntimeError("arguments_invalid")
@@ -199,11 +230,13 @@ def build_safe_default_registry() -> ToolRegistry:
         description="Normalise les espaces d'un texte fourni par l'utilisateur (outil local sans effet de bord).",
         handler=_normalize_text,
         validate_arguments=_is_text_argument,
+        effect="read_only",
     ))
     registry.register(ToolSpec(
         name="runtime_capabilities",
         description="Décrit les limites de sécurité du moteur d'outils local.",
         handler=_runtime_capabilities,
         validate_arguments=lambda args: args == {},
+        effect="read_only",
     ))
     return registry
