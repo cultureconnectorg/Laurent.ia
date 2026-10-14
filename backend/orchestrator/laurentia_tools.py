@@ -74,6 +74,7 @@ def build_request_tool_registry(*, db: Any, frek_id: str, tenant_id: str) -> Too
         description="Recherche dans les échanges mémorisés de cette instance uniquement, sans accéder aux autres tenants.",
         handler=memory_search,
         validate_arguments=validate_memory_args,
+        effect="read_only",
         timeout_seconds=2.0,
     ))
     return registry
