@@ -43,9 +43,10 @@ export function AuthProvider({ children }) {
         credentials: "include",
         body: JSON.stringify({ anon_frek_id: anon }),
       });
-      window.localStorage.removeItem("laurentia_anon_frek");
       if (r.ok) {
         const d = await r.json();
+        // Keep guest identity if the server did not confirm migration.
+        window.localStorage.removeItem("laurentia_anon_frek");
         return d.migrated || 0;
       }
       return 0;
