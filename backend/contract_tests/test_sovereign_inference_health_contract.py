@@ -9,10 +9,12 @@ def test_health_routes_use_the_sovereign_engine_environment():
     source = SERVER.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
-    assert "LAURENTIA_LOCAL_LLM_URL" in source
-    assert "LAURENTIA_LOCAL_LLM_MODEL" in source
-    assert "LAURENTIA_LLM_BASE_URL" not in source
-    assert "from services.cvl_brain import _local_endpoint" in source
+    assert "LAURENTIA_LLM_BASE_URL" in source
+    assert "LAURENTIA_LLM_MODEL" in source
+    assert "LAURENTIA_LOCAL_LLM_URL" not in source
+    assert "LAURENTIA_LOCAL_LLM_MODEL" not in source
+    assert "from services.cvl_brain import _controlled_base_url" in source
+    assert "_local_endpoint" not in source
     assert "_build_client" not in source
 
     route_names = {
