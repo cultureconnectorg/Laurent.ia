@@ -99,17 +99,21 @@ async def inference_health():
         )
 
     try:
+        from urllib.parse import urlparse, urlunparse
         import httpx
-        from services.cvl_brain import _controlled_base_url
+        from services.cvl_brain import _local_endpoint
 
-        endpoint = _controlled_base_url()
-        model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or "local-model"
-        api_key = os.environ.get("LAURENTIA_LLM_API_KEY", "").strip() or "local-endpoint"
-        models_url = endpoint.rstrip("/") + "/models"
-        headers = {"Accept": "application/json", "Authorization": f"Bearer {api_key}"}
+        endpoint, model, api_key, timeout = _local_endpoint()
+        parsed = urlparse(endpoint)
+        path = parsed.path.rstrip("/")
+        models_path = path[:-len("chat/completions")] + "models"
+        models_url = urlunparse(parsed._replace(path=models_path, query="", fragment=""))
+        headers = {"Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(8.0, connect=3.0),
+            timeout=httpx.Timeout(min(timeout, 8.0), connect=min(timeout, 3.0)),
             follow_redirects=False,
             trust_env=False,
         ) as inference_client:
