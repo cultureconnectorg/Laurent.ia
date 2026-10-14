@@ -87,7 +87,10 @@ export default function LaurentIA() {
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
     const pendingPackage = window.sessionStorage.getItem("laurentia_pending_package");
-    if (pendingPackage) setPricingOpen(true);
+    if (pendingPackage) {
+      window.sessionStorage.removeItem("laurentia_pending_package");
+      setPricingOpen(true);
+    }
   }, [authLoading, isAuthenticated]);
 
   // Poll Stripe checkout status si retour de succès
