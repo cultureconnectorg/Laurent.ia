@@ -465,9 +465,9 @@ async def _run_query(
 
                 async def _agent_model_turn(messages, tools):
                     protocol = (
-                        "\\n\\nOutils disponibles (allowlist stricte) : "
+                        "\n\nOutils disponibles (allowlist stricte) : "
                         + json.dumps(tools, ensure_ascii=False)
-                        + "\\nSi un outil est nécessaire, réponds uniquement avec "
+                        + "\nSi un outil est nécessaire, réponds uniquement avec "
                         + "[[TOOL_CALL]] puis un objet JSON de forme "
                         + '{"tool":"nom_outil","arguments":{...}}'
                         + " puis [[/TOOL_CALL]]. N'invente aucun outil. "
@@ -501,7 +501,7 @@ async def _run_query(
                             )
                         except Exception:
                             pass
-                    yield f"event: token\\ndata: {json.dumps({'text': chunk})}\\n\\n"
+                    yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
             else:
                 async for chunk in cvl_brain.chat_stream(
                     user_text=composed_input,
@@ -515,7 +515,7 @@ async def _run_query(
                             orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk, tier=tier)
                         except Exception:
                             pass
-                    yield f"event: token\\ndata: {json.dumps({'text': chunk})}\\n\\n"
+                    yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
 
                 full_response = "".join(full_response_parts).strip()
             tokens_in = max(1, len(composed_input) // 4)
