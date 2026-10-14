@@ -48,10 +48,14 @@ async def root():
 
 @api_router.get("/health")
 async def health():
+    # This reports configuration only; it does not claim the model is reachable.
+    inference_configured = bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip())
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
+        "model": os.environ.get("LAURENTIA_LLM_MODEL", "local-model"),
+        "inference_configured": inference_configured,
+        "inference_status": "configured" if inference_configured else "not_configured",
     }
 
 
@@ -184,7 +188,7 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s", os.environ.get("LAURENTIA_CLAUDE_MODEL"))
+    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()))
 
 
 @app.on_event("shutdown")
