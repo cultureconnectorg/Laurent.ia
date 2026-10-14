@@ -6,9 +6,9 @@ without importing the production application or connecting to MongoDB.
 import ast
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-SERVER = ROOT / "server.py"
-BRAIN = ROOT / "routes" / "brain.py"
+BACKEND = Path(__file__).resolve().parents[1]
+SERVER = BACKEND / "server.py"
+BRAIN = BACKEND / "routes" / "brain.py"
 
 
 def _tree(path: Path) -> ast.Module:
@@ -37,11 +37,10 @@ def test_server_registers_post_briefing_alias_to_existing_handler():
             continue
         if len(node.args) < 2 or not isinstance(node.args[1], ast.Name) or node.args[1].id != "brain_briefing":
             continue
-        methods = next(
-            (kw.value for kw in node.keywords if kw.arg == "methods"),
-            None,
-        )
-        if isinstance(methods, ast.List) and [elt.value for elt in methods.elts if isinstance(elt, ast.Constant)] == ["POST"]:
+        methods = next((kw.value for kw in node.keywords if kw.arg == "methods"), None)
+        if isinstance(methods, ast.List) and [
+            elt.value for elt in methods.elts if isinstance(elt, ast.Constant)
+        ] == ["POST"]:
             alias_registered = True
             break
 
@@ -55,7 +54,7 @@ def test_briefing_handler_keeps_interservice_authentication():
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "briefing"
     )
     source = ast.unparse(handler)
-    assert 'X-API-Key' in source
-    assert 'LAURENTIA_CVLN_SERVICE_API_KEY' in source
-    assert 'hmac.compare_digest' in source
-    assert 'HTTPException(403' in source
+    assert "X-API-Key" in source
+    assert "LAURENTIA_CVLN_SERVICE_API_KEY" in source
+    assert "hmac.compare_digest" in source
+    assert "HTTPException(403" in source
