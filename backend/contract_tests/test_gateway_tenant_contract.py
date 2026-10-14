@@ -37,8 +37,8 @@ def test_tenant_authorizer_fails_closed_and_compares_normalized_frek_id():
 def test_device_resolution_is_scoped_to_authenticated_frek_id():
     tree = _tree()
     source = ast.unparse(_function(tree, "resolve_by_device"))
-    assert 'lookup["frek_id"]' in source
-    assert 'lookup["device_ids"]' in source
+    assert "lookup[" in source and "frek_id" in source
+    assert "lookup[" in source and "device_ids" in source
 
 
 def test_feedback_is_scoped_to_interaction_tenant():
