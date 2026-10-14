@@ -16,7 +16,7 @@ const TIER_ICONS = {
   infinite: Brain,
 };
 
-export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
+export const PricingModal = ({ open, onOpenChange, currentTier = "free", preferredPackageId = null }) => {
   const { isAuthenticated, login } = useAuth();
   const [packages, setPackages] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
@@ -72,6 +72,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
         return;
       }
       const d = await r.json();
+      if (preferredPackageId === packageId) window.sessionStorage.removeItem("laurentia_pending_package");
       window.location.href = d.url;
     } catch (e) {
       toast(e.message || "Erreur réseau");
@@ -131,6 +132,11 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
                   className={`relative rounded-2xl border ${cardBorder} p-5 flex flex-col`}
                   data-testid={`pricing-tier-${t.tier}`}
                 >
+                  {preferredPackageId === t.package_id && (
+                    <div className="mb-2 rounded-lg border border-[#6BA8FF]/30 bg-[#6BA8FF]/10 px-2 py-1 text-[10px] text-[#9BC3FF]" data-testid="pricing-resume-plan">
+                      Ton choix précédent
+                    </div>
+                  )}
                   {isFlagship && (
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#E7C566] text-[#0A0F1F] font-mono text-[9px] uppercase tracking-[0.22em] font-semibold">
                       Recommandé
@@ -180,7 +186,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
                   >
                     {(t.package_id && loadingId === t.package_id) ? (
                       <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    ) : isCurrent ? "Ton plan actuel" : !t.package_id ? "Plan par défaut" : `Activer ${t.label}`}
+                    ) : isCurrent ? "Ton plan actuel" : !t.package_id ? "Plan par défaut" : preferredPackageId === t.package_id ? `Continuer avec ${t.label}` : `Activer ${t.label}`}
                   </button>
                 </div>
               );
