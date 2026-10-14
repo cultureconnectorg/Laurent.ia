@@ -1,0 +1,30 @@
+name: Backend contract smoke
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-contract-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile backend Python sources
+        run: python -m compileall -q backend
+      - name: Run static contract regression tests when present
+        run: |
+          python -m pip install --disable-pip-version-check pytest
+          if [ -f backend/tests/test_briefing_alias_contract.py ]; then
+            python -m pytest -q backend/tests/test_briefing_alias_contract.py
+          else
+            echo "No briefing alias contract test in this change; syntax check only."
+          fi
