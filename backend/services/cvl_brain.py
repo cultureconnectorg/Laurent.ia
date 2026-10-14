@@ -85,6 +85,26 @@ def _local_endpoint() -> tuple[str, str, str | None, float]:
     return endpoint, model, api_key, timeout
 
 
+def _response_content(data: object) -> str:
+    try:
+        content = data["choices"][0]["message"]["content"]  # type: ignore[index]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(
+            "Réponse invalide du moteur LLM souverain (format chat-completions attendu)."
+        ) from exc
+
+    if isinstance(content, str):
+        if content.strip():
+            return content
+        raise RuntimeError("Le moteur LLM souverain a renvoyé une réponse vide.")
+    if isinstance(content, list):
+        parts = [part.get("text", "") for part in content if isinstance(part, dict)]
+        result = "".join(parts)
+        if result.strip():
+            return result
+    raise RuntimeError("Contenu de réponse invalide du moteur LLM souverain.")
+
+
 async def chat_enriched(
     user_text: str,
     system_message: str,
@@ -104,27 +124,50 @@ async def chat_enriched(
         ],
         "stream": False,
     }
-    # session_id is accepted for API compatibility; the local endpoint does not
-    # receive it as a provider-specific session identifier.
     _ = session_id or str(uuid.uuid4())
 
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
         response = await client.post(endpoint, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    return _response_content(data)
 
-    try:
-        content = data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise RuntimeError("Réponse invalide du moteur LLM souverain (format chat-completions attendu).") from exc
 
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        # Some OpenAI-compatible local runtimes return typed content blocks.
-        parts = [part.get("text", "") for part in content if isinstance(part, dict)]
-        return "".join(parts)
-    raise RuntimeError("Contenu de réponse invalide du moteur LLM souverain.")
+async def chat_messages(
+    messages: list[dict[str, str]],
+    session_id: str | None = None,
+) -> str:
+    """Complete a bounded transcript against the configured local-only inference engine."""
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 24:
+        raise ValueError("Conversation must contain between 1 and 24 messages.")
+
+    allowed_roles = {"system", "user", "assistant", "tool"}
+    checked: list[dict[str, str]] = []
+    total_chars = 0
+    for message in messages:
+        if not isinstance(message, dict) or set(message) != {"role", "content"}:
+            raise ValueError("Conversation message schema is invalid.")
+        role, content = message["role"], message["content"]
+        if role not in allowed_roles or not isinstance(content, str) or len(content) > 40_000:
+            raise ValueError("Conversation message is invalid.")
+        total_chars += len(content)
+        checked.append({"role": role, "content": content})
+    if total_chars > 80_000:
+        raise ValueError("Conversation exceeds the configured context budget.")
+
+    endpoint, model, api_key, timeout = _local_endpoint()
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    if session_id:
+        headers["X-Laurentia-Session-ID"] = session_id
+    payload = {"model": model, "messages": checked, "stream": False}
+
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
+        response = await client.post(endpoint, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+    return _response_content(data)
 
 
 async def chat_stream(
