@@ -33,7 +33,10 @@ app.state.db = db
 @app.get("/")
 async def root_health():
     """Return a truthful service landing status; inference readiness is separate."""
-    inference_configured = bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip())
+    inference_configured = bool(
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    )
     return {
         "service": "laurentia",
         "status": "online",
@@ -66,11 +69,14 @@ async def root():
 @api_router.get("/health")
 async def health():
     # This reports configuration only; it does not claim the model is reachable.
-    inference_configured = bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip())
+    inference_configured = bool(
+        os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip()
+        and os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip()
+    )
     return {
         "ok": True,
         "service": "laurentia",
-        "model": os.environ.get("LAURENTIA_LLM_MODEL", "local-model"),
+        "model": os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None,
         "inference_configured": inference_configured,
         "inference_status": "configured" if inference_configured else "not_configured",
     }
@@ -78,9 +84,9 @@ async def health():
 
 @api_router.get("/health/inference")
 async def inference_health():
-    """Probe the configured inference endpoint without exposing its URL or credentials."""
-    model = os.environ.get("LAURENTIA_LLM_MODEL", "local-model").strip() or "local-model"
-    if not os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip():
+    """Probe the configured sovereign model catalogue without exposing secrets."""
+    model = os.environ.get("LAURENTIA_LOCAL_LLM_MODEL", "").strip() or None
+    if not os.environ.get("LAURENTIA_LOCAL_LLM_URL", "").strip() or not model:
         return JSONResponse(
             status_code=503,
             content={
@@ -92,13 +98,48 @@ async def inference_health():
             },
         )
 
-    from services.cvl_brain import _build_client
-
-    inference_client = None
     try:
-        inference_client = _build_client()
-        model_list = await asyncio.wait_for(inference_client.models.list(), timeout=8.0)
-        available_models = {item.id for item in model_list.data}
+        from urllib.parse import urlparse, urlunparse
+        import httpx
+        from services.cvl_brain import _local_endpoint
+
+        endpoint, model, api_key, timeout = _local_endpoint()
+        parsed = urlparse(endpoint)
+        path = parsed.path.rstrip("/")
+        models_path = path[:-len("chat/completions")] + "models"
+        models_url = urlunparse(parsed._replace(path=models_path, query="", fragment=""))
+        headers = {"Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        async with httpx.AsyncClient(
+            timeout=min(timeout, 8.0),
+            follow_redirects=False,
+            trust_env=False,
+        ) as inference_client:
+            response = await asyncio.wait_for(
+                inference_client.get(models_url, headers=headers),
+                timeout=8.0,
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        model_rows = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(model_rows, list):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "ok": False,
+                    "configured": True,
+                    "reachable": True,
+                    "model": model,
+                    "reason": "invalid_model_catalogue",
+                },
+            )
+        available_models = {
+            item.get("id") for item in model_rows
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        }
         model_available = model in available_models
         return JSONResponse(
             status_code=200 if model_available else 503,
@@ -112,7 +153,14 @@ async def inference_health():
             },
         )
     except Exception as exc:
-        reason = "timeout" if isinstance(exc, asyncio.TimeoutError) else "endpoint_unreachable"
+        # Deliberately avoid returning exception text, URLs, or credentials.
+        reason = "timeout" if isinstance(exc, asyncio.TimeoutError) else "invalid_configuration"
+        try:
+            import httpx
+            if isinstance(exc, httpx.HTTPError):
+                reason = "endpoint_unreachable"
+        except ImportError:
+            pass
         return JSONResponse(
             status_code=503,
             content={
@@ -123,9 +171,6 @@ async def inference_health():
                 "reason": reason,
             },
         )
-    finally:
-        if inference_client is not None:
-            await inference_client.close()
 
 
 @api_router.post("/status", response_model=StatusCheck)
