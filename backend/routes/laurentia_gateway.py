@@ -23,6 +23,8 @@ from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services import cvl_brain, cvl_brain_knowledge, kiltikonet_bridge, labelos_bridge
+from orchestrator.agent_loop import run_agent_turn
+from orchestrator.tool_runtime import ToolContext, build_safe_default_registry
 from services.cvl_brain_agents import log_call, log_write
 from services.crypto import encrypt_text
 from services.file_parser import (
@@ -447,22 +449,75 @@ async def _run_query(
                     enriched_prompt = system_prompt + "\n\n--- Mémoire récente ---\n" + "\n".join(ctx_lines[-memory_window*2:])
 
             full_response_parts: list[str] = []
+            agentic_enabled = os.environ.get(
+                "LAURENTIA_AGENTIC_TOOLS_ENABLED", "false"
+            ).strip().lower() in {"1", "true", "yes"}
 
-            async for chunk in cvl_brain.chat_stream(
-                user_text=composed_input,
-                system_message=enriched_prompt,
-                session_id=session_id,
-            ):
-                full_response_parts.append(chunk)
-                # Chantier 9 — shadow dispatch chunk (NON-BLOQUANT)
-                if orch is not None:
-                    try:
-                        orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk, tier=tier)
-                    except Exception:
-                        pass
-                yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
+            if agentic_enabled:
+                # Opt-in only until the local model is benchmarked against this
+                # explicit proposal protocol. Tools are code-registered and side-effect free.
+                registry = build_safe_default_registry()
+                tool_context = ToolContext(
+                    tenant_id=t_id,
+                    session_id=session_id,
+                    principal_id=t_id,
+                )
 
-            full_response = "".join(full_response_parts).strip()
+                async def _agent_model_turn(messages, tools):
+                    protocol = (
+                        "\\n\\nOutils disponibles (allowlist stricte) : "
+                        + json.dumps(tools, ensure_ascii=False)
+                        + "\\nSi un outil est nécessaire, réponds uniquement avec "
+                        + "[[TOOL_CALL]] puis un objet JSON de forme "
+                        + '{"tool":"nom_outil","arguments":{...}}'
+                        + " puis [[/TOOL_CALL]]. N'invente aucun outil. "
+                        + "Sinon, réponds directement à l'utilisateur."
+                    )
+                    transcript = [dict(message) for message in messages]
+                    transcript[0]["content"] = transcript[0]["content"] + protocol
+                    return await cvl_brain.chat_messages(
+                        transcript, session_id=session_id
+                    )
+
+                agent_result = await run_agent_turn(
+                    user_text=composed_input,
+                    system_message=enriched_prompt,
+                    model_turn=_agent_model_turn,
+                    registry=registry,
+                    context=tool_context,
+                    max_tool_calls=2,
+                    model_timeout_seconds=60.0,
+                )
+                full_response = agent_result.answer
+                # Preserve the existing SSE contract; model/tool turns are completed
+                # before text is emitted, so no half-finished tool proposal reaches UI.
+                for offset in range(0, len(full_response), 48):
+                    chunk = full_response[offset:offset + 48]
+                    full_response_parts.append(chunk)
+                    if orch is not None:
+                        try:
+                            orch.dispatch_stream_chunk(
+                                session_id=session_id, chunk=chunk, tier=tier
+                            )
+                        except Exception:
+                            pass
+                    yield f"event: token\\ndata: {json.dumps({'text': chunk})}\\n\\n"
+            else:
+                async for chunk in cvl_brain.chat_stream(
+                    user_text=composed_input,
+                    system_message=enriched_prompt,
+                    session_id=session_id,
+                ):
+                    full_response_parts.append(chunk)
+                    # Chantier 9 — shadow dispatch chunk (NON-BLOQUANT)
+                    if orch is not None:
+                        try:
+                            orch.dispatch_stream_chunk(session_id=session_id, chunk=chunk, tier=tier)
+                        except Exception:
+                            pass
+                    yield f"event: token\\ndata: {json.dumps({'text': chunk})}\\n\\n"
+
+                full_response = "".join(full_response_parts).strip()
             tokens_in = max(1, len(composed_input) // 4)
             tokens_out = max(1, len(full_response) // 4)
             # Chantier 9 — shadow dispatch fin de stream
