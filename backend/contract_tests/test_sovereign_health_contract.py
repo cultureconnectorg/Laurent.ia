@@ -13,9 +13,10 @@ def test_health_reports_configured_sovereign_model_without_claiming_reachability
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "health"
     )
     source = ast.unparse(health)
-    assert "LAURENTIA_LLM_BASE_URL" in source
-    assert "LAURENTIA_LLM_MODEL" in source
+    assert "LAURENTIA_LOCAL_LLM_URL" in source
+    assert "LAURENTIA_LOCAL_LLM_MODEL" in source
     assert "inference_configured" in source
     assert "inference_status" in source
+    assert "LAURENTIA_LLM_BASE_URL" not in source
     assert "LAURENTIA_CLAUDE_MODEL" not in source
     assert "claude-sonnet-4-5-20250929" not in source
