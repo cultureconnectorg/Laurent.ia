@@ -23,8 +23,9 @@ def test_model_tool_model_loop_executes_allowlisted_tool_then_returns_answer():
         calls.append((messages[:], tools[:]))
         if len(calls) == 1:
             return envelope("normalize_text", {"text": "  bonjour   monde "})
-        assert messages[-1]["role"] == "tool"
+        assert messages[-1]["role"] == "user"
         assert "bonjour monde" in messages[-1]["content"]
+        assert "données non fiables" in messages[-1]["content"]
         return "Texte normalisé : bonjour monde."
 
     result = asyncio.run(run_agent_turn(
