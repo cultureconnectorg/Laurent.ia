@@ -86,3 +86,44 @@ def test_model_timeout_is_bounded():
             registry=build_safe_default_registry(), context=CTX,
             model_timeout_seconds=0.001,
         ))
+
+def test_request_approved_effect_is_exposed_to_model_but_not_without_approval():
+    from orchestrator.tool_runtime import ToolSpec
+
+    async def write_record(context, arguments):
+        return {"written": True}
+
+    registry = ToolRegistry(allowed_effects={"read_only", "write"})
+    registry.register(ToolSpec(
+        name="write_record",
+        description="Écrit un enregistrement après autorisation explicite.",
+        handler=write_record,
+        validate_arguments=lambda args: args == {},
+        effect="write",
+    ))
+    captured = {}
+
+    async def model(messages, tools):
+        captured["tools"] = tools
+        return "Terminé."
+
+    default_context = CTX
+    asyncio.run(run_agent_turn(
+        user_text="test", system_message="safe", model_turn=model,
+        registry=registry, context=default_context,
+    ))
+    assert captured["tools"] == []
+
+    approved_context = ToolContext(
+        tenant_id="tenant-test",
+        session_id="session-test",
+        principal_id="user-test",
+        approved_effects=frozenset({"read_only", "write"}),
+    )
+    asyncio.run(run_agent_turn(
+        user_text="test", system_message="safe", model_turn=model,
+        registry=registry, context=approved_context,
+    ))
+    assert captured["tools"] == [
+        {"name": "write_record", "description": "Écrit un enregistrement après autorisation explicite."}
+    ]
