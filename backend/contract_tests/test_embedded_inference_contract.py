@@ -32,7 +32,7 @@ def test_runtime_reuses_cached_weights_and_bounds_cpu_memory_work():
     assert "model.tokenize(system_message.encode" in source
     assert "system_tokens = system_tokens[:system_budget]" in source
     assert "user_tokens = user_tokens[-user_budget:]" in source
-    assert "Do not persist prompts or completions in a cache." in source
+    assert "do not persist prompts or completions in a cache." in source
 
 
 def test_health_reports_embedded_mode_without_claiming_model_is_ready():
