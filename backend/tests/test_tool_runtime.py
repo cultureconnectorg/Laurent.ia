@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from backend.orchestrator.tool_runtime import (
+from orchestrator.tool_runtime import (
     ToolContext,
     ToolRegistry,
     ToolRuntimeError,
