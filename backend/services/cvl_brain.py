@@ -130,6 +130,46 @@ async def chat_enriched(
         await client.close()
 
 
+async def chat_messages(
+    messages: list[dict[str, str]],
+    session_id: str | None = None,
+) -> str:
+    """Complete a bounded conversation transcript against the controlled endpoint.
+
+    Only standard chat roles are accepted. This supports the agent loop without
+    enabling provider-native tools or delegating execution to the inference host.
+    """
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 24:
+        raise ValueError("Conversation must contain between 1 and 24 messages.")
+    allowed_roles = {"system", "user", "assistant", "tool"}
+    checked: list[dict[str, str]] = []
+    total_chars = 0
+    for message in messages:
+        if not isinstance(message, dict) or set(message) != {"role", "content"}:
+            raise ValueError("Conversation message schema is invalid.")
+        role, content = message["role"], message["content"]
+        if role not in allowed_roles or not isinstance(content, str) or len(content) > 40_000:
+            raise ValueError("Conversation message is invalid.")
+        total_chars += len(content)
+        checked.append({"role": role, "content": content})
+    if total_chars > 80_000:
+        raise ValueError("Conversation exceeds the configured context budget.")
+
+    client = _build_client()
+    try:
+        response = await client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=checked,
+            extra_headers={"X-Laurentia-Session-ID": session_id or ""},
+        )
+        content = response.choices[0].message.content
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("The configured inference endpoint returned an empty response.")
+        return content
+    finally:
+        await client.close()
+
+
 async def chat_stream(
     user_text: str,
     system_message: str,

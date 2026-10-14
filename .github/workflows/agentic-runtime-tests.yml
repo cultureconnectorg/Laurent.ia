@@ -1,0 +1,35 @@
+name: Agentic runtime tests
+
+on:
+  pull_request:
+    paths:
+      - "backend/orchestrator/tool_runtime.py"
+      - "backend/orchestrator/laurentia_tools.py"
+      - "backend/orchestrator/agent_loop.py"
+      - "backend/routes/laurentia_gateway.py"
+      - "backend/services/cvl_brain.py"
+      - "backend/tests/test_tool_runtime.py"
+      - "backend/tests/test_agent_loop.py"
+      - "backend/tests/test_cvl_brain_messages.py"
+      - "backend/tests/test_laurentia_tools.py"
+      - ".github/workflows/agentic-runtime-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tool-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest python-dotenv openai httpx cryptography
+      - name: Run bounded runtime contract tests
+        working-directory: backend
+        run: python -m pytest -q tests/test_tool_runtime.py tests/test_agent_loop.py tests/test_cvl_brain_messages.py tests/test_laurentia_tools.py
+      - name: Compile runtime
+        run: python -m compileall -q backend/orchestrator/tool_runtime.py backend/orchestrator/agent_loop.py backend/orchestrator/laurentia_tools.py backend/routes/laurentia_gateway.py backend/services/cvl_brain.py
