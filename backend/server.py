@@ -349,7 +349,24 @@ async def on_startup():
     # Chantier 10 — Reports daily/weekly (cron 00:00 Martinique)
     if os.environ.get("CHANTIER10_REPORTS_DISABLED", "").lower() not in ("1", "true", "yes"):
         schedule_reports(app, db)
-    logger.info("Laurent.ia startup complete — model=%s inference_configured=%s", os.environ.get("LAURENTIA_LLM_MODEL", "local-model"), bool(os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()))
+    inference_mode = os.environ.get("LAURENTIA_INFERENCE_MODE", "embedded").strip().lower()
+    inference_model = (
+        os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+        or ("smollm2-135m-instruct-q2_k" if inference_mode == "embedded" else "local-model")
+    )
+    inference_configured = (
+        inference_mode == "embedded"
+        or bool(
+            os.environ.get("LAURENTIA_LLM_BASE_URL", "").strip()
+            and os.environ.get("LAURENTIA_LLM_MODEL", "").strip()
+        )
+    )
+    logger.info(
+        "Laurent.ia startup complete — model=%s inference_mode=%s inference_configured=%s",
+        inference_model,
+        inference_mode,
+        inference_configured,
+    )
 
 
 @app.on_event("shutdown")
