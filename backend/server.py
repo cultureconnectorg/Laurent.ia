@@ -255,9 +255,25 @@ async def kiltikonet_unavailable_handler(_request, exc):
     )
 
 
-# CORS — supporte credentials (cookies httpOnly) avec allow_origin_regex
-_cors_env = os.environ.get('CORS_ORIGINS', '*').strip()
-if _cors_env == '*':
+# CORS — wildcard autorisé uniquement hors production.
+_runtime_markers = (
+    os.environ.get("LAURENTIA_ENV", ""),
+    os.environ.get("APP_ENV", ""),
+    os.environ.get("ENVIRONMENT", ""),
+    os.environ.get("NODE_ENV", ""),
+    os.environ.get("VERCEL_ENV", ""),
+    os.environ.get("RAILWAY_ENVIRONMENT", ""),
+)
+_runtime_values = {value.strip().lower() for value in _runtime_markers if value.strip()}
+_is_production_runtime = bool(_runtime_values & {"prod", "production"})
+_is_development_runtime = bool(_runtime_values & {"dev", "development", "local", "test", "testing"})
+# Prefer an explicit CORS allowlist; if absent, derive a single origin from the
+# already-required frontend URL. Never fall back to a wildcard in production.
+_cors_env = os.environ.get("CORS_ORIGINS", "").strip()
+if not _cors_env:
+    _cors_env = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+_cors_origins = [origin.strip().rstrip("/") for origin in _cors_env.split(",") if origin.strip()]
+if _cors_env == "*" and _is_development_runtime and not _is_production_runtime:
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
@@ -265,11 +281,16 @@ if _cors_env == '*':
         allow_methods=["*"],
         allow_headers=["*"],
     )
+elif not _cors_origins or "*" in _cors_origins:
+    raise RuntimeError(
+        "Configuration CORS dangereuse : utilisez une liste explicite d'origines; "
+        "le wildcard n'est autorisé qu'en développement explicite."
+    )
 else:
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
-        allow_origins=_cors_env.split(','),
+        allow_origins=_cors_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
