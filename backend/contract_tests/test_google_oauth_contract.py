@@ -237,3 +237,100 @@ def test_callback_rejects_unverified_google_email_before_database_access(monkeyp
     assert response.status_code == 303
     assert response.headers["location"] == "https://frontend.example.test/#auth=error"
     assert auth.COOKIE_NAME not in response.headers.get("set-cookie", "")
+
+
+def test_verified_google_callback_creates_user_tenant_session_and_http_only_cookie(monkeypatch):
+    configure_oauth(monkeypatch)
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self.payload
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+        async def post(self, url, **kwargs):
+            assert url == "https://oauth2.googleapis.com/token"
+            assert kwargs["data"]["grant_type"] == "authorization_code"
+            return FakeResponse({"access_token": "test-access-token"})
+
+        async def get(self, url, **kwargs):
+            assert url == "https://openidconnect.googleapis.com/v1/userinfo"
+            assert kwargs["headers"]["Authorization"] == "Bearer test-access-token"
+            return FakeResponse({
+                "sub": "google-subject-verified",
+                "email": "owner@example.test",
+                "email_verified": True,
+                "name": "Test Owner",
+                "picture": "https://images.example.test/avatar.png",
+            })
+
+    class WritableCollection(FakeCollection):
+        async def insert_one(self, document):
+            self.documents.append(dict(document))
+
+        async def update_one(self, query, update, upsert=False):
+            for document in self.documents:
+                if all(document.get(key) == value for key, value in query.items()):
+                    document.update(update.get("$set", {}))
+                    if "$setOnInsert" in update:
+                        for key, value in update["$setOnInsert"].items():
+                            document.setdefault(key, value)
+                    return
+            if upsert:
+                document = dict(query)
+                document.update(update.get("$set", {}))
+                document.update(update.get("$setOnInsert", {}))
+                self.documents.append(document)
+
+    db = FakeDatabase(
+        users=WritableCollection(),
+        user_sessions=WritableCollection(),
+        laurentia_instances=WritableCollection(),
+        laurentia_memory=WritableCollection(),
+    )
+    monkeypatch.setattr(auth.httpx, "AsyncClient", FakeAsyncClient)
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(db=db)))
+
+    response = asyncio.run(auth.google_oauth_callback(
+        request=request,
+        code="valid-code",
+        state="matching-state",
+        oauth_state="matching-state",
+    ))
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "https://frontend.example.test/#auth=success"
+    assert len(db.users.documents) == 1
+    user = db.users.documents[0]
+    assert user["email"] == "owner@example.test"
+    assert user["auth_provider"] == "google"
+    assert user["google_sub"] == "google-subject-verified"
+    assert user["frek_id"] == auth._derive_frek_id("owner@example.test")
+    assert len(db.laurentia_instances.documents) == 1
+    assert db.laurentia_instances.documents[0]["frek_id"] == user["frek_id"]
+    assert len(db.laurentia_memory.documents) == 1
+    assert len(db.user_sessions.documents) == 1
+    session = db.user_sessions.documents[0]
+    assert session["user_id"] == user["user_id"]
+    assert session["auth_method"] == "google"
+    assert session["session_token"].startswith("google_")
+    cookie = response.headers["set-cookie"].lower()
+    assert auth.COOKIE_NAME in cookie
+    assert "httponly" in cookie
+    assert "secure" in cookie
+    assert "samesite=none" in cookie
+    assert "max-age=604800" in cookie
