@@ -1,5 +1,8 @@
 name: Laurentia security regression
 on:
+  push:
+    branches:
+      - "claude/security-hardening-phase1-20261013"
   pull_request:
     paths:
       - "backend/services/frekcore_bridge.py"
