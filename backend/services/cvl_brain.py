@@ -106,12 +106,26 @@ def _build_client() -> AsyncOpenAI:
     )
 
 
+def _use_embedded_model() -> bool:
+    """Embedded model is the default; remote inference is opt-in only."""
+    mode = os.environ.get("LAURENTIA_INFERENCE_MODE", "embedded").strip().lower()
+    if mode == "embedded":
+        return True
+    if mode == "controlled-endpoint":
+        return False
+    raise RuntimeError("LAURENTIA_INFERENCE_MODE must be embedded or controlled-endpoint.")
+
+
 async def chat_enriched(
     user_text: str,
     system_message: str,
     session_id: str | None = None,
 ) -> str:
-    """Return a completion from the explicitly configured inference endpoint."""
+    """Generate locally by default; only use a controlled endpoint when explicitly enabled."""
+    if _use_embedded_model():
+        from services.local_inference import chat_complete
+        return await chat_complete(system_message, user_text)
+
     client = _build_client()
     try:
         response = await client.chat.completions.create(
@@ -134,11 +148,7 @@ async def chat_messages(
     messages: list[dict[str, str]],
     session_id: str | None = None,
 ) -> str:
-    """Complete a bounded conversation transcript against the controlled endpoint.
-
-    Only standard chat roles are accepted. This supports the agent loop without
-    enabling provider-native tools or delegating execution to the inference host.
-    """
+    """Complete a bounded transcript using embedded inference by default."""
     if not isinstance(messages, list) or not 1 <= len(messages) <= 24:
         raise ValueError("Conversation must contain between 1 and 24 messages.")
     allowed_roles = {"system", "user", "assistant", "tool"}
@@ -154,6 +164,10 @@ async def chat_messages(
         checked.append({"role": role, "content": content})
     if total_chars > 80_000:
         raise ValueError("Conversation exceeds the configured context budget.")
+
+    if _use_embedded_model():
+        from services.local_inference import chat_messages as local_chat_messages
+        return await local_chat_messages(checked)
 
     client = _build_client()
     try:
@@ -177,11 +191,13 @@ async def chat_stream(
     chunk_size: int = 6,
     chunk_delay: float = 0.018,
 ) -> AsyncGenerator[str, None]:
-    """Stream real content deltas from the configured inference endpoint.
+    """Stream actual generated deltas from the embedded model or controlled endpoint."""
+    if _use_embedded_model():
+        from services.local_inference import chat_stream as local_chat_stream
+        async for delta in local_chat_stream(system_message, user_text):
+            yield delta
+        return
 
-    chunk_size and chunk_delay remain accepted for call-site compatibility;
-    actual chunking and timing are controlled by the inference server.
-    """
     client = _build_client()
     try:
         stream = await client.chat.completions.create(

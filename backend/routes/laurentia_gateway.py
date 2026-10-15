@@ -475,7 +475,7 @@ async def _run_query(
                         + "Sinon, réponds directement à l'utilisateur."
                     )
                     transcript = [dict(message) for message in messages]
-                    transcript[0]["content"] = transcript[0]["content"] + protocol
+                    transcript[0]["content"] = protocol + "\n\n" + transcript[0]["content"]
                     return await cvl_brain.chat_messages(
                         transcript, session_id=session_id
                     )

@@ -1,0 +1,62 @@
+name: Embedded inference contract
+
+on:
+  pull_request:
+    branches: [public]
+    paths:
+      - "backend/**"
+      - ".github/workflows/embedded-inference.yml"
+  push:
+    branches: [feat/embedded-local-inference]
+    paths:
+      - "backend/**"
+      - ".github/workflows/embedded-inference.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  embedded-inference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies including native CPU runtime
+        env:
+          # Produce a portable CPU build rather than compiling for the CI host's
+          # specific instruction set. Render builds from the same requirements.
+          CMAKE_ARGS: "-DGGML_NATIVE=OFF -DGGML_OPENMP=ON"
+        run: python -m pip install -r backend/requirements.txt
+      - name: Run embedded inference contract tests
+        working-directory: backend
+        run: python -m pytest -q contract_tests/test_embedded_inference_contract.py contract_tests/test_root_health_contract.py contract_tests/test_local_inference_messages.py
+      - name: Run pinned local model generation smoke test
+        working-directory: backend
+        env:
+          LAURENTIA_MODEL_CACHE: ${{ runner.temp }}/laurentia-model-cache
+          LAURENTIA_LOCAL_THREADS: "2"
+        run: |
+          python - <<'PY'
+          import asyncio
+          from services.local_inference import chat_complete, model_status
+
+          answer = asyncio.run(
+              chat_complete(
+                  "You are a concise assistant. Follow the user's instruction.",
+                  "Reply with exactly: OK",
+              )
+          )
+          status = model_status()
+          assert answer.strip(), "The embedded model returned an empty answer."
+          assert status["loaded"] is True, "The embedded model did not remain loaded."
+          assert status["generation_count"] == 1, "The model generation was not recorded."
+          print(f"Embedded model generation succeeded: {status['model']}; "
+                f"load_seconds={status['load_seconds']}; "
+                f"generation_seconds={status['last_generation_seconds']}; "
+                f"answer={answer[:80]!r}")
+          PY
