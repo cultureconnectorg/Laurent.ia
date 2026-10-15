@@ -188,3 +188,49 @@ def test_logout_revokes_session_and_clears_cookie():
     assert auth.COOKIE_NAME in cookie
     assert "max-age=0" in cookie
     assert "httponly" in cookie
+
+
+
+def test_callback_rejects_unverified_google_email_before_database_access(monkeypatch):
+    configure_oauth(monkeypatch)
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self.payload
+
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+        async def post(self, *args, **kwargs):
+            return FakeResponse({"access_token": "test-access-token"})
+
+        async def get(self, *args, **kwargs):
+            return FakeResponse({
+                "sub": "google-subject",
+                "email": "unverified@example.test",
+                "email_verified": False,
+            })
+
+    monkeypatch.setattr(auth.httpx, "AsyncClient", FakeAsyncClient)
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace()))
+
+    response = asyncio.run(auth.google_oauth_callback(
+        request=request,
+        code="valid-shaped-code",
+        state="matching-state",
+        oauth_state="matching-state",
+    ))
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "https://frontend.example.test/#auth=error"
+    assert auth.COOKIE_NAME not in response.headers.get("set-cookie", "")
