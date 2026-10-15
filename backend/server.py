@@ -145,8 +145,12 @@ _runtime_markers = (
 _runtime_values = {value.strip().lower() for value in _runtime_markers if value.strip()}
 _is_production_runtime = bool(_runtime_values & {"prod", "production"})
 _is_development_runtime = bool(_runtime_values & {"dev", "development", "local", "test", "testing"})
-_cors_env = os.environ.get("CORS_ORIGINS", "*").strip()
-_cors_origins = [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
+# Prefer an explicit CORS allowlist; if absent, derive a single origin from the
+# already-required frontend URL. Never fall back to a wildcard in production.
+_cors_env = os.environ.get("CORS_ORIGINS", "").strip()
+if not _cors_env:
+    _cors_env = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+_cors_origins = [origin.strip().rstrip("/") for origin in _cors_env.split(",") if origin.strip()]
 if _cors_env == "*" and _is_development_runtime and not _is_production_runtime:
     app.add_middleware(
         CORSMiddleware,
