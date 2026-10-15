@@ -43,13 +43,16 @@ export function AuthProvider({ children }) {
         credentials: "include",
         body: JSON.stringify({ anon_frek_id: anon }),
       });
-      if (r.ok) {
-        const d = await r.json();
-        // Keep guest identity if the server did not confirm migration.
+      if (!r.ok) return 0;
+
+      const d = await r.json();
+      // Do not discard the only client-side reference to guest data unless the
+      // server explicitly confirms that the source identity was migrated/retired.
+      // A generic HTTP 200 or migrated: 0 is not sufficient proof of completion.
+      if (d?.migration_complete === true) {
         window.localStorage.removeItem("laurentia_anon_frek");
-        return d.migrated || 0;
       }
-      return 0;
+      return Number.isFinite(d?.migrated) ? d.migrated : 0;
     } catch (_) {
       return 0;
     }
@@ -73,7 +76,6 @@ export function AuthProvider({ children }) {
       await fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" });
     } catch (_) {}
     setUser(null);
-    // Soft redirect to root
     window.location.href = "/";
   }, []);
 
