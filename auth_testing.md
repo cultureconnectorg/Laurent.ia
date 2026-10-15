@@ -1,12 +1,21 @@
 # Auth-Gated App Testing Playbook (Laurent.ia)
 
 ## Setup
-- Auth provider: **Emergent Managed Google Auth**
+- Auth provider: **Google OpenID Connect, handled by Laurent.ia backend**
+- Required backend environment variables:
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+  - `GOOGLE_REDIRECT_URI` — exact public backend URL ending in `/api/auth/google/callback`
+  - `FRONTEND_URL` — frontend origin only, with no trailing slash
+- In Google Cloud Console, register the exact `GOOGLE_REDIRECT_URI` as an authorized redirect URI.
+- Keep client secrets only in Render environment settings; never commit them.
+- Google login starts at `GET /api/auth/google/start`; callback validates a state cookie, exchanges the code with Google, requires a verified email, then creates Laurent.ia's own session cookie.
 - DB: MongoDB `laurentia` (env `DB_NAME`)
 - Collections: `users`, `user_sessions`, `laurentia_instances`
 - Session cookie: `session_token` (httpOnly, 7-day expiry, samesite=None, secure=True)
 - Backend endpoints:
-  - `POST /api/auth/session` — body `{ session_id }` from Emergent OAuth redirect → exchanges with Emergent, stores user + session, sets cookie
+  - `GET /api/auth/google/start` — redirects to Google authorization
+  - `GET  /api/auth/google/callback` — validates Google callback and issues a local session
   - `GET  /api/auth/me` — returns current user (or 401)
   - `POST /api/auth/logout` — clears cookie + DB session
 - FREK-ID derivation: `FREK-G-{sha256(google_email)[:10]}` — stable across logins
@@ -94,7 +103,7 @@ await page.goto("https://<your-frontend-domain>/")
 - [ ] User stored with `user_id` (UUID) and `frek_id` derived
 - [ ] `session_token` cookie set with httpOnly + samesite=None + secure
 - [ ] `/api/auth/me` returns user via cookie OR Authorization Bearer
-- [ ] After login, frontend resolves FREK-ID automatically (no longer DEMO-SAYD)
+- [ ] After Google login, frontend resolves FREK-ID automatically (no longer DEMO-SAYD)
 - [ ] Hamburger menu opens drawer with profil + history + logout
 - [ ] Logout clears cookie + redirects to landing
 - [ ] Expired sessions return 401
@@ -106,9 +115,9 @@ await page.goto("https://<your-frontend-domain>/")
 
 ## Failure indicators
 - ❌ `/api/auth/me` 401 with valid token → check expires_at tz-awareness
-- ❌ Cookie not set after `/auth/session` → check samesite/secure flags
+- ❌ Cookie not set after Google callback → check redirect URI, cookie flags, and browser network logs
 - ❌ FREK-ID `null` after login → check derivation hash function
 
 ## Notes
 - Demo mode is preserved: a guest visiting `/?frek_id=DEMO-SAYD` still works without login (graceful fallback).
-- Emergent OAuth only manages identity; FREK-ID is OUR app-level identifier.
+- Google OIDC manages external identity; session tokens and FREK-ID derivation are handled by Laurent.ia.

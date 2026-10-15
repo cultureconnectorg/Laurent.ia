@@ -1,13 +1,10 @@
 /**
- * AuthCallback — page traversée juste après le retour de Emergent Auth.
- * URL: /#session_id=xxx
- * Synchrone : récupère le hash → POST /api/auth/session → navigue vers /.
+ * AuthCallback — traite le retour du flux Google OIDC local.
+ * Le backend a déjà validé l'identité et posé le cookie de session.
  */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -20,31 +17,28 @@ export default function AuthCallback() {
     hasProcessed.current = true;
 
     const hash = window.location.hash || "";
-    const m = hash.match(/session_id=([^&]+)/);
-    if (!m) {
+    if (hash.includes("auth=error")) {
+      setError("La connexion Google a échoué. Réessaie.");
+      window.history.replaceState({}, "", "/");
+      const timer = window.setTimeout(() => navigate("/", { replace: true }), 2200);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (!hash.includes("auth=success")) {
       navigate("/", { replace: true });
       return;
     }
-    const sessionId = decodeURIComponent(m[1]);
 
     (async () => {
       try {
-        const r = await fetch(`${API}/auth/session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ session_id: sessionId }),
-        });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
         await refresh();
         await migrateAnonIfAny();
-        // Clear hash and go home
         window.history.replaceState({}, "", "/");
-        navigate("/", { replace: true, state: { user: data.user } });
-      } catch (e) {
-        setError(e.message || "Erreur authentification");
-        setTimeout(() => navigate("/", { replace: true }), 2000);
+        navigate("/", { replace: true });
+      } catch (_) {
+        setError("Connexion établie, mais le chargement du profil a échoué.");
+        window.history.replaceState({}, "", "/");
+        window.setTimeout(() => navigate("/", { replace: true }), 2200);
       }
     })();
   }, [navigate, refresh, migrateAnonIfAny]);
@@ -54,7 +48,7 @@ export default function AuthCallback() {
       <div className="text-center">
         <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-[#6BA8FF]/30 border-t-[#6BA8FF] animate-spin" />
         <div className="font-mono text-[10px] uppercase tracking-[0.32em] text-white/50">
-          {error ? `Erreur · ${error}` : "Authentification en cours…"}
+          {error || "Authentification en cours…"}
         </div>
       </div>
     </div>

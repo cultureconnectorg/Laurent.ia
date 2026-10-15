@@ -43,32 +43,32 @@ export function AuthProvider({ children }) {
         credentials: "include",
         body: JSON.stringify({ anon_frek_id: anon }),
       });
-      if (r.ok) {
-        const d = await r.json();
-        // Ne supprimer l'identité invitée qu'après confirmation serveur.
+      if (!r.ok) return 0;
+
+      const d = await r.json();
+      // Do not discard the only client-side reference to guest data unless the
+      // server explicitly confirms that the source identity was migrated/retired.
+      // A generic HTTP 200 or migrated: 0 is not sufficient proof of completion.
+      if (d?.migration_complete === true) {
         window.localStorage.removeItem("laurentia_anon_frek");
-        return d.migrated || 0;
       }
-      return 0;
+      return Number.isFinite(d?.migrated) ? d.migrated : 0;
     } catch (_) {
       return 0;
     }
   }, []);
 
+  // The backend handles Google OIDC and sets our httpOnly session cookie.
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback (hash with session_id),
-    // skip the /me check. AuthCallback will exchange the session_id first.
-    if (window.location.hash?.includes("session_id=")) {
+    if (window.location.hash?.includes("auth=success") || window.location.hash?.includes("auth=error")) {
       setLoading(false);
       return;
     }
     refresh();
   }, [refresh]);
 
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
   const login = useCallback(() => {
-    const redirectUrl = window.location.origin + "/";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = `${API}/auth/google/start`;
   }, []);
 
   const logout = useCallback(async () => {
@@ -76,7 +76,6 @@ export function AuthProvider({ children }) {
       await fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" });
     } catch (_) {}
     setUser(null);
-    // Soft redirect to root
     window.location.href = "/";
   }, []);
 

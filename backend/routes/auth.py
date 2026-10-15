@@ -1,25 +1,33 @@
 """
-auth.py — Emergent Managed Google Auth integration.
+auth.py — Google OpenID Connect and local session management.
 
-Endpoints (additif, /api/auth/*):
-- POST /api/auth/session  body { session_id } — exchange with Emergent, set cookie, derive FREK-ID
-- GET  /api/auth/me                          — return current user (cookie or Bearer)
-- POST /api/auth/logout                      — clear cookie + delete DB session
+Endpoints (/api/auth/*):
+- GET  /api/auth/google/start                 — begin Google OIDC
+- GET  /api/auth/google/callback              — verify state, exchange code, issue local session
+- GET  /api/auth/me                           — return current user (cookie or Bearer)
+- POST /api/auth/logout                       — clear cookie + delete DB session
 """
 from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 import uuid
+from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Cookie, Header, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from services import frekcore_bridge
 
-EMERGENT_OAUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "").strip()
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+GOOGLE_STATE_COOKIE = "google_oauth_state"
 SESSION_TTL_DAYS = 7
 COOKIE_NAME = "session_token"
 
@@ -27,10 +35,6 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 # ---------------- Schemas ----------------
-
-class SessionExchangeRequest(BaseModel):
-    session_id: str
-
 
 class FrekLoginRequest(BaseModel):
     frek_id: str
@@ -100,29 +104,106 @@ async def require_user(request: Request) -> dict:
 
 # ---------------- Endpoints ----------------
 
-@router.post("/session")
-async def exchange_session(payload: SessionExchangeRequest, request: Request, response: Response):
-    """Exchange Emergent session_id for our own session_token cookie."""
+def _google_oauth_configured() -> bool:
+    return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI and FRONTEND_URL)
+
+
+def _frontend_auth_redirect(status: str) -> RedirectResponse:
+    # FRONTEND_URL is an operator-controlled environment value, never request input.
+    return RedirectResponse(url=f"{FRONTEND_URL}/#auth={status}", status_code=303)
+
+
+@router.get("/google/start")
+async def google_oauth_start():
+    """Start Google OpenID Connect directly; no third-party auth broker."""
+    if not _google_oauth_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Connexion Google non configurée : définir GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI et FRONTEND_URL.",
+        )
+    state = secrets.token_urlsafe(32)
+    params = urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "prompt": "select_account",
+    })
+    response = RedirectResponse(
+        url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}",
+        status_code=302,
+    )
+    response.set_cookie(
+        key=GOOGLE_STATE_COOKIE,
+        value=state,
+        max_age=600,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/api/auth/google",
+    )
+    return response
+
+
+@router.get("/google/callback")
+async def google_oauth_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    oauth_state: str | None = Cookie(default=None, alias=GOOGLE_STATE_COOKIE),
+):
+    """Validate Google OAuth state, exchange code, verify email, and issue a local session."""
+    if not _google_oauth_configured():
+        raise HTTPException(status_code=503, detail="Connexion Google non configurée")
+    if error or not code or not state or not oauth_state or not secrets.compare_digest(state, oauth_state):
+        response = _frontend_auth_redirect("error")
+        response.delete_cookie(GOOGLE_STATE_COOKIE, path="/api/auth/google", secure=True, samesite="lax")
+        return response
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            token_response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": GOOGLE_REDIRECT_URI,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Accept": "application/json"},
+            )
+            token_response.raise_for_status()
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                raise ValueError("Google n'a pas retourné de jeton d'accès")
+            profile_response = await client.get(
+                "https://openidconnect.googleapis.com/v1/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            profile_response.raise_for_status()
+            profile = profile_response.json()
+    except (httpx.HTTPError, ValueError):
+        response = _frontend_auth_redirect("error")
+        response.delete_cookie(GOOGLE_STATE_COOKIE, path="/api/auth/google", secure=True, samesite="lax")
+        return response
+
+    email = (profile.get("email") or "").strip().lower()
+    if not email or profile.get("email_verified") is not True or not profile.get("sub"):
+        response = _frontend_auth_redirect("error")
+        response.delete_cookie(GOOGLE_STATE_COOKIE, path="/api/auth/google", secure=True, samesite="lax")
+        return response
+
     db = request.app.state.db
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.get(EMERGENT_OAUTH_URL, headers={"X-Session-ID": payload.session_id})
-        if r.status_code != 200:
-            raise HTTPException(401, f"Échange auth Emergent échoué ({r.status_code})")
-        data = r.json()
-
-    email = (data.get("email") or "").strip().lower()
-    name = (data.get("name") or email.split("@")[0] or "Hôte").strip()
-    picture = data.get("picture")
-    session_token = data.get("session_token") or f"sess_{uuid.uuid4().hex}"
-
-    if not email:
-        raise HTTPException(400, "Email manquant dans la réponse Emergent")
-
+    name = (profile.get("name") or email.split("@")[0] or "Hôte").strip()
+    picture = profile.get("picture")
     frek_id = _derive_frek_id(email)
-
-    # Upsert user
-    existing = await db.users.find_one({"email": email}, {"_id": 0})
     now_iso = datetime.now(timezone.utc).isoformat()
+
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
     if existing:
         user_id = existing["user_id"]
         await db.users.update_one(
@@ -139,11 +220,12 @@ async def exchange_session(payload: SessionExchangeRequest, request: Request, re
             "frek_id": frek_id,
             "created_at": now_iso,
             "last_login": now_iso,
+            "auth_provider": "google",
+            "google_sub": profile["sub"],
         })
 
-    # Upsert Laurent.ia instance (lazy)
-    inst = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
-    if not inst:
+    instance = await db.laurentia_instances.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not instance:
         await db.laurentia_instances.insert_one({
             "frek_id": frek_id,
             "tenant_path": f"/users/{frek_id}",
@@ -157,30 +239,29 @@ async def exchange_session(payload: SessionExchangeRequest, request: Request, re
             "status": "active",
             "encryption_key_ref": f"ref::{frek_id[-8:]}",
         })
-        await db.laurentia_memory.insert_one({
-            "frek_id": frek_id,
-            "sessions": [],
-            "long_term": {"facts": [], "preferences": {}, "projects": [], "people": []},
-            "cultural_profile": {},
-            "updated_at": now_iso,
-        })
+        await db.laurentia_memory.update_one(
+            {"frek_id": frek_id},
+            {"$setOnInsert": {
+                "frek_id": frek_id,
+                "sessions": [],
+                "long_term": {"facts": [], "preferences": {}, "projects": [], "people": []},
+                "cultural_profile": {},
+                "updated_at": now_iso,
+            }},
+            upsert=True,
+        )
 
-    # Store session
+    session_token = f"google_{uuid.uuid4().hex}"
     expires_at = datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS)
-    await db.user_sessions.update_one(
-        {"session_token": session_token},
-        {
-            "$set": {
-                "user_id": user_id,
-                "session_token": session_token,
-                "expires_at": expires_at.isoformat(),
-                "created_at": now_iso,
-            }
-        },
-        upsert=True,
-    )
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": expires_at.isoformat(),
+        "created_at": now_iso,
+        "auth_method": "google",
+    })
 
-    # Set httpOnly cookie
+    response = _frontend_auth_redirect("success")
     response.set_cookie(
         key=COOKIE_NAME,
         value=session_token,
@@ -190,17 +271,8 @@ async def exchange_session(payload: SessionExchangeRequest, request: Request, re
         samesite="none",
         path="/",
     )
-
-    return {
-        "ok": True,
-        "user": {
-            "user_id": user_id,
-            "email": email,
-            "name": name,
-            "picture": picture,
-            "frek_id": frek_id,
-        },
-    }
+    response.delete_cookie(GOOGLE_STATE_COOKIE, path="/api/auth/google", secure=True, samesite="lax")
+    return response
 
 
 @router.get("/me")
@@ -339,7 +411,7 @@ async def logout(
     token = await _get_token(session_token, authorization)
     if token:
         await request.app.state.db.user_sessions.delete_one({"session_token": token})
-    response.delete_cookie(COOKIE_NAME, path="/", samesite="none", secure=True)
+    response.delete_cookie(COOKIE_NAME, path="/", secure=True, httponly=True, samesite="none")
     return {"ok": True}
 
 
