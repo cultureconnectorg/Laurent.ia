@@ -23,7 +23,7 @@ function AppRouter() {
       <Route path="/me/reports" element={<ReportsPage />} />
       <Route path="/admin/orchestrator" element={<AdminOrchestratorPage />} />
       <Route path="/admin/reports" element={<AdminReportsPage />} />
-      <Route path="/echo/:sessionId" element={<EchoPage />} />
+      <Route path="/echo/:publicId" element={<EchoPage />} />
     </Routes>
   );
 }
