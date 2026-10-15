@@ -29,10 +29,9 @@ _DEFAULT_KEY = "mvp-encryption-placeholder-change-in-prod"
 _RAW = os.environ.get("LAURENTIA_ENCRYPTION_KEY", "").strip()
 
 if not _RAW:
-    logger.error("LAURENTIA_ENCRYPTION_KEY absente — la mémoire NE SERA PAS chiffrée correctement.")
-    _RAW = _DEFAULT_KEY
-elif _RAW == _DEFAULT_KEY:
-    logger.warning("LAURENTIA_ENCRYPTION_KEY = valeur par défaut. Régénère-la en prod.")
+    raise RuntimeError("Configuration de sécurité invalide : LAURENTIA_ENCRYPTION_KEY est obligatoire.")
+if _RAW == _DEFAULT_KEY:
+    raise RuntimeError("Configuration de sécurité invalide : la clé de chiffrement par défaut est interdite.")
 
 _KEY: bytes = hashlib.sha256(_RAW.encode("utf-8")).digest()
 _AES = AESGCM(_KEY)
