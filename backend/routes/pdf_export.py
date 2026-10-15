@@ -513,7 +513,7 @@ async def export_pdf(payload: PdfExportRequest, request: Request):
         pdf_bytes = HTML(string=html_str).write_pdf(stylesheets=[CSS(string=CSS_TEMPLATE)])
     except Exception as e:
         logger.exception("pdf_export_failed")
-        raise HTTPException(500, f"Génération PDF échouée : {e}")
+        raise HTTPException(500, "Génération du PDF impossible pour le moment.")
 
     filename = f"laurentia-{_slugify(payload.title)}.pdf"
     return StreamingResponse(
