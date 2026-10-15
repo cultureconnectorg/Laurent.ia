@@ -6,14 +6,14 @@ local security gates that must reject invalid callbacks before issuing sessions.
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 
 BACKEND_DIR = str(Path(__file__).resolve().parents[1])
 if BACKEND_DIR not in sys.path:
@@ -105,3 +105,86 @@ def test_google_start_fails_closed_when_configuration_is_missing(monkeypatch):
         asyncio.run(auth.google_oauth_start())
 
     assert exc.value.status_code == 503
+
+
+class FakeCollection:
+    def __init__(self, documents=()):
+        self.documents = list(documents)
+        self.deleted = []
+
+    async def find_one(self, query, projection=None):
+        for document in self.documents:
+            if all(document.get(key) == value for key, value in query.items()):
+                return dict(document)
+        return None
+
+    async def delete_one(self, query):
+        self.deleted.append(dict(query))
+        self.documents = [
+            document for document in self.documents
+            if not all(document.get(key) == value for key, value in query.items())
+        ]
+
+
+class FakeDatabase:
+    def __init__(self, **collections):
+        self.__dict__.update(collections)
+
+
+def test_expired_session_is_rejected():
+    now = datetime.now(timezone.utc)
+    db = FakeDatabase(
+        user_sessions=FakeCollection([{
+            "session_token": "expired-token",
+            "user_id": "user-1",
+            "expires_at": (now - timedelta(seconds=1)).isoformat(),
+        }]),
+        users=FakeCollection([{
+            "user_id": "user-1",
+            "email": "user@example.test",
+        }]),
+    )
+
+    user = asyncio.run(auth._resolve_session(db, "expired-token"))
+
+    assert user is None
+
+
+def test_valid_session_resolves_only_the_session_owner():
+    db = FakeDatabase(
+        user_sessions=FakeCollection([{
+            "session_token": "valid-token",
+            "user_id": "user-1",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+        }]),
+        users=FakeCollection([
+            {"user_id": "user-1", "email": "owner@example.test"},
+            {"user_id": "user-2", "email": "other@example.test"},
+        ]),
+    )
+
+    user = asyncio.run(auth._resolve_session(db, "valid-token"))
+
+    assert user == {"user_id": "user-1", "email": "owner@example.test"}
+
+
+def test_logout_revokes_session_and_clears_cookie():
+    sessions = FakeCollection([{"session_token": "session-to-revoke"}])
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(
+        db=FakeDatabase(user_sessions=sessions)
+    )))
+    response = Response()
+
+    result = asyncio.run(auth.logout(
+        request=request,
+        response=response,
+        session_token="session-to-revoke",
+        authorization=None,
+    ))
+
+    assert result == {"ok": True}
+    assert sessions.deleted == [{"session_token": "session-to-revoke"}]
+    cookie = response.headers["set-cookie"].lower()
+    assert auth.COOKIE_NAME in cookie
+    assert "max-age=0" in cookie
+    assert "httponly" in cookie
