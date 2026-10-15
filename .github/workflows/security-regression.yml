@@ -26,14 +26,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t suites < <(find backend/tests -maxdepth 1 -type f \(
-            -name 'test_frekcore_bridge_production.py' -o
-            -name 'test_kiltikonet_bridge_production.py' -o
-            -name 'test_laurentia_gateway_tenant_auth.py' -o
-            -name 'test_cvl_brain_sovereign.py' -o
-            -name 'test_auth_frek_login_guard.py'
-          \) -print | sort)
-          if [ "${#suites[@]}" -eq 0 ]; then
+          suites=()
+          for path in \
+            backend/tests/test_frekcore_bridge_production.py \
+            backend/tests/test_kiltikonet_bridge_production.py \
+            backend/tests/test_laurentia_gateway_tenant_auth.py \
+            backend/tests/test_cvl_brain_sovereign.py \
+            backend/tests/test_auth_frek_login_guard.py; do
+            if [[ -f "$path" ]]; then suites+=("$path"); fi
+          done
+          if [[ ${#suites[@]} -eq 0 ]]; then
             echo "No security regression suites found" >&2
             exit 1
           fi
