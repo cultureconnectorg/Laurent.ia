@@ -31,6 +31,22 @@ GOOGLE_STATE_COOKIE = "google_oauth_state"
 SESSION_TTL_DAYS = 7
 COOKIE_NAME = "session_token"
 
+
+def _is_explicit_development() -> bool:
+    markers = (
+        os.environ.get("LAURENTIA_ENV", ""),
+        os.environ.get("APP_ENV", ""),
+        os.environ.get("ENVIRONMENT", ""),
+        os.environ.get("NODE_ENV", ""),
+        os.environ.get("VERCEL_ENV", ""),
+        os.environ.get("RAILWAY_ENVIRONMENT", ""),
+    )
+    values = {value.strip().lower() for value in markers if value.strip()}
+    return bool(values & {"dev", "development", "local", "test", "testing"}) and not bool(
+        values & {"prod", "production"}
+    )
+
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -303,6 +319,14 @@ async def login_with_frek_id(payload: FrekLoginRequest, request: Request, respon
     Connexion directe via un FREK-ID existant (membre de l'écosystème).
     Valide auprès du service frekcore (mocké en dev, HTTP en prod).
     """
+    # A FREK-ID is an identifier, not proof that the caller controls the identity.
+    # Until a signed challenge/passkey flow exists, production login by ID alone is denied.
+    if not _is_explicit_development():
+        raise HTTPException(
+            status_code=403,
+            detail="Connexion par FREK-ID seul désactivée : une preuve de possession vérifiable est requise.",
+        )
+
     db = request.app.state.db
     raw = (payload.frek_id or "").strip().upper()
     if not raw or len(raw) < 4:
