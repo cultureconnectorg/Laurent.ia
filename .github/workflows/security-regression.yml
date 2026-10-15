@@ -10,6 +10,7 @@ on:
       - "backend/routes/auth.py"
       - "backend/routes/laurentia_gateway.py"
       - "backend/services/cvl_brain.py"
+      - "backend/services/learning_pipeline.py"
       - "backend/tests/**"
       - ".github/workflows/security-regression.yml"
 permissions:
@@ -35,7 +36,8 @@ jobs:
             backend/tests/test_kiltikonet_bridge_production.py \
             backend/tests/test_laurentia_gateway_tenant_auth.py \
             backend/tests/test_cvl_brain_sovereign.py \
-            backend/tests/test_auth_frek_login_guard.py; do
+            backend/tests/test_auth_frek_login_guard.py \
+            backend/tests/test_learning_pipeline.py; do
             if [[ -f "$path" ]]; then suites+=("$path"); fi
           done
           if [[ ${#suites[@]} -eq 0 ]]; then
