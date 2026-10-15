@@ -499,12 +499,13 @@ async def export_pdf(payload: PdfExportRequest, request: Request):
     try:
         public_echo_id = None
         if include_signature and payload.session_id:
-            published_echo = await request.app.state.db.laurentia_echoes.find_one(
+            published_echoes = await request.app.state.db.laurentia_echoes.find(
                 {"session_id": payload.session_id, "is_public": True, "public_id": {"$type": "string"}},
                 {"_id": 0, "public_id": 1},
-            )
-            if published_echo:
-                public_echo_id = published_echo.get("public_id")
+            ).limit(2).to_list(length=2)
+            # A session ID can collide across tenants. Never guess which public Echo a QR should expose.
+            if len(published_echoes) == 1:
+                public_echo_id = published_echoes[0].get("public_id")
         html_str = _build_html(
             payload, include_signature=include_signature, public_echo_id=public_echo_id
         )
