@@ -14,6 +14,7 @@ et déclenche POST /api/echo/{session_id}/conversion au clic du bouton « Active
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -141,12 +142,22 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request, user: di
 
     # 4. Persistance — distinct $set (updateable) vs $setOnInsert (initial-only)
     now = datetime.now(timezone.utc).isoformat()
+    # Public links use an independent high-entropy identifier, never the internal session ID.
+    existing = await db.laurentia_echoes.find_one(
+        {"session_id": payload.session_id, "tenant_id": frek_tenant},
+        {"_id": 0, "public_id": 1},
+    )
+    public_id = (existing or {}).get("public_id") if payload.publish else None
+    if payload.publish and not public_id:
+        public_id = secrets.token_urlsafe(32)
+
     set_fields = {
         "session_id": payload.session_id,
         "tenant_id": frek_tenant,
         "echo": parsed,
         "updated_at": now,
         "is_public": payload.publish,
+        "public_id": public_id,
     }
     await db.laurentia_echoes.update_one(
         {"session_id": payload.session_id, "tenant_id": frek_tenant},
@@ -160,24 +171,26 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request, user: di
     return {
         "ok": True,
         "session_id": payload.session_id,
-        "public_url": f"/echo/{payload.session_id}" if payload.publish else None,
+        "public_url": f"/echo/{public_id}" if public_id else None,
         "echo": parsed,
     }
 
 
 # ---------------- PUBLIC (no auth) ----------------
 
-@public_router.get("/{session_id}")
-async def get_public_echo(session_id: str, request: Request):
+@public_router.get("/{public_id}")
+async def get_public_echo(public_id: str, request: Request):
     db = request.app.state.db
-    doc = await db.laurentia_echoes.find_one({"session_id": session_id, "is_public": True}, {"_id": 0})
+    doc = await db.laurentia_echoes.find_one(
+        {"public_id": public_id, "is_public": True}, {"_id": 0}
+    )
     if not doc:
         raise HTTPException(404, "Écho introuvable ou retiré.")
 
     # Tracking de vue (best-effort, ne bloque pas la lecture)
     try:
         await db.laurentia_echoes.update_one(
-            {"session_id": session_id},
+            {"public_id": public_id, "is_public": True},
             {"$inc": {"views": 1}, "$set": {"last_view_at": datetime.now(timezone.utc).isoformat()}},
         )
     except Exception:
@@ -185,7 +198,7 @@ async def get_public_echo(session_id: str, request: Request):
 
     echo = doc["echo"]
     return {
-        "session_id": session_id,
+        "public_id": public_id,
         "title": echo.get("title"),
         "summary": echo.get("summary"),
         "pro": echo.get("pro"),
@@ -201,28 +214,30 @@ class ConversionPing(BaseModel):
     source: str = Field(default="echo_cta", max_length=40)
 
 
-@public_router.post("/{session_id}/conversion")
-async def track_conversion(session_id: str, payload: ConversionPing, request: Request):
+@public_router.post("/{public_id}/conversion")
+async def track_conversion(public_id: str, payload: ConversionPing, request: Request):
     db = request.app.state.db
     device_fp = request.headers.get("x-device-fingerprint") or request.headers.get("X-Device-Fingerprint")
     device_id = device_id_from_fingerprint(device_fp)
     now = datetime.now(timezone.utc)
 
-    public_echo = await db.laurentia_echoes.find_one({"session_id": session_id, "is_public": True}, {"_id": 1})
+    public_echo = await db.laurentia_echoes.find_one(
+        {"public_id": public_id, "is_public": True}, {"_id": 1}
+    )
     if not public_echo:
         raise HTTPException(404, "Écho introuvable ou retiré.")
 
     await db.laurentia_echoes.update_one(
-        {"session_id": session_id, "is_public": True},
+        {"public_id": public_id, "is_public": True},
         {
             "$inc": {"conversions": 1},
             "$set": {"last_conversion_at": now.isoformat()},
         },
     )
     await db.laurentia_echo_attributions.insert_one({
-        "session_id": session_id,
+        "public_id": public_id,
         "source": payload.source,
         "visitor_device_id": device_id,
         "ts": now,
     })
-    return {"ok": True, "session_id": session_id, "redirect": "/?from_echo=" + session_id}
+    return {"ok": True, "public_id": public_id, "redirect": "/?from_echo=" + public_id}
