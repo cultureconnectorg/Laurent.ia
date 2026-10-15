@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Check, Sparkles, Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -15,21 +16,39 @@ const TIER_ICONS = {
   infinite: Brain,
 };
 
-export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
+export const PricingModal = ({ open, onOpenChange, currentTier = "free", preferredPackageId = null }) => {
+  const { isAuthenticated, login } = useAuth();
   const [packages, setPackages] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
+  const [packagesError, setPackagesError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (!open || packages) return;
+    let cancelled = false;
     (async () => {
+      setPackagesError(false);
       try {
         const r = await fetch(`${API}/billing/packages`);
-        if (r.ok) setPackages(await r.json());
-      } catch (_) {}
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (!cancelled) setPackages(data);
+      } catch (_) {
+        if (!cancelled) setPackagesError(true);
+      }
     })();
-  }, [open, packages]);
+    return () => { cancelled = true; };
+  }, [open, packages, retryNonce]);
 
   const handleCheckout = async (packageId) => {
+    if (!isAuthenticated) {
+      window.sessionStorage.setItem("laurentia_pending_package", packageId);
+      toast("Connecte-toi pour continuer. Tu retrouveras les offres à ton retour.", {
+        action: { label: "Se connecter", onClick: login },
+        duration: 8000,
+      });
+      return;
+    }
     setLoadingId(packageId);
     try {
       const r = await fetch(`${API}/billing/create-checkout`, {
@@ -40,11 +59,20 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        toast(d.detail || "Erreur démarrage paiement");
+        if (r.status === 401) {
+          window.sessionStorage.setItem("laurentia_pending_package", packageId);
+          toast("Connexion requise pour sécuriser ton abonnement.", {
+            action: { label: "Se connecter", onClick: login },
+            duration: 8000,
+          });
+        } else {
+          toast(d.detail || "Impossible de démarrer le paiement. Réessaie.");
+        }
         setLoadingId(null);
         return;
       }
       const d = await r.json();
+      if (preferredPackageId === packageId) window.sessionStorage.removeItem("laurentia_pending_package");
       window.location.href = d.url;
     } catch (e) {
       toast(e.message || "Erreur réseau");
@@ -74,8 +102,20 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
         </DialogHeader>
 
         {!packages ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+          <div className="flex flex-col items-center justify-center gap-4 py-16 px-7 text-center">
+            {packagesError ? (
+              <>
+                <p className="text-sm text-white/65">Les offres ne sont pas disponibles pour le moment.</p>
+                <button
+                  type="button"
+                  onClick={() => { setPackagesError(false); setRetryNonce((n) => n + 1); }}
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:bg-white/5"
+                  data-testid="pricing-retry"
+                >
+                  Réessayer
+                </button>
+              </>
+            ) : <Loader2 className="w-5 h-5 animate-spin text-white/40" />}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-7 pb-7 pt-2">
@@ -92,6 +132,11 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
                   className={`relative rounded-2xl border ${cardBorder} p-5 flex flex-col`}
                   data-testid={`pricing-tier-${t.tier}`}
                 >
+                  {preferredPackageId === t.package_id && (
+                    <div className="mb-2 rounded-lg border border-[#6BA8FF]/30 bg-[#6BA8FF]/10 px-2 py-1 text-[10px] text-[#9BC3FF]" data-testid="pricing-resume-plan">
+                      Ton choix précédent
+                    </div>
+                  )}
                   {isFlagship && (
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#E7C566] text-[#0A0F1F] font-mono text-[9px] uppercase tracking-[0.22em] font-semibold">
                       Recommandé
@@ -141,7 +186,7 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
                   >
                     {(t.package_id && loadingId === t.package_id) ? (
                       <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    ) : isCurrent ? "Ton plan actuel" : !t.package_id ? "Plan par défaut" : `Activer ${t.label}`}
+                    ) : isCurrent ? "Ton plan actuel" : !t.package_id ? "Plan par défaut" : preferredPackageId === t.package_id ? `Continuer avec ${t.label}` : `Activer ${t.label}`}
                   </button>
                 </div>
               );

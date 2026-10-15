@@ -83,6 +83,13 @@ export default function LaurentIA() {
     return () => window.removeEventListener("keydown", onKey);
   }, [cancel]);
 
+  // Reprendre le parcours d'abonnement après connexion sans perdre le plan choisi.
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    const pendingPackage = window.sessionStorage.getItem("laurentia_pending_package");
+    if (pendingPackage) setPricingOpen(true);
+  }, [authLoading, isAuthenticated]);
+
   // Poll Stripe checkout status si retour de succès
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -97,7 +104,14 @@ export default function LaurentIA() {
     let cancelled = false;
     let attempts = 0;
     const poll = async () => {
-      if (cancelled || attempts >= 6) return;
+      if (cancelled) return;
+      if (attempts >= 6) {
+        toast("Le paiement n'est pas encore confirmé. Ton accès sera actualisé dès confirmation.", {
+          action: { label: "Voir les offres", onClick: () => setPricingOpen(true) },
+          duration: 9000,
+        });
+        return;
+      }
       attempts += 1;
       try {
         const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/billing/status/${session}`, { credentials: "include" });
@@ -184,7 +198,7 @@ export default function LaurentIA() {
         ? "Upload réservé à Creator / Infinite."
         : "Quota atteint. Voir Creator pour continuer.";
     toast(msg, {
-      action: { label: "Mon bilan", onClick: () => navigate("/me/reports") },
+      action: { label: "Voir les offres", onClick: () => setPricingOpen(true) },
       duration: 6000,
     });
   }, [paywallEvent, navigate]);
@@ -342,7 +356,7 @@ export default function LaurentIA() {
                   <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#E7C566]">
                     Quota mensuel atteint
                   </span>
-                  <button className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#E7C566] underline" data-testid="upgrade-pro-cta">
+                  <button type="button" onClick={() => setPricingOpen(true)} className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#E7C566] underline" data-testid="upgrade-pro-cta">
                     Activer Pro
                   </button>
                 </div>
@@ -377,6 +391,7 @@ export default function LaurentIA() {
         open={pricingOpen}
         onOpenChange={setPricingOpen}
         currentTier={meta.tier || meta.version || "free"}
+        preferredPackageId={window.sessionStorage.getItem("laurentia_pending_package")}
       />
     </div>
   );
