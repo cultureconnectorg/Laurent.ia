@@ -9,7 +9,8 @@ Modèle économique (Free tier) :
   - 3ème tentative → HTTP 402 Payment Required avec CTA Stripe
   - Chaque export Free reçoit une PAGE DE SIGNATURE FINALE :
         Mention « Certifié par l'Infrastructure Laurent.ia »
-        QR code → /echo/{session_id}
+        QR code → /echo/{public_id} uniquement si un Écho correspondant est explicitement publié,
+        sinon racine du site.
   - Tiers Creator / Infinite : aucune signature, exports illimités.
 
 Charte graphique CVLN :
