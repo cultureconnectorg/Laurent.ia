@@ -12,7 +12,7 @@ permissions:
 jobs:
   backend-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,9 +20,10 @@ jobs:
           python-version: "3.11"
       - name: Compile backend Python sources
         run: python -m compileall -q backend
+      - name: Install minimal auth contract test dependencies
+        run: python -m pip install --disable-pip-version-check "pytest==9.0.3" "fastapi==0.110.1" "httpx==0.28.1" "pydantic==2.13.4"
       - name: Run static contract regression tests when present
         run: |
-          python -m pip install --disable-pip-version-check pytest
           if [ -d backend/contract_tests ]; then
             python -m pytest -q backend/contract_tests
           else
