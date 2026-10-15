@@ -58,6 +58,7 @@ def cleanup_echo(db):
     for sid in sids:
         db.laurentia_echoes.delete_one({"session_id": sid})
         db.laurentia_echo_attributions.delete_many({"session_id": sid})
+        db.laurentia_echo_attributions.delete_many({"public_id": f"public-{sid}"})
 
 
 def test_echo_404_when_missing(http_client):
