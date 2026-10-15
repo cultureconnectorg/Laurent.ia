@@ -78,8 +78,10 @@ def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     sid = f"echo-conv-{int(time.time())}"
     cleanup_echo.append(sid)
     # Crée un echo direct en base pour éviter le coût LLM
+    public_id = f"public-{sid}"
     db.laurentia_echoes.insert_one({
         "session_id": sid,
+        "public_id": public_id,
         "tenant_id": None,
         "echo": {
             "title": "T", "summary": "S",
@@ -94,7 +96,7 @@ def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     })
 
     r = http_client.post(
-        f"/api/echo/{sid}/conversion",
+        f"/api/echo/{public_id}/conversion",
         json={"source": "echo_landing_cta"},
         headers={"X-Device-Fingerprint": "visitor-conv-fp-test-001"},
     )
@@ -104,7 +106,7 @@ def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     assert data["redirect"].startswith("/?from_echo=")
 
     # Vérifie attribution
-    attr = db.laurentia_echo_attributions.find_one({"session_id": sid})
+    attr = db.laurentia_echo_attributions.find_one({"public_id": public_id})
     assert attr is not None
     assert attr["source"] == "echo_landing_cta"
     assert attr["visitor_device_id"] is not None
