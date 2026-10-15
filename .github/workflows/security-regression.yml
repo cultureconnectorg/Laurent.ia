@@ -9,12 +9,6 @@ on:
       - "backend/services/cvl_brain.py"
       - "backend/tests/**"
       - ".github/workflows/security-regression.yml"
-  push:
-    branches:
-      - "claude/security-hardening-phase1-20261013"
-      - "claude/security-tenant-isolation-phase2-20261013"
-      - "claude/sovereign-llm-only-phase3-20261013"
-      - "claude/frek-id-possession-phase4-20261013"
 permissions:
   contents: read
 jobs:
@@ -32,13 +26,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t suites < <(find backend/tests -maxdepth 1 -type f \\( \\
-            -name 'test_frekcore_bridge_production.py' -o \\
-            -name 'test_kiltikonet_bridge_production.py' -o \\
-            -name 'test_laurentia_gateway_tenant_auth.py' -o \\
-            -name 'test_cvl_brain_sovereign.py' -o \\
-            -name 'test_auth_frek_login_guard.py' \\
-          \\) -print | sort)
+          mapfile -t suites < <(find backend/tests -maxdepth 1 -type f \(
+            -name 'test_frekcore_bridge_production.py' -o
+            -name 'test_kiltikonet_bridge_production.py' -o
+            -name 'test_laurentia_gateway_tenant_auth.py' -o
+            -name 'test_cvl_brain_sovereign.py' -o
+            -name 'test_auth_frek_login_guard.py'
+          \) -print | sort)
           if [ "${#suites[@]}" -eq 0 ]; then
             echo "No security regression suites found" >&2
             exit 1
