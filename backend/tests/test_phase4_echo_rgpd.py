@@ -66,6 +66,42 @@ def test_echo_404_when_missing(http_client):
     assert r.status_code == 404
 
 
+def test_public_echo_requires_opaque_id_and_explicit_publication(http_client, db, cleanup_echo):
+    sid = f"echo-public-id-{int(time.time())}"
+    public_id = f"public-{sid}"
+    cleanup_echo.append(sid)
+    db.laurentia_echoes.insert_one({
+        "session_id": sid,
+        "public_id": public_id,
+        "tenant_id": "test-tenant",
+        "echo": {
+            "title": "Public test", "summary": "Only visible while published",
+            "pro": {"headline": "H", "body": "B", "hashtags": []},
+            "instant": {"lead": "L", "bullets": ["b"]},
+            "visual": {"punchlines": ["p"], "color_hint": "gold"},
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "is_public": True,
+        "views": 0,
+        "conversions": 0,
+    })
+
+    public_response = http_client.get(f"/api/echo/{public_id}")
+    assert public_response.status_code == 200, public_response.text
+    assert public_response.json()["public_id"] == public_id
+    assert "session_id" not in public_response.json()
+
+    # The internal session ID must not work as a public URL.
+    assert http_client.get(f"/api/echo/{sid}").status_code == 404
+
+    # Revocation must immediately disable the opaque public URL.
+    db.laurentia_echoes.update_one(
+        {"session_id": sid, "tenant_id": "test-tenant"},
+        {"$set": {"is_public": False}},
+    )
+    assert http_client.get(f"/api/echo/{public_id}").status_code == 404
+
+
 def test_echo_generate_requires_authentication(http_client, db, cleanup_echo):
     sid = f"echo-pytest-{int(time.time())}"
     cleanup_echo.append(sid)
