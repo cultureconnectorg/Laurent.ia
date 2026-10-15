@@ -205,6 +205,9 @@ def test_callback_rejects_unverified_google_email_before_database_access(monkeyp
             return self.payload
 
     class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
