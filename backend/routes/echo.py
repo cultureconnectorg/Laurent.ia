@@ -2,14 +2,14 @@
 echo.py — Pipeline d'Échos omnicanal et Landing publique.
 
 Endpoints :
-  POST /api/laurentia/echo                → Génère 3 reformulations (LinkedIn/X, WhatsApp/Signal, Stories 9:16)
-                                            à partir d'un session_id + interaction_id (ou d'un texte brut).
-                                            Persiste le résultat dans `laurentia_echoes`.
-  GET  /api/echo/{session_id}             → JSON public : titre, formats, méta SEO/OG.
-  POST /api/echo/{session_id}/conversion  → Attribution : trace le clic CTA → création compte Creator.
+  POST /api/laurentia/echo                → Génère 3 reformulations (authentification requise).
+                                            Publication publique uniquement si `publish=true`.
+  GET  /api/echo/{public_id}               → JSON public uniquement pour un Écho explicitement publié.
+  POST /api/echo/{public_id}/conversion   → Attribution sur un identifiant public opaque.
 
-La page publique frontend `/echo/{session_id}` consomme GET /api/echo/{session_id}
-et déclenche POST /api/echo/{session_id}/conversion au clic du bouton « Activer ».
+La page publique frontend `/echo/{public_id}` consomme GET /api/echo/{public_id}
+et déclenche POST /api/echo/{public_id}/conversion au clic du bouton « Activer ».
+L'identifiant interne de session n'est jamais utilisé comme URL publique.
 """
 from __future__ import annotations
 
