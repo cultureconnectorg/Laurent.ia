@@ -133,7 +133,7 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request, user: di
         parsed = _parse_json_strict(full)
     except Exception as e:
         logger.exception("echo_generation_failed")
-        raise HTTPException(502, f"Génération d'écho échouée : {e}")
+        raise HTTPException(502, "Génération de l’Écho impossible pour le moment.")
 
     # 3. Validation minimale + sanitization
     required = {"title", "summary", "pro", "instant", "visual"}
