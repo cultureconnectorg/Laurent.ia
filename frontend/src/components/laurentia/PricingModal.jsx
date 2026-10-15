@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Check, Sparkles, Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -15,21 +16,39 @@ const TIER_ICONS = {
   infinite: Brain,
 };
 
-export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
+export const PricingModal = ({ open, onOpenChange, currentTier = "free", preferredPackageId = null }) => {
+  const { isAuthenticated, login } = useAuth();
   const [packages, setPackages] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
+  const [packagesError, setPackagesError] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (!open || packages) return;
+    let cancelled = false;
     (async () => {
+      setPackagesError(false);
       try {
         const r = await fetch(`${API}/billing/packages`);
-        if (r.ok) setPackages(await r.json());
-      } catch (_) {}
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (!cancelled) setPackages(data);
+      } catch (_) {
+        if (!cancelled) setPackagesError(true);
+      }
     })();
-  }, [open, packages]);
+    return () => { cancelled = true; };
+  }, [open, packages, retryNonce]);
 
   const handleCheckout = async (packageId) => {
+    if (!isAuthenticated) {
+      window.sessionStorage.setItem("laurentia_pending_package", packageId);
+      toast("Connecte-toi pour continuer. Tu retrouveras les offres à ton retour.", {
+        action: { label: "Se connecter", onClick: login },
+        duration: 8000,
+      });
+      return;
+    }
     setLoadingId(packageId);
     try {
       const r = await fetch(`${API}/billing/create-checkout`, {
@@ -40,11 +59,20 @@ export const PricingModal = ({ open, onOpenChange, currentTier = "free" }) => {
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
-        toast(d.detail || "Erreur démarrage paiement");
+        if (r.status === 401) {
+          window.sessionStorage.setItem("laurentia_pending_package", packageId);
+          toast("Connexion requise pour sécuriser ton abonnement.", {
+            action: { label: "Se connecter", onClick: login },
+            duration: 8000,
+          });
+        } else {
+          toast(d.detail || "Impossible de démarrer le paiement. Réessaie.");
+        }
         setLoadingId(null);
         return;
       }
       const d = await r.json();
+      if (preferredPackageId === packageId) window.sessionStorage.removeItem("laurentia_pending_package");
       window.location.href = d.url;
     } catch (e) {
       toast(e.message || "Erreur réseau");
