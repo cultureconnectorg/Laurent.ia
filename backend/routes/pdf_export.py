@@ -9,7 +9,8 @@ Modèle économique (Free tier) :
   - 3ème tentative → HTTP 402 Payment Required avec CTA Stripe
   - Chaque export Free reçoit une PAGE DE SIGNATURE FINALE :
         Mention « Certifié par l'Infrastructure Laurent.ia »
-        QR code → /echo/{session_id}
+        QR code → /echo/{public_id} uniquement si un Écho correspondant est explicitement publié,
+        sinon racine du site.
   - Tiers Creator / Infinite : aucune signature, exports illimités.
 
 Charte graphique CVLN :
@@ -364,10 +365,10 @@ GOOGLE_FONTS = (
 )
 
 
-def _signature_section_html(session_id: str | None) -> str:
-    """Page de signature avec QR vers /echo/{session_id} (ou racine si absent)."""
+def _signature_section_html(session_id: str | None, public_id: str | None = None) -> str:
+    """Page de signature vers un Écho explicitement publié, sinon vers la racine."""
     base = _public_url()
-    target = f"{base}/echo/{session_id}" if session_id else base
+    target = f"{base}/echo/{public_id}" if public_id else base
     qr_uri = _make_qr_data_uri(target)
     return f"""
   <section class="signature-page">
@@ -386,7 +387,7 @@ def _signature_section_html(session_id: str | None) -> str:
   </section>"""
 
 
-def _build_html(req: PdfExportRequest, include_signature: bool) -> str:
+def _build_html(req: PdfExportRequest, include_signature: bool, public_echo_id: str | None = None) -> str:
     body_html = _md_to_safe_html(req.content_md)
     ts = datetime.now(timezone.utc).strftime("%d %b %Y · %H:%M UTC")
     subtitle_html = (
@@ -398,7 +399,7 @@ def _build_html(req: PdfExportRequest, include_signature: bool) -> str:
         if req.footer_note else ""
     )
     title_safe = bleach.clean(req.title, tags=[], strip=True)
-    signature_html = _signature_section_html(req.session_id) if include_signature else ""
+    signature_html = _signature_section_html(req.session_id, public_echo_id) if include_signature else ""
     return f"""<!doctype html>
 <html lang="fr">
 <head>
@@ -497,11 +498,22 @@ async def export_pdf(payload: PdfExportRequest, request: Request):
     include_signature = is_free  # Signature uniquement Free tier
 
     try:
-        html_str = _build_html(payload, include_signature=include_signature)
+        public_echo_id = None
+        if include_signature and payload.session_id:
+            published_echoes = await request.app.state.db.laurentia_echoes.find(
+                {"session_id": payload.session_id, "is_public": True, "public_id": {"$type": "string"}},
+                {"_id": 0, "public_id": 1},
+            ).limit(2).to_list(length=2)
+            # A session ID can collide across tenants. Never guess which public Echo a QR should expose.
+            if len(published_echoes) == 1:
+                public_echo_id = published_echoes[0].get("public_id")
+        html_str = _build_html(
+            payload, include_signature=include_signature, public_echo_id=public_echo_id
+        )
         pdf_bytes = HTML(string=html_str).write_pdf(stylesheets=[CSS(string=CSS_TEMPLATE)])
     except Exception as e:
         logger.exception("pdf_export_failed")
-        raise HTTPException(500, f"Génération PDF échouée : {e}")
+        raise HTTPException(500, "Génération du PDF impossible pour le moment.")
 
     filename = f"laurentia-{_slugify(payload.title)}.pdf"
     return StreamingResponse(

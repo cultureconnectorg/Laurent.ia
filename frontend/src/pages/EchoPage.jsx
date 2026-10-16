@@ -1,9 +1,9 @@
 /**
  * EchoPage — Landing publique de conversion (cible du QR de signature PDF).
  *
- * URL : /echo/:sessionId
- * Données : GET /api/echo/:sessionId (no auth)
- * Conversion CTA : POST /api/echo/:sessionId/conversion → redirect /
+ * URL : /echo/:publicId (unguessable public identifier; never the internal session ID)
+ * Données : GET /api/echo/:publicId (no auth)
+ * Conversion CTA : POST /api/echo/:publicId/conversion → redirect /
  *
  * SEO/OG : balises injectées dynamiquement dans <head>.
  */
@@ -28,7 +28,7 @@ function setMeta(name, content, attr = "name") {
 }
 
 export default function EchoPage() {
-  const { sessionId } = useParams();
+  const { publicId } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -38,7 +38,7 @@ export default function EchoPage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`${API}/echo/${encodeURIComponent(sessionId)}`);
+        const r = await fetch(`${API}/echo/${encodeURIComponent(publicId)}`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const json = await r.json();
         if (cancelled) return;
@@ -60,11 +60,11 @@ export default function EchoPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [publicId]);
 
   const handleConvert = async () => {
     try {
-      await fetch(`${API}/echo/${encodeURIComponent(sessionId)}/conversion`, {
+      await fetch(`${API}/echo/${encodeURIComponent(publicId)}/conversion`, {
         method: "POST",
         headers: withFingerprintHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ source: "echo_landing_cta" }),
@@ -72,7 +72,7 @@ export default function EchoPage() {
     } catch (_) {
       // attribution best-effort — n'empêche pas la redirection
     }
-    navigate(`/?from_echo=${encodeURIComponent(sessionId)}`);
+    navigate(`/?from_echo=${encodeURIComponent(publicId)}`);
   };
 
   if (loading) {

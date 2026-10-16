@@ -18,11 +18,12 @@ import os
 logger = logging.getLogger(__name__)
 
 _DEFAULT_SALT = "laurentia-mvp-salt-change-in-prod-7d3a9c"
-_SALT_RAW = os.environ.get("LAURENTIA_SECRET_SALT", _DEFAULT_SALT).strip() or _DEFAULT_SALT
-_SALT_BYTES = _SALT_RAW.encode("utf-8")
-
+_SALT_RAW = os.environ.get("LAURENTIA_SECRET_SALT", "").strip()
+if not _SALT_RAW:
+    raise RuntimeError("Configuration de sécurité invalide : LAURENTIA_SECRET_SALT est obligatoire.")
 if _SALT_RAW == _DEFAULT_SALT:
-    logger.warning("LAURENTIA_SECRET_SALT = valeur par défaut — change-la en prod.")
+    raise RuntimeError("Configuration de sécurité invalide : le sel par défaut est interdit.")
+_SALT_BYTES = _SALT_RAW.encode("utf-8")
 
 
 def device_id_from_fingerprint(fingerprint: str | None) -> str | None:

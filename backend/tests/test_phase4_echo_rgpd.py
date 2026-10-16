@@ -58,6 +58,7 @@ def cleanup_echo(db):
     for sid in sids:
         db.laurentia_echoes.delete_one({"session_id": sid})
         db.laurentia_echo_attributions.delete_many({"session_id": sid})
+        db.laurentia_echo_attributions.delete_many({"public_id": f"public-{sid}"})
 
 
 def test_echo_404_when_missing(http_client):
@@ -65,42 +66,59 @@ def test_echo_404_when_missing(http_client):
     assert r.status_code == 404
 
 
-def test_echo_generate_with_raw_text_and_public_get(http_client, db, cleanup_echo):
+def test_public_echo_requires_opaque_id_and_explicit_publication(http_client, db, cleanup_echo):
+    sid = f"echo-public-id-{int(time.time())}"
+    public_id = f"public-{sid}"
+    cleanup_echo.append(sid)
+    db.laurentia_echoes.insert_one({
+        "session_id": sid,
+        "public_id": public_id,
+        "tenant_id": "test-tenant",
+        "echo": {
+            "title": "Public test", "summary": "Only visible while published",
+            "pro": {"headline": "H", "body": "B", "hashtags": []},
+            "instant": {"lead": "L", "bullets": ["b"]},
+            "visual": {"punchlines": ["p"], "color_hint": "gold"},
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "is_public": True,
+        "views": 0,
+        "conversions": 0,
+    })
+
+    public_response = http_client.get(f"/api/echo/{public_id}")
+    assert public_response.status_code == 200, public_response.text
+    assert public_response.json()["public_id"] == public_id
+    assert "session_id" not in public_response.json()
+
+    # The internal session ID must not work as a public URL.
+    assert http_client.get(f"/api/echo/{sid}").status_code == 404
+
+    # Revocation must immediately disable the opaque public URL.
+    db.laurentia_echoes.update_one(
+        {"session_id": sid, "tenant_id": "test-tenant"},
+        {"$set": {"is_public": False}},
+    )
+    assert http_client.get(f"/api/echo/{public_id}").status_code == 404
+
+
+def test_echo_generate_requires_authentication(http_client, db, cleanup_echo):
     sid = f"echo-pytest-{int(time.time())}"
     cleanup_echo.append(sid)
-    raw = (
-        "La Diaspora caribéenne représente 37% du PIB régional via remittances. "
-        "Top: Haïti 3.8B, Jamaïque 3.2B, RD 9.4B. Opportunité fintech décarbonée."
-    )
+    raw = "Contenu privé de test qui ne doit pas être publié sans authentification."
     r = http_client.post("/api/laurentia/echo", json={"session_id": sid, "raw_text": raw})
-    assert r.status_code == 200, r.text
-    data = r.json()
-    assert data["ok"] is True
-    assert data["public_url"] == f"/echo/{sid}"
-    echo = data["echo"]
-    assert all(k in echo for k in ["title", "summary", "pro", "instant", "visual"])
-    assert isinstance(echo["pro"].get("headline"), str)
-    assert isinstance(echo["instant"].get("bullets"), list)
-    assert isinstance(echo["visual"].get("punchlines"), list)
-
-    # Public GET (premier appel : views=0 dans la réponse + increment async post-read)
-    g = http_client.get(f"/api/echo/{sid}")
-    assert g.status_code == 200
-    pub = g.json()
-    assert pub["session_id"] == sid
-    assert pub["title"]
-    # Le 2ème GET doit refléter le compteur (le 1er a incrémenté en post-read)
-    g2 = http_client.get(f"/api/echo/{sid}")
-    pub2 = g2.json()
-    assert pub2["views"] >= 1
+    assert r.status_code == 401, r.text
+    assert db.laurentia_echoes.find_one({"session_id": sid}) is None
 
 
 def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     sid = f"echo-conv-{int(time.time())}"
     cleanup_echo.append(sid)
     # Crée un echo direct en base pour éviter le coût LLM
+    public_id = f"public-{sid}"
     db.laurentia_echoes.insert_one({
         "session_id": sid,
+        "public_id": public_id,
         "tenant_id": None,
         "echo": {
             "title": "T", "summary": "S",
@@ -115,7 +133,7 @@ def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     })
 
     r = http_client.post(
-        f"/api/echo/{sid}/conversion",
+        f"/api/echo/{public_id}/conversion",
         json={"source": "echo_landing_cta"},
         headers={"X-Device-Fingerprint": "visitor-conv-fp-test-001"},
     )
@@ -125,7 +143,7 @@ def test_echo_conversion_attribution(http_client, db, cleanup_echo):
     assert data["redirect"].startswith("/?from_echo=")
 
     # Vérifie attribution
-    attr = db.laurentia_echo_attributions.find_one({"session_id": sid})
+    attr = db.laurentia_echo_attributions.find_one({"public_id": public_id})
     assert attr is not None
     assert attr["source"] == "echo_landing_cta"
     assert attr["visitor_device_id"] is not None

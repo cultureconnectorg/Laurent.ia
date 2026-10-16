@@ -2,26 +2,29 @@
 echo.py — Pipeline d'Échos omnicanal et Landing publique.
 
 Endpoints :
-  POST /api/laurentia/echo                → Génère 3 reformulations (LinkedIn/X, WhatsApp/Signal, Stories 9:16)
-                                            à partir d'un session_id + interaction_id (ou d'un texte brut).
-                                            Persiste le résultat dans `laurentia_echoes`.
-  GET  /api/echo/{session_id}             → JSON public : titre, formats, méta SEO/OG.
-  POST /api/echo/{session_id}/conversion  → Attribution : trace le clic CTA → création compte Creator.
+  POST /api/laurentia/echo                → Génère 3 reformulations (authentification requise).
+                                            Publication publique uniquement si `publish=true`.
+  GET  /api/echo/{public_id}               → JSON public uniquement pour un Écho explicitement publié.
+  POST /api/echo/{public_id}/conversion   → Attribution sur un identifiant public opaque.
 
-La page publique frontend `/echo/{session_id}` consomme GET /api/echo/{session_id}
-et déclenche POST /api/echo/{session_id}/conversion au clic du bouton « Activer ».
+La page publique frontend `/echo/{public_id}` consomme GET /api/echo/{public_id}
+et déclenche POST /api/echo/{public_id}/conversion au clic du bouton « Activer ».
+L'identifiant interne de session n'est jamais utilisé comme URL publique.
 """
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services import cvl_brain
 from services.crypto import decrypt_text
 from services.fingerprint import device_id_from_fingerprint
+from services.security import tenant_id_for
+from routes.auth import require_user
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,7 @@ diffusable demain matin. Si la matière est faible, dis-le dans summary plutôt 
 class EchoGenerateRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=120)
     raw_text: str | None = Field(default=None, max_length=8000)
+    publish: bool = Field(default=False, description="Publication publique explicite et volontaire.")
 
 
 def _trim(s: str, n: int = 4000) -> str:
@@ -66,10 +70,10 @@ def _trim(s: str, n: int = 4000) -> str:
     return s if len(s) <= n else s[:n] + " …"
 
 
-async def _fetch_session_content(db, session_id: str) -> tuple[str, str | None]:
+async def _fetch_session_content(db, session_id: str, tenant_id: str) -> tuple[str, str | None]:
     """Récupère le dernier output assistant de la session (déchiffré). Renvoie (text, frek_id)."""
     cursor = db.laurentia_interactions.find(
-        {"session_id": session_id},
+        {"session_id": session_id, "tenant_id": tenant_id},
         {"_id": 0, "output_text": 1, "input_text": 1, "tenant_id": 1, "timestamp": 1},
         sort=[("timestamp", -1)],
     )
@@ -105,15 +109,15 @@ def _parse_json_strict(raw: str) -> dict:
 
 
 @private_router.post("/echo")
-async def generate_echo(payload: EchoGenerateRequest, request: Request):
+async def generate_echo(payload: EchoGenerateRequest, request: Request, user: dict = Depends(require_user)):
     db = request.app.state.db
+    frek_tenant = tenant_id_for(user["frek_id"])
 
     # 1. Source : session existante OU raw_text fourni
     if payload.raw_text:
         source = _trim(payload.raw_text, 6000)
-        frek_tenant = None
     else:
-        source, frek_tenant = await _fetch_session_content(db, payload.session_id)
+        source, _ = await _fetch_session_content(db, payload.session_id, frek_tenant)
         if not source:
             raise HTTPException(404, "Session introuvable ou vide.")
 
@@ -129,7 +133,7 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request):
         parsed = _parse_json_strict(full)
     except Exception as e:
         logger.exception("echo_generation_failed")
-        raise HTTPException(502, f"Génération d'écho échouée : {e}")
+        raise HTTPException(502, "Génération de l’Écho impossible pour le moment.")
 
     # 3. Validation minimale + sanitization
     required = {"title", "summary", "pro", "instant", "visual"}
@@ -138,15 +142,25 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request):
 
     # 4. Persistance — distinct $set (updateable) vs $setOnInsert (initial-only)
     now = datetime.now(timezone.utc).isoformat()
+    # Public links use an independent high-entropy identifier, never the internal session ID.
+    existing = await db.laurentia_echoes.find_one(
+        {"session_id": payload.session_id, "tenant_id": frek_tenant},
+        {"_id": 0, "public_id": 1},
+    )
+    public_id = (existing or {}).get("public_id") if payload.publish else None
+    if payload.publish and not public_id:
+        public_id = secrets.token_urlsafe(32)
+
     set_fields = {
         "session_id": payload.session_id,
         "tenant_id": frek_tenant,
         "echo": parsed,
         "updated_at": now,
-        "is_public": True,
+        "is_public": payload.publish,
+        "public_id": public_id,
     }
     await db.laurentia_echoes.update_one(
-        {"session_id": payload.session_id},
+        {"session_id": payload.session_id, "tenant_id": frek_tenant},
         {
             "$set": set_fields,
             "$setOnInsert": {"created_at": now, "views": 0, "conversions": 0},
@@ -157,24 +171,26 @@ async def generate_echo(payload: EchoGenerateRequest, request: Request):
     return {
         "ok": True,
         "session_id": payload.session_id,
-        "public_url": f"/echo/{payload.session_id}",
+        "public_url": f"/echo/{public_id}" if public_id else None,
         "echo": parsed,
     }
 
 
 # ---------------- PUBLIC (no auth) ----------------
 
-@public_router.get("/{session_id}")
-async def get_public_echo(session_id: str, request: Request):
+@public_router.get("/{public_id}")
+async def get_public_echo(public_id: str, request: Request):
     db = request.app.state.db
-    doc = await db.laurentia_echoes.find_one({"session_id": session_id}, {"_id": 0})
-    if not doc or not doc.get("is_public", True):
+    doc = await db.laurentia_echoes.find_one(
+        {"public_id": public_id, "is_public": True}, {"_id": 0}
+    )
+    if not doc:
         raise HTTPException(404, "Écho introuvable ou retiré.")
 
     # Tracking de vue (best-effort, ne bloque pas la lecture)
     try:
         await db.laurentia_echoes.update_one(
-            {"session_id": session_id},
+            {"public_id": public_id, "is_public": True},
             {"$inc": {"views": 1}, "$set": {"last_view_at": datetime.now(timezone.utc).isoformat()}},
         )
     except Exception:
@@ -182,7 +198,7 @@ async def get_public_echo(session_id: str, request: Request):
 
     echo = doc["echo"]
     return {
-        "session_id": session_id,
+        "public_id": public_id,
         "title": echo.get("title"),
         "summary": echo.get("summary"),
         "pro": echo.get("pro"),
@@ -198,24 +214,30 @@ class ConversionPing(BaseModel):
     source: str = Field(default="echo_cta", max_length=40)
 
 
-@public_router.post("/{session_id}/conversion")
-async def track_conversion(session_id: str, payload: ConversionPing, request: Request):
+@public_router.post("/{public_id}/conversion")
+async def track_conversion(public_id: str, payload: ConversionPing, request: Request):
     db = request.app.state.db
     device_fp = request.headers.get("x-device-fingerprint") or request.headers.get("X-Device-Fingerprint")
     device_id = device_id_from_fingerprint(device_fp)
     now = datetime.now(timezone.utc)
 
+    public_echo = await db.laurentia_echoes.find_one(
+        {"public_id": public_id, "is_public": True}, {"_id": 1}
+    )
+    if not public_echo:
+        raise HTTPException(404, "Écho introuvable ou retiré.")
+
     await db.laurentia_echoes.update_one(
-        {"session_id": session_id},
+        {"public_id": public_id, "is_public": True},
         {
             "$inc": {"conversions": 1},
             "$set": {"last_conversion_at": now.isoformat()},
         },
     )
     await db.laurentia_echo_attributions.insert_one({
-        "session_id": session_id,
+        "public_id": public_id,
         "source": payload.source,
         "visitor_device_id": device_id,
         "ts": now,
     })
-    return {"ok": True, "session_id": session_id, "redirect": "/?from_echo=" + session_id}
+    return {"ok": True, "public_id": public_id, "redirect": "/?from_echo=" + public_id}
