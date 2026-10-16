@@ -1,0 +1,33 @@
+name: Laurentia crypto and fingerprint regression
+
+on:
+  push:
+    branches:
+      - "test/crypto-fingerprint-regression"
+  pull_request:
+    paths:
+      - "backend/services/crypto.py"
+      - "backend/services/fingerprint.py"
+      - "backend/tests/test_crypto_fingerprint_security.py"
+      - ".github/workflows/crypto-fingerprint-regression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crypto-fingerprint-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LAURENTIA_ENCRYPTION_KEY: ci-only-encryption-key-never-use-in-production
+      LAURENTIA_SECRET_SALT: ci-only-fingerprint-salt-never-use-in-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install isolated test dependencies
+        run: python -m pip install --disable-pip-version-check "pytest==9.0.3" "cryptography==48.0.0" "python-dotenv==1.2.2"
+      - name: Run encryption and fingerprint regression tests
+        run: python -m pytest -q backend/tests/test_crypto_fingerprint_security.py
